@@ -20,7 +20,17 @@ from .prompts import HistoryItem, JudgePrompts
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("judge")
 
-Answer = Literal["YES", "NO", "PARTIAL", "IRRELEVANT", "INVALID"]
+Answer = Literal[
+    "YES",
+    "NO",
+    "PARTIAL_SOME",
+    "PARTIAL_CONDITION",
+    "IRRELEVANT_UNRELATED",
+    "IRRELEVANT_UNDECIDED",
+    "INVALID_FORM",
+    "INVALID_TRUTH",
+    "INVALID_RULE",
+]
 
 
 class HistoryEntry(BaseModel):
@@ -36,7 +46,6 @@ class QuestionRequest(BaseModel):
 
 class QuestionResult(BaseModel):
     answer: Answer
-    key: bool
 
 
 class GuessRequest(BaseModel):
@@ -52,7 +61,6 @@ class GuessResult(BaseModel):
 class QuestionJudgement(BaseModel):
     reason: str
     answer: Answer
-    key: bool
 
 
 class GuessJudgement(BaseModel):
@@ -112,8 +120,8 @@ async def judge_question(body: QuestionRequest, request: Request) -> QuestionRes
     prompt = request.app.state.prompts.question(scenario, history, body.question.strip())
     result = _validate(QuestionJudgement, await request.app.state.judge.complete_json(prompt))
     # 판정 근거는 로그에만 남긴다. 플레이어에게 새지 않게 응답에는 넣지 않는다.
-    log.info("[%s] Q: %s → %s (key=%s) / %s", scenario.slug, body.question, result.answer, result.key, result.reason)
-    return QuestionResult(answer=result.answer, key=result.key)
+    log.info("[%s] Q: %s → %s / %s", scenario.slug, body.question, result.answer, result.reason)
+    return QuestionResult(answer=result.answer)
 
 
 @app.post("/judge/guess")

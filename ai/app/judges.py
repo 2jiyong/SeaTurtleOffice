@@ -31,7 +31,7 @@ class FakeJudge:
 
     async def complete_json(self, prompt: Prompt) -> dict:
         if prompt.schema_name == "question_judgement":
-            return {"reason": "가짜 판정기", "answer": "IRRELEVANT", "key": False}
+            return {"reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}
         if prompt.schema_name == "guess_judgement":
             return {"reason": "가짜 판정기", "matched": []}
         raise JudgeError(f"알 수 없는 스키마: {prompt.schema_name}")

@@ -4,7 +4,10 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.content import ContentRepository
 from app.main import app
-from app.prompts import JudgePrompts
+from app.prompts import ANSWERS, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
+
+CODES = ["YES", "NO", "PARTIAL_SOME", "PARTIAL_CONDITION", "IRRELEVANT_UNRELATED",
+         "IRRELEVANT_UNDECIDED", "INVALID_FORM", "INVALID_TRUTH", "INVALID_RULE"]
 
 
 @pytest.fixture(scope="module")
@@ -58,7 +61,7 @@ def test_fake_judge_flow(client):
 
     r = client.post("/judge/question", json={"scenario": "last-rent", "question": "세입자들은 죽었나요?"})
     assert r.status_code == 200
-    assert r.json() == {"answer": "IRRELEVANT", "key": False}
+    assert r.json() == {"answer": "IRRELEVANT_UNRELATED"}
 
     r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "모르겠어요"})
     assert r.status_code == 200
@@ -69,3 +72,37 @@ def test_fake_judge_flow(client):
 def test_unknown_scenario_is_404(client):
     r = client.post("/judge/question", json={"scenario": "nope", "question": "질문"})
     assert r.status_code == 404
+
+
+def test_answers_are_nine_codes():
+    assert ANSWERS == CODES
+    assert QUESTION_SCHEMA["required"] == ["reason", "answer"]
+    assert "key" not in QUESTION_SCHEMA["properties"]
+
+
+def test_rules_explain_every_code():
+    for code in CODES:
+        assert code in QUESTION_RULES
+
+
+def test_history_uses_new_codes(content):
+    s = content.scenario("last-rent")
+    prompt = JudgePrompts(content, 40).question(s, [HistoryItem("건물주는 몇 살?", "IRRELEVANT_UNDECIDED")], "q")
+    assert "- 건물주는 몇 살? → IRRELEVANT_UNDECIDED" in prompt.user
+
+
+def test_old_answer_code_is_rejected(client):
+    class OldJudge:
+        name, fake = "old", True
+
+        async def complete_json(self, prompt):
+            # 예전 형식 그대로(key 포함). 코드만 목록에 없어야 거부된다.
+            return {"reason": "r", "answer": "PARTIAL", "key": False}
+
+    saved = app.state.judge
+    app.state.judge = OldJudge()
+    try:
+        r = client.post("/judge/question", json={"scenario": "last-rent", "question": "q"})
+        assert r.status_code == 502
+    finally:
+        app.state.judge = saved

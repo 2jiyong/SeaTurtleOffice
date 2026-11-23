@@ -17,7 +17,7 @@ public interface Judge {
 	record HistoryEntry(String text, Answer answer) {
 	}
 
-	record Verdict(Answer answer, boolean key) {
+	record Verdict(Answer answer) {
 	}
 
 	record GuessVerdict(int matched, int total) {

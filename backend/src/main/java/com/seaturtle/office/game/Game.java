@@ -9,7 +9,7 @@ import com.seaturtle.office.content.Scenario;
 /** 한 판의 진행 상태. 메모리에만 있다. */
 public class Game {
 
-	public record QuestionRecord(int no, int seq, String text, Answer answer, boolean key) {
+	public record QuestionRecord(int no, int seq, String text, Answer answer) {
 	}
 
 	public record GuessRecord(int seq, String text, int matched, int total, boolean correct) {
@@ -68,9 +68,9 @@ public class Game {
 		}
 	}
 
-	public synchronized QuestionRecord addQuestion(String text, Answer answer, boolean key) {
+	public synchronized QuestionRecord addQuestion(String text, Answer answer) {
 		requirePlaying();
-		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer, key);
+		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer);
 		questions.add(record);
 		return record;
 	}

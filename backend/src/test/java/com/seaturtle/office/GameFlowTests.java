@@ -2,6 +2,9 @@ package com.seaturtle.office;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +12,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -22,6 +27,7 @@ import com.seaturtle.office.judge.JudgeException;
 
 /** AI 서버 없이 게임 흐름만 본다. 판정기는 정해진 답을 하는 가짜로 바꾼다. */
 @SpringBootTest
+@AutoConfigureMockMvc
 class GameFlowTests {
 
 	static class StubJudge implements Judge {
@@ -30,7 +36,7 @@ class GameFlowTests {
 		@Override
 		public Verdict question(String scenario, List<HistoryEntry> history, String question) {
 			histories.add(history);
-			return new Verdict(Answer.YES, true);
+			return new Verdict(Answer.IRRELEVANT_UNDECIDED);
 		}
 
 		@Override
@@ -62,6 +68,9 @@ class GameFlowTests {
 	@Autowired
 	StubJudge judge;
 
+	@Autowired
+	MockMvc mvc;
+
 	@Test
 	void playThroughAndGiveUp() {
 		var game = games.start("last-rent");
@@ -69,10 +78,10 @@ class GameFlowTests {
 		var q1 = games.ask(game.id(), "세입자들은 죽었나요?");
 		var q2 = games.ask(game.id(), "건물주가 했나요?");
 		assertThat(q1.no()).isEqualTo(1);
-		assertThat(q2.answer()).isEqualTo(Answer.YES);
-		assertThat(q2.key()).isTrue();
-		// 두 번째 질문 때 첫 질문의 기록이 함께 간다.
-		assertThat(judge.histories.getLast()).extracting(Judge.HistoryEntry::text).containsExactly("세입자들은 죽었나요?");
+		assertThat(q2.answer()).isEqualTo(Answer.IRRELEVANT_UNDECIDED);
+		// 두 번째 질문 때 첫 질문의 기록이 새 코드 그대로 함께 간다.
+		assertThat(judge.histories.getLast())
+				.containsExactly(new Judge.HistoryEntry("세입자들은 죽었나요?", Answer.IRRELEVANT_UNDECIDED));
 
 		games.hint(game.id());
 		assertThat(game.hintsUsed()).isEqualTo(1);
@@ -100,5 +109,14 @@ class GameFlowTests {
 		assertThatThrownBy(() -> games.guess(game.id(), "개수 다름")).isInstanceOf(JudgeException.class);
 		assertThat(game.guesses()).isEmpty();
 		assertThat(game.status()).isEqualTo(GameStatus.PLAYING);
+	}
+
+	@Test
+	void questionResponseHasNoKeyField() throws Exception {
+		var game = games.start("last-rent");
+		// 응답 본문에 answer는 있고 key는 없다.
+		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON).content("{\"text\":\"q\"}"))
+				.andExpect(jsonPath("$.answer").value("IRRELEVANT_UNDECIDED"))
+				.andExpect(jsonPath("$.key").doesNotExist());
 	}
 }

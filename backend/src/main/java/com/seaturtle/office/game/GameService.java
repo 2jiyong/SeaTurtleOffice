@@ -38,7 +38,7 @@ public class GameService {
 				.map(q -> new Judge.HistoryEntry(q.text(), q.answer()))
 				.toList();
 		Judge.Verdict verdict = judge.question(game.scenario().slug(), history, question);
-		return game.addQuestion(question, verdict.answer(), verdict.key());
+		return game.addQuestion(question, verdict.answer());
 	}
 
 	public Game guess(String id, String answer) {

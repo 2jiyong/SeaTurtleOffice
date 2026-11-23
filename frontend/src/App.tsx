@@ -37,7 +37,7 @@ export default function App() {
           </svg>
           <span>바다거북 사무소</span>
         </button>
-        <p className="brand-sub">진행자는 예와 아니오로만 답합니다. 그 사이에서 사건의 전말을 찾아내세요.</p>
+        <p className="brand-sub">진행자는 모든 것을 알지만 정해진 말로만 답합니다. 그 사이에서 사건의 전말을 찾아내세요.</p>
       </header>
       {info && !info.judgeOnline && (
         <p className="banner">

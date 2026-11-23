@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameView, QuestionRecord } from './api.ts'
+import { ANSWER_TEXT, type GameView, type QuestionRecord } from './api.ts'
 import GamePage from './GamePage.tsx'
 
 // 네트워크(api)만 바꾼다. 응답 시점은 테스트가 정한다.
@@ -27,8 +27,8 @@ const game: GameView = {
 /** 끝나지 않는 요청: 테스트 동안 '진행 중' 상태를 유지한다. */
 const never = () => new Promise<never>(() => {})
 
-async function openGame() {
-  vi.mocked(api.game).mockResolvedValue(game)
+async function openGame(overrides: Partial<GameView> = {}) {
+  vi.mocked(api.game).mockResolvedValue({ ...game, ...overrides })
   render(<GamePage gameId="g1" onExit={() => {}} />)
   await screen.findByRole('button', { name: /힌트 받기/ })
 }
@@ -86,4 +86,43 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     expect(api.ask).toHaveBeenCalledTimes(1)
     expect(api.hint).not.toHaveBeenCalled()
   })
+})
+
+describe('질문 기록', () => {
+  it('진행자의 말과 그 아래 안내 문장을 보여 준다', async () => {
+    await openGame({ questions: [{ no: 1, seq: 1, text: '건물주는 몇 살인가요?', answer: 'IRRELEVANT_UNDECIDED' }] })
+    expect(screen.getByText('중요하지 않단다')).toBeTruthy()
+    expect(screen.getByText('이 사건에서 정하지 않은 세부사항입니다.')).toBeTruthy()
+  })
+
+  it('말이 같은 두 코드는 같은 도장 색을 쓴다', async () => {
+    await openGame({
+      questions: [
+        { no: 1, seq: 1, text: 'a', answer: 'PARTIAL_SOME' },
+        { no: 2, seq: 2, text: 'b', answer: 'PARTIAL_CONDITION' },
+      ],
+    })
+    const stamps = screen.getAllByText('어느정도는 그렇단다')
+    expect(stamps[0].className).toBe(stamps[1].className)
+    expect(stamps[0].className).toContain('s-partial')
+  })
+
+  it('증거 표시를 보여 주지 않는다', async () => {
+    await openGame({ questions: [{ no: 1, seq: 1, text: 'a', answer: 'YES' }] })
+    expect(screen.queryByText(/증거/)).toBeNull()
+  })
+})
+
+it('ANSWER_TEXT가 9개 코드를 모두 담는다', () => {
+  expect(Object.keys(ANSWER_TEXT)).toEqual([
+    'YES',
+    'NO',
+    'PARTIAL_SOME',
+    'PARTIAL_CONDITION',
+    'IRRELEVANT_UNRELATED',
+    'IRRELEVANT_UNDECIDED',
+    'INVALID_FORM',
+    'INVALID_TRUTH',
+    'INVALID_RULE',
+  ])
 })

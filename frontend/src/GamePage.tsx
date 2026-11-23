@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ANSWER_LABEL, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
 import Risk from './Risk.tsx'
 
 type Mode = 'question' | 'guess'
@@ -46,13 +46,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     ...game.questions.map((item) => ({ kind: 'question' as const, item })),
     ...game.guesses.map((item) => ({ kind: 'guess' as const, item })),
   ].sort((a, b) => a.item.seq - b.item.seq)
-
-  // 핵심 질문에는 나온 순서대로 증거 번호를 붙인다.
-  const evidenceNo = new Map<number, number>()
-  game.questions
-    .filter((q) => q.key)
-    .sort((a, b) => a.seq - b.seq)
-    .forEach((q, i) => evidenceNo.set(q.seq, i + 1))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -132,9 +125,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
         <div className="transcript">
           <div className="transcript-head">
             <h2>심문 기록</h2>
-            <span>
-              질문 {game.questions.length} / 확보한 증거 {evidenceNo.size}
-            </span>
+            <span>질문 {game.questions.length}</span>
           </div>
           <ol className="log" aria-live="polite">
             {entries.length === 0 && !pending && (
@@ -149,14 +140,14 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 <li key={`q${e.item.seq}`} className="entry">
                   <span className="entry-no">Q{e.item.no}</span>
                   <p className="entry-text">{e.item.text}</p>
-                  <span className={`stamp s-${e.item.answer}`}>{ANSWER_LABEL[e.item.answer]}</span>
-                  {e.item.key && <span className="evidence">증거 {evidenceNo.get(e.item.seq)}</span>}
+                  <span className={`stamp s-${ANSWER_TEXT[e.item.answer].tone}`}>{ANSWER_TEXT[e.item.answer].say}</span>
+                  <span className="stamp-note">{ANSWER_TEXT[e.item.answer].note}</span>
                 </li>
               ) : (
                 <li key={`g${e.item.seq}`} className="entry entry-guess">
                   <span className="entry-no">추리</span>
                   <p className="entry-text">{e.item.text}</p>
-                  <span className={`stamp ${e.item.correct ? 's-YES' : 's-GUESS'}`}>
+                  <span className={`stamp ${e.item.correct ? 's-yes' : 's-guess'}`}>
                     {e.item.correct ? '정답' : `핵심 ${e.item.matched}/${e.item.total}`}
                   </span>
                 </li>

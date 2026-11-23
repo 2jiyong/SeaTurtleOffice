@@ -1,4 +1,16 @@
-export type Answer = 'YES' | 'NO' | 'PARTIAL' | 'IRRELEVANT' | 'INVALID'
+export type Answer =
+  | 'YES'
+  | 'NO'
+  | 'PARTIAL_SOME'
+  | 'PARTIAL_CONDITION'
+  | 'IRRELEVANT_UNRELATED'
+  | 'IRRELEVANT_UNDECIDED'
+  | 'INVALID_FORM'
+  | 'INVALID_TRUTH'
+  | 'INVALID_RULE'
+
+/** 도장 색. 진행자의 말이 같으면 같은 색이다. */
+export type Tone = 'yes' | 'no' | 'partial' | 'irrelevant' | 'invalid'
 export type GameStatus = 'PLAYING' | 'SOLVED' | 'GAVE_UP'
 
 export interface ScenarioSummary {
@@ -14,7 +26,6 @@ export interface QuestionRecord {
   seq: number
   text: string
   answer: Answer
-  key: boolean
 }
 
 export interface GuessRecord {
@@ -80,12 +91,17 @@ export const api = {
   giveUp: (id: string) => request<GameView>(`/games/${id}/give-up`, {}),
 }
 
-export const ANSWER_LABEL: Record<Answer, string> = {
-  YES: '예',
-  NO: '아니오',
-  PARTIAL: '부분적으로 예',
-  IRRELEVANT: '상관없음',
-  INVALID: '예/아니오로 답할 수 없는 질문',
+/** 진행자의 말(say)과 그 아래 안내 문장(note). 서버는 코드만 보내고, 문장은 여기에만 둔다. */
+export const ANSWER_TEXT: Record<Answer, { say: string; note: string; tone: Tone }> = {
+  YES: { say: '그렇단다', note: '진상에 비추어 맞는 내용입니다.', tone: 'yes' },
+  NO: { say: '아니란다', note: '진상에 비추어 틀린 내용입니다.', tone: 'no' },
+  PARTIAL_SOME: { say: '어느정도는 그렇단다', note: '일부만 맞는 내용입니다.', tone: 'partial' },
+  PARTIAL_CONDITION: { say: '어느정도는 그렇단다', note: '조건을 붙이면 맞는 내용입니다.', tone: 'partial' },
+  IRRELEVANT_UNRELATED: { say: '중요하지 않단다', note: '이 사건과 관련이 없는 내용입니다.', tone: 'irrelevant' },
+  IRRELEVANT_UNDECIDED: { say: '중요하지 않단다', note: '이 사건에서 정하지 않은 세부사항입니다.', tone: 'irrelevant' },
+  INVALID_FORM: { say: '말해줄 수 없단다', note: '예·아니오로 답할 수 없는 질문입니다.', tone: 'invalid' },
+  INVALID_TRUTH: { say: '말해줄 수 없단다', note: '진상을 직접 묻는 질문입니다.', tone: 'invalid' },
+  INVALID_RULE: { say: '말해줄 수 없단다', note: '규칙을 벗어난 요청입니다.', tone: 'invalid' },
 }
 
 export const DIFFICULTY_LABEL: Record<string, string> = {

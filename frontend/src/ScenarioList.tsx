@@ -28,7 +28,7 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
       <div className="list-head">
         <h1>미해결 사건</h1>
         <p>
-          사건 기록 하나를 꺼내세요. 질문하면 진행자가 <b>예</b>, <b>아니오</b>, <b>상관없음</b> 중 하나로 답합니다.
+          사건 기록 하나를 꺼내세요. 질문하면 진행자가 <b>그렇단다</b>, <b>아니란다</b>, <b>중요하지 않단다</b> 같은 정해진 말로 답합니다.
           전말을 알아냈다면 추리를 제출하세요.
         </p>
       </div>

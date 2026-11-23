@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.tax-patent
 type: concept
-title: 금기: 탈세와 특허권 침해
+title: "금기: 탈세와 특허권 침해"
 aliases: [탈세, 세금 미납, 특허 침해, 로열티]
 works: [lobotomy, ruina, limbus]
 era: [all]

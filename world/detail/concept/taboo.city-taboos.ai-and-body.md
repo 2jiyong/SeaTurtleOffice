@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.ai-and-body
 type: concept
-title: 금기: 인공지능과 의체
+title: "금기: 인공지능과 의체"
 aliases: [인공지능 윤리 개정안, 의체 규제, 인간형 AI, 전자두뇌]
 works: [lobotomy, ruina, limbus]
 era: [all]

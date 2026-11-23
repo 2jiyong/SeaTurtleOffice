@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.resurrection
 type: concept
-title: 금기: 생명 부활
+title: "금기: 생명 부활"
 aliases: [사자소생, 부활 금지, 생명 부활의 금기, 되살리기]
 works: [lobotomy, ruina, limbus]
 era: [all]

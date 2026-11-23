@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.weapons
 type: concept
-title: 금기: 총기와 폭발물 규제
+title: "금기: 총기와 폭발물 규제"
 aliases: [총기 규제, 총기 제작 면허, 탄환 관통력, 소음기, 폭발물 규제, 수류탄]
 works: [lobotomy, ruina, limbus]
 era: [all]

@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.clone
 type: concept
-title: 금기: 복제인간 규제
+title: "금기: 복제인간 규제"
 aliases: [복제인간, 클론, 7일 규칙, 동일 인물]
 works: [lobotomy, ruina, limbus]
 era: [all]

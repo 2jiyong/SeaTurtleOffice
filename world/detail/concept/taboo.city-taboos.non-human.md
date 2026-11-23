@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.non-human
 type: concept
-title: 금기: 인간 이외 지성체의 제작과 반입
+title: "금기: 인간 이외 지성체의 제작과 반입"
 aliases: [아인종 제작, 아인종 반입, 인간 아닌 지성체, 흑수]
 works: [lobotomy, ruina, limbus]
 era: [all]

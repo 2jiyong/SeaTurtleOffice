@@ -1,7 +1,7 @@
 ---
 id: concept.taboo.city-taboos.night
 type: concept
-title: 금기: 뒷골목의 밤
+title: "금기: 뒷골목의 밤"
 aliases: [뒷골목의 밤 녹취, 거주구역 침입, 거주구역 파괴]
 works: [lobotomy, ruina, limbus]
 era: [all]

@@ -1,0 +1,60 @@
+import { useEffect, useState } from 'react'
+import { api, type ServerInfo } from './api.ts'
+import GamePage from './GamePage.tsx'
+import ScenarioList from './ScenarioList.tsx'
+
+/** 주소는 #/ (목록) 또는 #/game/<id> (게임). 새로고침해도 서버에 남아 있는 게임으로 돌아온다. */
+function readRoute(): { gameId: string | null } {
+  const match = window.location.hash.match(/^#\/game\/([\w-]+)$/)
+  return { gameId: match ? match[1] : null }
+}
+
+export default function App() {
+  const [route, setRoute] = useState(readRoute)
+  const [info, setInfo] = useState<ServerInfo | null>(null)
+
+  useEffect(() => {
+    api.info().then(setInfo, () => setInfo(null))
+  }, [])
+
+  useEffect(() => {
+    const onHash = () => setRoute(readRoute())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const goHome = () => {
+    window.location.hash = '#/'
+  }
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <button className="brand" onClick={goHome}>
+          <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
+            <path d="M16 3.5 27 9.75v12.5L16 28.5 5 22.25V9.75Z" />
+            <path className="core" d="M16 10.5 21 13.4v5.2L16 21.5l-5-2.9v-5.2Z" />
+          </svg>
+          <span>바다거북 사무소</span>
+        </button>
+        <p className="brand-sub">진행자는 예와 아니오로만 답합니다. 그 사이에서 사건의 전말을 찾아내세요.</p>
+      </header>
+      {info?.fakeJudge && (
+        <p className="banner">
+          지금은 <b>가짜 판정기</b>로 실행 중입니다. 모든 질문에 “상관없음”으로 답하고 정답 제출은 늘 오답입니다.
+          실제 판정은 <code>OPENAI_API_KEY</code>를 설정하고 서버를 다시 켜면 됩니다.
+        </p>
+      )}
+      <main>
+        {route.gameId ? (
+          <GamePage key={route.gameId} gameId={route.gameId} onExit={goHome} />
+        ) : (
+          <ScenarioList onStarted={(id) => (window.location.hash = `#/game/${id}`)} />
+        )}
+      </main>
+      <footer className="fine-print">
+        이 열람실에서 한 모든 질문은 기록됩니다. 기록의 소유권은 도시에 있으며, 열람자의 신체와 정신에 생긴 변화는 사무소의 책임이 아닙니다.
+      </footer>
+    </div>
+  )
+}

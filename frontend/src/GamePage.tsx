@@ -14,6 +14,8 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const [mode, setMode] = useState<Mode>('question')
   const [text, setText] = useState('')
   const [pending, setPending] = useState<Pending>(null)
+  // 힌트·포기 요청 중. 질문 판정(pending)과 함께, 진행 중에는 게임 상태를 바꾸는 요청을 더 보내지 않는다.
+  const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const logEnd = useRef<HTMLDivElement>(null)
 
@@ -38,6 +40,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   if (!game) return <p className="muted center">기록을 불러오는 중…</p>
 
   const playing = game.status === 'PLAYING'
+  const busy = acting || pending !== null
   const hintsLeft = game.scenario.hintCount - game.hints.length
   const entries: Entry[] = [
     ...game.questions.map((item) => ({ kind: 'question' as const, item })),
@@ -54,7 +57,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const value = text.trim()
-    if (!value || pending) return
+    if (!value || busy) return
     setPending({ mode, text: value })
     setError(null)
     setText('')
@@ -74,11 +77,15 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   }
 
   const act = async (fn: () => Promise<GameView>) => {
+    if (busy) return
+    setActing(true)
     setError(null)
     try {
       setGame(await fn())
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setActing(false)
     }
   }
 
@@ -111,10 +118,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
         {playing && (
           <div className="case-actions">
-            <button className="btn btn-paper" disabled={hintsLeft <= 0} onClick={() => act(() => api.hint(game.id))}>
+            <button className="btn btn-paper" disabled={hintsLeft <= 0 || busy} onClick={() => act(() => api.hint(game.id))}>
               힌트 받기 <span className="count">{hintsLeft}/{game.scenario.hintCount}</span>
             </button>
-            <button className="btn btn-quiet" onClick={giveUp}>
+            <button className="btn btn-quiet" disabled={busy} onClick={giveUp}>
               포기하고 진상 보기
             </button>
           </div>
@@ -193,7 +200,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                   }
                 }}
               />
-              <button className="btn btn-primary" disabled={!text.trim() || pending !== null}>
+              <button className="btn btn-primary" disabled={!text.trim() || busy}>
                 {mode === 'question' ? '질문하기' : '제출하기'}
               </button>
             </div>

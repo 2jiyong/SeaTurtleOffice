@@ -41,6 +41,10 @@ AI 서버 주소가 다르면 `AI_BASE_URL`로 바꾼다(기본 `http://localhos
 cd frontend && npm install && npm run dev
 ```
 
+## 시나리오를 고쳤을 때
+두 서버 모두 시작할 때 `scenarios/`를 한 번 읽어 둔다. 시나리오나 세계관 문서를 고치면 **AI 서버와 백엔드를 모두 다시 켠다.**
+한쪽만 다시 켜면 두 서버의 진상이 어긋난다(핵심 포인트 개수가 달라진 경우만 추리 제출 때 오류로 잡힌다).
+
 ## AI 서버 API
 | 요청 | 본문 | 응답 |
 |---|---|---|
@@ -74,5 +78,6 @@ cd frontend && npm install && npm run dev
 ## 테스트
 ```bash
 cd ai && uv run pytest        # 세계관·시나리오 읽기, uses ID 검사, 프롬프트, API
-cd backend && ./gradlew test  # 시나리오 읽기, 게임 흐름(가짜 판정기)
+cd backend && ./gradlew test  # 시나리오 읽기, 게임 흐름(가짜 판정기), AI 서버와 핵심 포인트 수 대조
+cd frontend && npm test       # 요청 진행 중 버튼 잠금
 ```

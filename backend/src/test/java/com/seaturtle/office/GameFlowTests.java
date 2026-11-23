@@ -18,6 +18,7 @@ import com.seaturtle.office.game.GameEndedException;
 import com.seaturtle.office.game.GameService;
 import com.seaturtle.office.game.GameStatus;
 import com.seaturtle.office.judge.Judge;
+import com.seaturtle.office.judge.JudgeException;
 
 /** AI 서버 없이 게임 흐름만 본다. 판정기는 정해진 답을 하는 가짜로 바꾼다. */
 @SpringBootTest
@@ -34,6 +35,9 @@ class GameFlowTests {
 
 		@Override
 		public GuessVerdict guess(String scenario, String guess) {
+			if (guess.contains("개수 다름")) {
+				return new GuessVerdict(2, 5);
+			}
 			return guess.contains("정답") ? new GuessVerdict(3, 3) : new GuessVerdict(1, 3);
 		}
 
@@ -87,5 +91,14 @@ class GameFlowTests {
 		var game = games.start("last-rent");
 		games.guess(game.id(), "정답입니다");
 		assertThat(game.status()).isEqualTo(GameStatus.SOLVED);
+	}
+
+	@Test
+	void guessIsRejectedWhenAiServerKeyPointCountDiffers() {
+		// AI 서버가 다른 버전의 시나리오를 읽고 있으면(한쪽만 재시작 등) 판정을 믿을 수 없다.
+		var game = games.start("last-rent");
+		assertThatThrownBy(() -> games.guess(game.id(), "개수 다름")).isInstanceOf(JudgeException.class);
+		assertThat(game.guesses()).isEmpty();
+		assertThat(game.status()).isEqualTo(GameStatus.PLAYING);
 	}
 }

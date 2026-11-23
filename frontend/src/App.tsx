@@ -39,10 +39,16 @@ export default function App() {
         </button>
         <p className="brand-sub">진행자는 예와 아니오로만 답합니다. 그 사이에서 사건의 전말을 찾아내세요.</p>
       </header>
-      {info?.fakeJudge && (
+      {info && !info.judgeOnline && (
+        <p className="banner">
+          <b>AI 판정 서버에 연결할 수 없습니다.</b> 질문과 추리를 판정하려면 <code>ai/</code>에서{' '}
+          <code>uv run uvicorn app.main:app --port 8000</code>으로 서버를 켜세요.
+        </p>
+      )}
+      {info?.judgeOnline && info.fakeJudge && (
         <p className="banner">
           지금은 <b>가짜 판정기</b>로 실행 중입니다. 모든 질문에 “상관없음”으로 답하고 정답 제출은 늘 오답입니다.
-          실제 판정은 <code>OPENAI_API_KEY</code>를 설정하고 서버를 다시 켜면 됩니다.
+          실제 판정은 <code>ai/.env</code>에 <code>OPENAI_API_KEY</code>를 적고 AI 서버를 다시 켜면 됩니다.
         </p>
       )}
       <main>

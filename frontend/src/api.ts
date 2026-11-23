@@ -66,6 +66,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
 export interface ServerInfo {
   judge: string
   fakeJudge: boolean
+  judgeOnline: boolean
 }
 
 export const api = {

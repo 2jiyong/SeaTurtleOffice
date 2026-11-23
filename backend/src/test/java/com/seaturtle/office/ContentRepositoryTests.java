@@ -9,20 +9,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import com.seaturtle.office.content.ContentRepository;
 import com.seaturtle.office.content.Scenario;
 
-@SpringBootTest(properties = "llm.provider=fake")
+/** 세계관 문서와 uses 검사는 AI 서버 테스트(ai/tests)에서 한다. */
+@SpringBootTest
 class ContentRepositoryTests {
 
 	@Autowired
 	ContentRepository content;
 
 	@Test
-	void loadsBaseAndScenarios() {
-		assertThat(content.base()).hasSize(10);
-		assertThat(content.scenarios()).isNotEmpty();
-	}
-
-	@Test
 	void everyScenarioIsComplete() {
+		assertThat(content.scenarios()).isNotEmpty();
 		for (Scenario s : content.scenarios()) {
 			assertThat(s.title()).as(s.slug()).isNotBlank();
 			assertThat(s.problem()).as(s.slug()).isNotBlank();
@@ -30,10 +26,5 @@ class ContentRepositoryTests {
 			assertThat(s.keyPoints()).as(s.slug() + " 핵심 포인트").isNotEmpty();
 			assertThat(s.hints()).as(s.slug() + " 힌트").isNotEmpty();
 		}
-	}
-
-	@Test
-	void everyUsesIdExistsInWorld() {
-		assertThat(content.missingUses()).isEmpty();
 	}
 }

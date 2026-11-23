@@ -4,14 +4,42 @@
     {
       "name": "backend",
       "runtimeExecutable": "java",
-      "runtimeArgs": ["-classpath", "backend/gradle/wrapper/gradle-wrapper.jar", "org.gradle.wrapper.GradleWrapperMain", "-p", "backend", "bootRun", "--console=plain"],
-      "port": 8787,
+      "runtimeArgs": [
+        "-classpath",
+        "backend/gradle/wrapper/gradle-wrapper.jar",
+        "org.gradle.wrapper.GradleWrapperMain",
+        "-p",
+        "backend",
+        "bootRun",
+        "--console=plain"
+      ],
+      "port": 8080,
+      "autoPort": false
+    },
+    {
+      "name": "ai",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "ai",
+        "run",
+        "uvicorn",
+        "app.main:app",
+        "--port",
+        "8000"
+      ],
+      "port": 8000,
       "autoPort": false
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
       "port": 5173
     }
   ]

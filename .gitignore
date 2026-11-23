@@ -5,3 +5,8 @@
 .env
 .env.*
 !.env.example
+
+# 파이썬(ai/)
+.venv/
+__pycache__/
+.pytest_cache/

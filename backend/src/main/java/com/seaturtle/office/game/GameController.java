@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.seaturtle.office.content.ContentRepository;
-import com.seaturtle.office.llm.LlmClient;
 import com.seaturtle.office.game.GameDtos.GameView;
 import com.seaturtle.office.game.GameDtos.GuessRequest;
 import com.seaturtle.office.game.GameDtos.QuestionRequest;
 import com.seaturtle.office.game.GameDtos.ScenarioSummary;
 import com.seaturtle.office.game.GameDtos.StartRequest;
+import com.seaturtle.office.judge.Judge;
 
 import jakarta.validation.Valid;
 
@@ -27,20 +27,21 @@ public class GameController {
 
 	private final ContentRepository content;
 	private final GameService games;
-	private final LlmClient llm;
+	private final Judge judge;
 
-	public GameController(ContentRepository content, GameService games, LlmClient llm) {
+	public GameController(ContentRepository content, GameService games, Judge judge) {
 		this.content = content;
 		this.games = games;
-		this.llm = llm;
+		this.judge = judge;
 	}
 
-	public record ServerInfo(String judge, boolean fakeJudge) {
+	public record ServerInfo(String judge, boolean fakeJudge, boolean judgeOnline) {
 	}
 
 	@GetMapping("/info")
 	public ServerInfo info() {
-		return new ServerInfo(llm.describe(), llm.fake());
+		Judge.Status status = judge.status();
+		return new ServerInfo(status.judge(), status.fake(), status.online());
 	}
 
 	@GetMapping("/scenarios")

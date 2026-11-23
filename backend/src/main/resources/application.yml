@@ -1,6 +1,9 @@
 spring:
   application:
     name: sea-turtle-office
+  config:
+    # backend/.env에 비밀값(OPENAI_API_KEY 등)을 둔다. 파일이 없어도 켜진다. .env는 git에 올리지 않는다.
+    import: optional:file:.env[.properties]
 
 server:
   port: 8787

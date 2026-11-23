@@ -1,2 +1,7 @@
 .DS_Store
 .claude/settings.local.json
+
+# 비밀값. 예시 파일(.env.example)만 올린다.
+.env
+.env.*
+!.env.example

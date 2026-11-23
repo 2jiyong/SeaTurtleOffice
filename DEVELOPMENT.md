@@ -9,9 +9,12 @@
 백엔드(포트 8787):
 
 ```bash
-cd backend && OPENAI_API_KEY=sk-... ./gradlew bootRun
+cd backend
+cp .env.example .env   # 처음 한 번. .env에 OPENAI_API_KEY를 적는다.
+./gradlew bootRun
 ```
 
+`backend/.env`는 `.gitignore`에 들어 있어 커밋되지 않는다. 환경 변수로 직접 넘겨도 되고(`OPENAI_API_KEY=sk-... ./gradlew bootRun`), 둘 다 있으면 환경 변수가 이긴다.
 키가 없으면 가짜 판정기로 켜진다(모든 질문에 "상관없음"). 화면 상단에 안내가 뜬다.
 
 프런트엔드(포트 5173):
@@ -21,6 +24,8 @@ cd frontend && npm install && npm run dev
 ```
 
 ## 판정기(LLM) 설정
+`backend/.env` 또는 환경 변수로 정한다.
+
 | 환경 변수 | 기본값 | 설명 |
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | `auto`(키가 있으면 openai), `openai`, `fake` |

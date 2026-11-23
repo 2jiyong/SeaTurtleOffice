@@ -49,7 +49,7 @@ cd frontend && npm install && npm run dev
 | 요청 | 본문 | 응답 |
 |---|---|---|
 | `GET /health` | | `{judge, fake, scenarios}` |
-| `POST /judge/question` | `{scenario, question, history: [{text, answer}]}` | `{answer, key}` |
+| `POST /judge/question` | `{scenario, question, history: [{text, answer}]}` | `{answer}` |
 | `POST /judge/guess` | `{scenario, guess}` | `{matched, total}` |
 
 `scenario`는 시나리오 파일 이름(확장자 없이)이다. `http://localhost:8000/docs`에서 직접 호출해 볼 수 있다.
@@ -70,8 +70,22 @@ cd frontend && npm install && npm run dev
 
 ## 판정 방식
 - 질문: 베이스 세계관 전체 + 시나리오 `uses`의 상세 항목 + 시나리오(문제·진상·핵심 포인트·판정 메모)를 프롬프트에 넣는다(`ai/app/prompts.py`).
-  답은 `YES`(예), `NO`(아니오), `PARTIAL`(부분적으로 예), `IRRELEVANT`(상관없음), `INVALID`(예/아니오로 답할 수 없음) 중 하나이고,
-  핵심 포인트에 닿는 질문이면 "핵심 질문" 표시를 붙인다.
+  답은 아래 9가지 코드 중 하나다. 서버끼리는 코드만 주고받고, 진행자의 말과 안내 문장은 `frontend/src/api.ts`의 `ANSWER_TEXT`에만 있다.
+
+  | 코드 | 진행자의 말 | 안내 문장 |
+  |---|---|---|
+  | `YES` | 그렇단다 | 진상에 비추어 맞는 내용입니다. |
+  | `NO` | 아니란다 | 진상에 비추어 틀린 내용입니다. |
+  | `PARTIAL_SOME` | 어느정도는 그렇단다 | 일부만 맞는 내용입니다. |
+  | `PARTIAL_CONDITION` | 어느정도는 그렇단다 | 조건을 붙이면 맞는 내용입니다. |
+  | `IRRELEVANT_UNRELATED` | 중요하지 않단다 | 이 사건과 관련이 없는 내용입니다. |
+  | `IRRELEVANT_UNDECIDED` | 중요하지 않단다 | 이 사건에서 정하지 않은 세부사항입니다. |
+  | `INVALID_FORM` | 말해줄 수 없단다 | 예·아니오로 답할 수 없는 질문입니다. |
+  | `INVALID_TRUTH` | 말해줄 수 없단다 | 진상을 직접 묻는 질문입니다. |
+  | `INVALID_RULE` | 말해줄 수 없단다 | 규칙을 벗어난 요청입니다. |
+
+  도시의 일반 상식을 묻는 질문은 이 사건과 이어질 때만 진상과 세계관에 따라 답하고, 아니면 `IRRELEVANT_UNRELATED`다.
+  판정 메모의 "예 / 아니오 / 상관없음 / 예로 볼 수 있다"는 `YES` / `NO` / `IRRELEVANT_*` / `PARTIAL_*`로 읽는다.
 - 정답 제출: 답안 하나가 핵심 포인트를 모두 충족하면 정답이다. 플레이어에게는 몇 개를 맞혔는지만 보여 준다.
 - 판정은 JSON 스키마로 받으므로 자유 문장이 플레이어에게 새지 않는다. 판정 근거(`reason`)는 AI 서버 로그에만 남는다.
 

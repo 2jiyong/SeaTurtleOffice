@@ -48,16 +48,16 @@ class GameFlowTests {
 		@Override
 		public GuessVerdict guess(String scenario, String guess) {
 			if (guess.contains("개수 다름")) {
-				return new GuessVerdict(List.of(1), 5, List.of(), 2);
+				return new GuessVerdict(List.of(1), 5, List.of(), 1);
 			}
 			if (guess.contains("보너스 다름")) {
 				return new GuessVerdict(List.of(), 3, List.of(), 9);
 			}
 			if (guess.contains("정답")) {
-				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 2);
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1);
 			}
-			// 오답: 둘째 핵심 키워드가 빠졌고 둘째 보너스를 맞혔다.
-			return new GuessVerdict(List.of(1, 3), 3, List.of(2), 2);
+			// 오답: 둘째 핵심 키워드가 빠졌고 보너스를 맞혔다.
+			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1);
 		}
 
 		@Override
@@ -171,16 +171,16 @@ class GameFlowTests {
 	void bonusHiddenUntilEndThenMerged() throws Exception {
 		var game = games.start("boys-order");
 		String guessUrl = "/api/games/" + game.id() + "/guesses";
-		// 오답 추리(보너스 2를 맞힘): 게임 중에는 보너스 정보가 나가지 않는다.
+		// 오답 추리(보너스를 맞힘): 게임 중에는 보너스 정보가 나가지 않는다.
 		mvc.perform(post(guessUrl).contentType(APPLICATION_JSON).content("{\"text\":\"모르겠어요\"}"));
 		mvc.perform(get("/api/games/" + game.id()))
 				.andExpect(jsonPath("$.reveal").value(org.hamcrest.Matchers.nullValue()))
 				.andExpect(jsonPath("$.guesses[0].bonus").doesNotExist());
-		// 정답 추리(보너스 1을 맞힘): 끝나면 두 추리의 보너스를 합쳐 보여 준다.
+		// 정답 추리: 끝나면 여러 추리에서 맞힌 보너스를 합쳐 보여 준다.
 		mvc.perform(post(guessUrl).contentType(APPLICATION_JSON).content("{\"text\":\"정답\"}"))
 				.andExpect(jsonPath("$.reveal.keywords[0].name").value("카포의 권위"))
 				.andExpect(jsonPath("$.reveal.bonuses[0].found").value(true))
-				.andExpect(jsonPath("$.reveal.bonuses[1].found").value(true));
+				.andExpect(jsonPath("$.reveal.bonuses.length()").value(1));
 	}
 
 	// ── 사용 횟수, 힌트, 마지막 추리, 점수 ──

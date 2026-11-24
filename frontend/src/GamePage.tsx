@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type GameView } from './api.ts'
+import ConfirmDialog from './ConfirmDialog.tsx'
 import { CaseScreen, ReceiveLog, type Pending } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
 import SignalCut from './SignalCut.tsx'
@@ -29,6 +30,9 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
   const [openHint, setOpenHint] = useState<number | null>(null)
   // 이번 화면에서 게임이 끝났다: 신호 단절 연출 중
   const [ending, setEnding] = useState(false)
+  // 포기 확인창이 떠 있는가
+  const [confirmingGiveUp, setConfirmingGiveUp] = useState(false)
+  const giveUpButton = useRef<HTMLButtonElement>(null)
   // 계시창을 닫으면 초점을 돌려줄 곳(누른 눈금)
   const returnFocus = useRef<HTMLElement | null>(null)
   // 수신 기록 칸(스크롤 영역)
@@ -121,10 +125,13 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
     }
   }
 
-  const giveUp = () => {
-    if (window.confirm('포기하면 진상이 공개되고 게임이 끝납니다. 포기할까요?')) {
-      act(() => api.giveUp(game.id))
-    }
+  const cancelGiveUp = () => {
+    setConfirmingGiveUp(false)
+    giveUpButton.current?.focus()
+  }
+  const confirmGiveUp = () => {
+    setConfirmingGiveUp(false)
+    act(() => api.giveUp(game.id))
   }
 
   return (
@@ -132,7 +139,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
       <CaseScreen game={game} label="사건 기록 // 열람 중">
         {playing && (
           <div className="case-actions">
-            <button className="btn btn-quiet" disabled={busy} onClick={giveUp}>
+            <button ref={giveUpButton} className="btn btn-quiet" disabled={busy} onClick={() => setConfirmingGiveUp(true)}>
               포기하고 진상 보기
             </button>
           </div>
@@ -225,6 +232,16 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
         {error && <p className="error">{error}</p>}
 
       </div>
+      {confirmingGiveUp && (
+        <ConfirmDialog
+          title="조사 중단"
+          message="포기하면 이 사건의 진상이 공개되고 교신이 끝납니다. 점수는 0점입니다."
+          cancelLabel="계속 조사한다"
+          confirmLabel="조사를 중단한다"
+          onCancel={cancelGiveUp}
+          onConfirm={confirmGiveUp}
+        />
+      )}
       {ending && <SignalCut solved={game.status === 'SOLVED'} onDone={onEnded} />}
       {openHint !== null && (
         <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />

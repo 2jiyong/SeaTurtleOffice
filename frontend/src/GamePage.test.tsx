@@ -43,7 +43,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
   Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  vi.spyOn(window, 'confirm')
 })
 afterEach(cleanup)
 
@@ -424,8 +424,9 @@ describe('게임이 끝나면 결과 페이지로', () => {
     await openPlaying(onEnded)
     vi.useFakeTimers()
     vi.mocked(api.giveUp).mockResolvedValue({ ...solvedGame, status: 'GAVE_UP', guesses: [], hints: [] })
+    fireEvent.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+      fireEvent.click(screen.getByRole('button', { name: '조사를 중단한다' }))
     })
     expect(screen.getByRole('status').textContent).toContain('교신 종료')
     act(() => vi.advanceTimersByTime(1600))
@@ -467,5 +468,41 @@ describe('게임이 끝나면 결과 페이지로', () => {
     view.unmount()
     act(() => vi.advanceTimersByTime(1600))
     expect(onEnded).not.toHaveBeenCalled()
+  })
+})
+
+describe('포기 확인창', () => {
+  it('브라우저 확인창 대신 사무소 확인창을 띄우고, 처음 초점은 계속 조사에 둔다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    expect(window.confirm).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('alertdialog', { name: '조사 중단' })
+    expect(dialog.textContent).toContain('진상이 공개되고 교신이 끝납니다')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '계속 조사한다' }))
+    expect(api.giveUp).not.toHaveBeenCalled()
+  })
+
+  it('계속 조사하거나 Esc를 누르면 닫히고 포기하지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    await user.click(screen.getByRole('button', { name: '계속 조사한다' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    await user.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(api.giveUp).not.toHaveBeenCalled()
+  })
+
+  it('조사를 중단한다를 누르면 포기한다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.giveUp).mockImplementation(never)
+    await user.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    await user.click(screen.getByRole('button', { name: '조사를 중단한다' }))
+    expect(api.giveUp).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })

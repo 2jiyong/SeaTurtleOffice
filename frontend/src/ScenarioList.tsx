@@ -29,8 +29,11 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
       <div className="list-head">
         <h1>미해결 사건</h1>
         <p>
-          사건 하나를 골라 열람하세요. 질문을 송신하면 주시자가 짧게 답합니다. 그 답들을 이어 붙여 전말을 알아냈다면,
-          추리를 송신하세요.
+          바다거북 사무소는 도시에 남은 미해결 사건을 조사합니다.
+          <br />
+          사무소는 모종의 방법으로 <b>주시자</b>와 교신할 수 있습니다. 주시자는 모든 것을 알지만, 묻는 말에만 짧게 답합니다.
+          <br />
+          사건 하나를 열람하고, 질문을 송신해 그 전말을 밝혀내십시오.
         </p>
       </div>
       {error && <p className="error">{error}</p>}

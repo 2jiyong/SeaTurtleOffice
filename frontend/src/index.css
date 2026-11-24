@@ -2094,9 +2094,10 @@ h3 {
 }
 
 .archive-cta {
-  font-family: 'Black Han Sans', var(--sans);
-  font-size: 1.05rem;
-  letter-spacing: 0.1em;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
   color: #f3e9e7;
   padding: 6px 12px;
   border-radius: 2px;

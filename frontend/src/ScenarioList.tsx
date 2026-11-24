@@ -41,10 +41,6 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
             <div className="archive-head">
               <WatcherEye size={18} />
               <span className="archive-title">사건 기록 보관소 {'//'} 미해결 {scenarios.length}건</span>
-              <span className="signal">
-                <i aria-hidden />
-                주시자와 연결됨
-              </span>
             </div>
             <ol className="archive-list">
               {scenarios.map((s, i) => (

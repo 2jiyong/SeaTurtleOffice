@@ -92,6 +92,7 @@ describe('결과 페이지 탭', () => {
     expect(screen.getByText('문제 문장')).toBeTruthy()
     expect(screen.getByText('첫 질문')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '수신 기록' })).toBeTruthy()
+    expect(screen.queryByText('응시자와 연결됨')).toBeNull()
     expect(screen.queryByRole('textbox')).toBeNull()
     expect(screen.queryByRole('button', { name: /계시 \d 요청/ })).toBeNull()
   })

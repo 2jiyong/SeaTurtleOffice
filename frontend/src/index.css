@@ -2418,3 +2418,26 @@ h3 {
     animation: none;
   }
 }
+
+/* 끝난 게임의 수신 기록: 신호가 끊겨 점이 꺼져 있다 */
+.signal.off {
+  color: #6f777a;
+}
+
+.signal.off i {
+  background: #3a4245;
+  animation: none;
+}
+
+.result-exit {
+  font: 0.8rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.08em;
+  color: #a3aba6;
+  background: #0d0f10;
+  border: 1px solid #2c3337;
+}
+
+.result-exit:hover {
+  color: #e6e9e0;
+  border-color: #7d8682;
+}

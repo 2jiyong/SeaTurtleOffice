@@ -80,10 +80,17 @@ export function ReceiveLog({
         <div className="transcript-head">
           <WatcherEye />
           <h2>수신 기록</h2>
-          <span className="signal">
-            <i aria-hidden />
-            응시자와 연결됨
-          </span>
+          {game.status === 'PLAYING' ? (
+            <span className="signal">
+              <i aria-hidden />
+              응시자와 연결됨
+            </span>
+          ) : (
+            <span className="signal off">
+              <i aria-hidden />
+              교신 종료
+            </span>
+          )}
           <UsageBar game={game} busy={busy} onOpen={onOpenHint} onRequest={onRequestHint} />
         </div>
         <ol ref={logRef} className="log" aria-live="polite" tabIndex={0} aria-label="수신 기록 목록">

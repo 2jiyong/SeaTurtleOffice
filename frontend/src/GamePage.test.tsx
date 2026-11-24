@@ -437,7 +437,7 @@ describe('게임이 끝나면 결과 페이지로', () => {
     vi.mocked(api.game).mockResolvedValue({ ...solvedGame, status: 'FAILED' })
     render(<GamePage gameId="g1" onExit={() => {}} onEnded={onEnded} />)
     await vi.waitFor(() => expect(onEnded).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('교신 종료')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('게임이 끝나면서 계시가 새로 열려도 계시창은 뜨지 않는다', async () => {
@@ -455,7 +455,7 @@ describe('게임이 끝나면 결과 페이지로', () => {
     vi.mocked(api.guess).mockResolvedValue(solvedGame)
     await sendGuess()
     expect(onEnded).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('교신 종료')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('연출 도중 화면이 사라지면 onEnded를 부르지 않는다', async () => {

@@ -11,7 +11,8 @@ export type Answer =
 
 /** 도장 색. 진행자의 말이 같으면 같은 색이다. */
 export type Tone = 'yes' | 'no' | 'partial' | 'irrelevant' | 'invalid'
-export type GameStatus = 'PLAYING' | 'SOLVED' | 'GAVE_UP'
+/** FAILED: 마지막 추리까지 틀렸다 */
+export type GameStatus = 'PLAYING' | 'SOLVED' | 'GAVE_UP' | 'FAILED'
 
 export interface ScenarioSummary {
   slug: string
@@ -43,6 +44,9 @@ export interface Reveal {
   keywords: { name: string; description: string }[]
   /** found: 이번 게임에서 낸 추리 중 하나라도 이 보너스를 맞혔는가 */
   bonuses: { name: string; description: string; found: boolean }[]
+  /** 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0 */
+  score: number
+  bonusPoints: number
 }
 
 export interface GameView {
@@ -52,6 +56,15 @@ export interface GameView {
   questions: QuestionRecord[]
   hints: string[]
   guesses: GuessRecord[]
+  /** 사용 횟수(질문 1, 추리 5). 한도는 limit */
+  used: number
+  limit: number
+  /** 힌트가 열리는 사용 횟수, 예: [10, 20, 30] */
+  hintSteps: number[]
+  /** 사용 횟수를 다 써서 마지막 추리 한 번만 남았다 */
+  finalChance: boolean
+  /** 힌트 받기를 누르면 올라갈 사용 횟수. 남은 힌트가 없으면 null */
+  nextHintAt: number | null
   reveal: Reveal | null
 }
 
@@ -94,7 +107,7 @@ export const api = {
   scenarios: () => request<ScenarioSummary[]>('/scenarios'),
   start: (scenario: string) => request<GameView>('/games', { scenario }),
   game: (id: string) => request<GameView>(`/games/${id}`),
-  ask: (id: string, text: string) => request<QuestionRecord>(`/games/${id}/questions`, { text }),
+  ask: (id: string, text: string) => request<GameView>(`/games/${id}/questions`, { text }),
   guess: (id: string, text: string) => request<GameView>(`/games/${id}/guesses`, { text }),
   hint: (id: string) => request<GameView>(`/games/${id}/hints`, {}),
   giveUp: (id: string) => request<GameView>(`/games/${id}/give-up`, {}),

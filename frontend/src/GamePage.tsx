@@ -7,6 +7,8 @@ type Entry = { kind: 'question'; item: QuestionRecord } | { kind: 'guess'; item:
 type Pending = { mode: Mode; text: string } | null
 
 const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
+/** 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다) */
+const GUESS_COST = 5
 
 export default function GamePage({ gameId, onExit }: { gameId: string; onExit: () => void }) {
   const [game, setGame] = useState<GameView | null>(null)
@@ -41,7 +43,8 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
   const playing = game.status === 'PLAYING'
   const busy = acting || pending !== null
-  const hintsLeft = game.scenario.hintCount - game.hints.length
+  // 사용 횟수를 다 쓰면 추리만 남는다.
+  const inputMode: Mode = game.finalChance ? 'guess' : mode
   const entries: Entry[] = [
     ...game.questions.map((item) => ({ kind: 'question' as const, item })),
     ...game.guesses.map((item) => ({ kind: 'guess' as const, item })),
@@ -51,13 +54,13 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     e.preventDefault()
     const value = text.trim()
     if (!value || busy) return
-    setPending({ mode, text: value })
+    setPending({ mode: inputMode, text: value })
     setError(null)
     setText('')
     try {
-      if (mode === 'question') {
-        const record = await api.ask(game.id, value)
-        setGame((g) => (g ? { ...g, questions: [...g.questions, record] } : g))
+      if (inputMode === 'question') {
+        // 질문 하나로 힌트가 열릴 수 있어서 게임 전체를 받는다.
+        setGame(await api.ask(game.id, value))
       } else {
         setGame(await api.guess(game.id, value))
       }
@@ -111,9 +114,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
         {playing && (
           <div className="case-actions">
-            <button className="btn btn-paper" disabled={hintsLeft <= 0 || busy} onClick={() => act(() => api.hint(game.id))}>
-              힌트 받기 <span className="count">{hintsLeft}/{game.scenario.hintCount}</span>
-            </button>
+            {game.nextHintAt !== null && (
+              <button className="btn btn-paper" disabled={busy} onClick={() => act(() => api.hint(game.id))}>
+                힌트 받기 (사용 {game.nextHintAt}으로)
+              </button>
+            )}
             <button className="btn btn-quiet" disabled={busy} onClick={giveUp}>
               포기하고 진상 보기
             </button>
@@ -125,7 +130,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
         <div className="transcript">
           <div className="transcript-head">
             <h2>심문 기록</h2>
-            <span>질문 {game.questions.length}</span>
+            <UsageBar game={game} />
           </div>
           <ol className="log" aria-live="polite">
             {entries.length === 0 && !pending && (
@@ -177,21 +182,29 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
         {playing ? (
           <form className="composer" onSubmit={submit}>
+            {game.finalChance && <p className="final-chance">질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.</p>}
             <div className="tabs" role="tablist" aria-label="입력 종류">
-              <button type="button" role="tab" aria-selected={mode === 'question'} className={mode === 'question' ? 'on' : ''} onClick={() => setMode('question')}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inputMode === 'question'}
+                className={inputMode === 'question' ? 'on' : ''}
+                disabled={game.finalChance}
+                onClick={() => setMode('question')}
+              >
                 질문하기
               </button>
-              <button type="button" role="tab" aria-selected={mode === 'guess'} className={mode === 'guess' ? 'on' : ''} onClick={() => setMode('guess')}>
+              <button type="button" role="tab" aria-selected={inputMode === 'guess'} className={inputMode === 'guess' ? 'on' : ''} onClick={() => setMode('guess')}>
                 추리 제출
               </button>
             </div>
             <div className="input-row">
               <textarea
                 value={text}
-                maxLength={LIMIT[mode]}
-                rows={mode === 'guess' ? 4 : 2}
-                aria-label={mode === 'question' ? '질문' : '추리'}
-                placeholder={mode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하세요' : '사건의 전말을 설명하세요. 무엇이 일어났고, 누가 왜 그랬는지.'}
+                maxLength={LIMIT[inputMode]}
+                rows={inputMode === 'guess' ? 4 : 2}
+                aria-label={inputMode === 'question' ? '질문' : '추리'}
+                placeholder={inputMode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하세요' : '사건의 전말을 설명하세요. 무엇이 일어났고, 누가 왜 그랬는지.'}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -201,20 +214,31 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 }}
               />
               <button className="btn btn-primary" disabled={!text.trim() || busy}>
-                {mode === 'question' ? '질문하기' : '제출하기'}
+                {inputMode === 'question' ? '질문하기' : '제출하기'}
               </button>
             </div>
             <span className="counter">
-              {text.length}/{LIMIT[mode]}자. Enter로 보내고 Shift+Enter로 줄을 바꿉니다.
+              {text.length}/{LIMIT[inputMode]}자. Enter로 보내고 Shift+Enter로 줄을 바꿉니다.
+              {inputMode === 'guess' && (
+                <span className="cost-note">{game.finalChance ? '이 추리는 횟수를 쓰지 않습니다.' : `추리는 사용 ${GUESS_COST}를 씁니다.`}</span>
+              )}
             </span>
           </form>
         ) : (
           game.reveal && (
             <article className={`reveal ${game.status === 'SOLVED' ? 'solved' : 'closed'}`}>
               <span className="verdict" aria-hidden>
-                {game.status === 'SOLVED' ? '해결' : '미해결 종결'}
+                {VERDICT[game.status]}
               </span>
               <h2>{game.status === 'SOLVED' ? '사건 해결 보고서' : '사건의 진상'}</h2>
+              <p className="score">{game.reveal.score}점</p>
+              {game.status === 'SOLVED' && (
+                <p className="score-line">
+                  {game.reveal.bonusPoints > 0
+                    ? `100 − 사용 ${game.used} + 보너스 ${game.reveal.bonusPoints} = ${game.reveal.score}`
+                    : `100 − 사용 ${game.used} = ${game.reveal.score}`}
+                </p>
+              )}
               <p className="truth">{game.reveal.truth}</p>
               <h3>핵심 키워드</h3>
               <ul>
@@ -243,7 +267,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 </>
               )}
               <p className="reveal-meta">
-                질문 {game.questions.length}개, 힌트 {game.hints.length}개를 써서 {game.status === 'SOLVED' ? '해결했습니다' : '종결했습니다'}.
+                사용 {game.used} / {game.limit}, 질문 {game.questions.length}개, 힌트 {game.hints.length}개.
               </p>
               <button className="btn btn-primary" onClick={onExit}>
                 다른 사건 고르기
@@ -253,5 +277,35 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
         )}
       </div>
     </section>
+  )
+}
+
+/** 게임 끝 도장 */
+const VERDICT: Record<string, string> = { SOLVED: '해결', FAILED: '실패', GAVE_UP: '미해결 종결' }
+
+/** 사용 횟수 막대. 질문할 때마다 차오르고, 힌트가 열리는 자리에 눈금을 둔다. */
+function UsageBar({ game }: { game: GameView }) {
+  const pct = (n: number) => `${(Math.min(n, game.limit) / game.limit) * 100}%`
+  return (
+    <div className="usage">
+      <span className="usage-label">
+        사용 {game.used} / {game.limit}
+      </span>
+      <div
+        className="usage-bar"
+        role="progressbar"
+        aria-label="사용 횟수"
+        aria-valuemin={0}
+        aria-valuemax={game.limit}
+        aria-valuenow={game.used}
+      >
+        <div className="usage-fill" style={{ width: pct(game.used) }} />
+        {game.hintSteps.map((step, i) => (
+          <span key={step} className={`usage-step ${game.used >= step ? 'open' : ''}`} style={{ left: pct(step) }}>
+            <span className="usage-step-label">힌트{i + 1}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }

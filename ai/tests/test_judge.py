@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
-from app.content import ContentRepository
+from app.content import ContentRepository, parse_keywords
 from app.main import app
 from app.prompts import ANSWERS, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
 
@@ -39,7 +39,7 @@ def test_loads_base_and_scenarios(content):
 def test_every_scenario_is_complete(content):
     for s in content.scenarios.values():
         assert s.title and s.problem and s.truth, s.slug
-        assert s.key_points, f"{s.slug} 핵심 포인트"
+        assert s.keywords, f"{s.slug} 핵심 키워드"
         assert s.hints, f"{s.slug} 힌트"
 
 
@@ -106,3 +106,31 @@ def test_old_answer_code_is_rejected(client):
         assert r.status_code == 502
     finally:
         app.state.judge = saved
+
+
+def test_parses_keywords_and_bonuses(content):
+    s = content.scenario("last-rent")
+    assert [k.name for k in s.keywords] == ["거주구역 등록 만료", "청소부", "건물주가 노림"]
+    assert s.keywords[0].required == ["거주구역"]
+    assert s.keywords[2].required == []
+    assert "밤의 괴물" in s.keywords[1].reject
+    assert s.keywords[1].missing == "건물이 어떻게 하룻밤 사이에 비었는지가 빠져 있구나."
+    assert [b.name for b in s.bonuses] == ["월세 체납", "증거가 남지 않음"]
+
+
+def test_old_format_still_reads(content):
+    s = content.scenario("boys-order")  # Task 6 전까지 옛 형식
+    assert len(s.keywords) == 3 and s.bonuses == []
+    assert s.keywords[0].missing == "아직 빠진 것이 있구나."
+
+
+def test_keyword_lines_in_any_order():
+    ks = parse_keywords("1. **가**: 설명\n   - 빠졌을 때: 문장.\n   - 인정: a, b\n")
+    assert ks[0].accept == ["a", "b"] and ks[0].required == [] and ks[0].missing == "문장."
+
+
+def test_materials_carry_keywords_not_missing_lines(content):
+    m = JudgePrompts(content, 40).materials("last-rent")
+    assert "## [핵심 키워드]" in m and "## [보너스 키워드]" in m
+    assert "필수 용어: 청소부" in m and "불인정:" in m
+    assert "빠졌을 때" not in m and "## [핵심 포인트]" not in m

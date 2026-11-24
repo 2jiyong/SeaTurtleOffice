@@ -139,7 +139,15 @@ class JudgePrompts:
         parts.append(f"# 시나리오: {scenario.title}\n\n")
         parts.append(f"## [문제]\n{scenario.problem}\n\n")
         parts.append(f"## [진상]\n{scenario.truth}\n\n")
-        parts.append("## [핵심 포인트]\n")
-        parts += [f"{i}. {p}\n" for i, p in enumerate(scenario.key_points, 1)]
+        parts.append("## [핵심 키워드]\n")
+        for i, k in enumerate(scenario.keywords, 1):
+            parts.append(f"{i}. {k.name}: {k.description}\n")
+            # 빠졌을 때 문장은 화면용이라 판정 자료에 넣지 않는다.
+            for label, values in (("필수 용어", k.required), ("인정", k.accept), ("불인정", k.reject)):
+                if values:
+                    parts.append(f"   - {label}: {', '.join(values)}\n")
+        if scenario.bonuses:
+            parts.append("\n## [보너스 키워드]\n")
+            parts += [f"{i}. {b.name}: {b.description}\n" for i, b in enumerate(scenario.bonuses, 1)]
         parts.append(f"\n## [판정 메모]\n{scenario.judge_notes}\n")
         return "".join(parts)

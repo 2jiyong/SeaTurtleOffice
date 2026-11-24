@@ -129,7 +129,7 @@ async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
     scenario = _scenario(request, body.scenario)
     prompt = request.app.state.prompts.guess(scenario, body.guess.strip())
     result = _validate(GuessJudgement, await request.app.state.judge.complete_json(prompt))
-    total = len(scenario.key_points)
+    total = len(scenario.keywords)
     matched = len({n for n in result.matched if 1 <= n <= total})
     log.info("[%s] 답안 %d/%d : %s / %s", scenario.slug, matched, total, body.guess, result.reason)
     return GuessResult(matched=matched, total=total)

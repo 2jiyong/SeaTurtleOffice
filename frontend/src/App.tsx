@@ -63,7 +63,12 @@ export default function App() {
             onResume={() => replaceRoute(`#/game/${route.gameId}`)}
           />
         ) : route.gameId ? (
-          <GamePage key={route.gameId} gameId={route.gameId} onExit={goHome} />
+          <GamePage
+            key={route.gameId}
+            gameId={route.gameId}
+            onExit={goHome}
+            onEnded={() => replaceRoute(`#/game/${route.gameId}/result`)}
+          />
         ) : (
           <ScenarioList onStarted={(id) => (window.location.hash = `#/game/${id}`)} />
         )}

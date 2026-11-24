@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type GameView } from './api.ts'
 import { CaseScreen, ReceiveLog, type Pending } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
+import SignalCut from './SignalCut.tsx'
 
 type Mode = 'question' | 'guess'
 
@@ -9,7 +10,11 @@ const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
 /** 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다) */
 const GUESS_COST = 5
 
-export default function GamePage({ gameId, onExit }: { gameId: string; onExit: () => void }) {
+/**
+ * 진행 중인 사건 화면. 게임이 끝나면 신호 단절 연출을 보여 준 뒤 onEnded로 결과 페이지에 넘긴다.
+ * 이미 끝난 게임을 열면 연출 없이 바로 onEnded를 부른다.
+ */
+export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; onExit: () => void; onEnded: () => void }) {
   const [game, setGame] = useState<GameView | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>('question')
@@ -22,6 +27,8 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const [freshSeqs, setFreshSeqs] = useState<Set<number>>(() => new Set())
   // 계시창에 띄운 계시의 순서(0부터). 닫혀 있으면 null.
   const [openHint, setOpenHint] = useState<number | null>(null)
+  // 이번 화면에서 게임이 끝났다: 신호 단절 연출 중
+  const [ending, setEnding] = useState(false)
   // 계시창을 닫으면 초점을 돌려줄 곳(누른 눈금)
   const returnFocus = useRef<HTMLElement | null>(null)
   // 수신 기록 칸(스크롤 영역)
@@ -35,9 +42,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   }, [])
 
   useEffect(() => {
-    api.game(gameId).then(setGame, (e: Error) =>
+    api.game(gameId).then((g) => (g.status === 'PLAYING' ? setGame(g) : onEnded()), (e: Error) =>
       setLoadError(e instanceof ApiError && e.status === 404 ? '게임이 만료되었거나 서버가 다시 시작되었습니다.' : e.message),
     )
+    // onEnded는 주소를 바꾸는 함수라 다시 불러올 이유가 되지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
 
   // 기록이 늘면 수신 기록 칸 안에서만 맨 아래로 내린다(페이지 전체는 움직이지 않는다).
@@ -65,8 +74,12 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     const seqsOf = (g: GameView) => [...g.questions, ...g.guesses, ...g.hints].map((e) => e.seq)
     const before = new Set(seqsOf(game))
     setFreshSeqs(new Set(seqsOf(next).filter((s) => !before.has(s))))
-    // 계시가 새로 열리는 순간에는 계시창을 자동으로 띄운다.
-    if (next.hints.length > game.hints.length) {
+    if (next.status !== 'PLAYING') {
+      // 게임이 끝났다. 새로 열린 계시가 있어도 계시창 대신 결과 페이지로 넘어간다.
+      setOpenHint(null)
+      setEnding(true)
+    } else if (next.hints.length > game.hints.length) {
+      // 계시가 새로 열리는 순간에는 계시창을 자동으로 띄운다.
       returnFocus.current = document.activeElement as HTMLElement | null
       setOpenHint(next.hints.length - 1)
     }
@@ -212,6 +225,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
         {error && <p className="error">{error}</p>}
 
       </div>
+      {ending && <SignalCut solved={game.status === 'SOLVED'} onDone={onEnded} />}
       {openHint !== null && (
         <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
       )}

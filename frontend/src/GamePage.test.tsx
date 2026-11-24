@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ANSWER_TEXT, type GameView } from './api.ts'
@@ -34,7 +34,7 @@ const never = () => new Promise<never>(() => {})
 
 async function openGame(overrides: Partial<GameView> = {}) {
   vi.mocked(api.game).mockResolvedValue({ ...game, ...overrides })
-  render(<GamePage gameId="g1" onExit={() => {}} />)
+  render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
   await screen.findByRole('button', { name: '송신 ▶' })
 }
 
@@ -165,14 +165,14 @@ describe('사용 횟수와 점수', () => {
 
   it('힌트가 다 열리면 힌트 받기 버튼을 숨긴다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: [{ no: 1, seq: 101, text: 'a', image: null }, { no: 2, seq: 102, text: 'b', image: null }, { no: 3, seq: 103, text: 'c', image: null }] })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
     await screen.findByText('사용 30 / 40')
     expect(screen.queryByRole('button', { name: /계시 \d 요청/ })).toBeNull()
   })
 
   it('마지막 기회에는 질문 탭을 막고 안내를 보여 준다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
     expect(await screen.findByText('질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.')).toBeTruthy()
     expect((screen.getByRole('tab', { name: '질문하기' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('이 추리는 횟수를 쓰지 않습니다.')).toBeTruthy()
@@ -333,25 +333,6 @@ describe('계시창 초점', () => {
       expect(dialog.contains(document.activeElement)).toBe(true)
     }
   })
-
-  it('원래 초점 자리가 사라졌으면 닫을 때 열린 계시 눈금으로 돌아간다', async () => {
-    const user = userEvent.setup()
-    await openGame({ used: 9 })
-    vi.mocked(api.guess).mockResolvedValue({
-      ...game,
-      status: 'SOLVED',
-      used: 14,
-      nextHintAt: null,
-      hints: [{ no: 1, seq: 2, text: '계시', image: null }],
-      guesses: [{ seq: 1, text: 't', correct: true, closeness: 'CORRECT' }],
-      reveal: { truth: 't', keywords: [], bonuses: [], score: 86, bonusPoints: 0 },
-    })
-    await user.click(screen.getByRole('tab', { name: '추리 제출' }))
-    await user.type(screen.getByRole('textbox', { name: '추리' }), 't{Enter}')
-    await screen.findByRole('dialog', { name: '계시 1' })
-    await user.click(screen.getByRole('button', { name: '닫기' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '계시 1' }))
-  })
 })
 
 describe('송신 단말 크기', () => {
@@ -377,7 +358,7 @@ describe('사용 막대 표시', () => {
 
   it('마지막 기회가 오면 최종 추리 표시가 켜진다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
     expect((await screen.findByText('최종 추리')).className).toContain('on')
   })
 })
@@ -390,5 +371,101 @@ describe('사건 기록 화면', () => {
     expect(screenEl).not.toBeNull()
     expect(screenEl?.textContent).toContain('사건 기록')
     expect(screenEl?.textContent).toContain('문제')
+  })
+})
+
+describe('게임이 끝나면 결과 페이지로', () => {
+  const solvedGame: GameView = {
+    ...game,
+    status: 'SOLVED',
+    used: 14,
+    nextHintAt: null,
+    hints: [{ no: 1, seq: 2, text: '계시', image: null }],
+    guesses: [{ seq: 1, text: 't', correct: true, closeness: 'CORRECT' }],
+    reveal: { truth: 't', keywords: [], bonuses: [], score: 86, bonusPoints: 0 },
+  }
+
+  async function openPlaying(onEnded: () => void) {
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 9 })
+    const view = render(<GamePage gameId="g1" onExit={() => {}} onEnded={onEnded} />)
+    await screen.findByRole('button', { name: '송신 ▶' })
+    return view
+  }
+
+  /** 가짜 시계에서 추리를 보낸다(응답 처리까지 기다린다). */
+  async function sendGuess() {
+    fireEvent.click(screen.getByRole('tab', { name: '추리 제출' }))
+    const box = screen.getByRole('textbox', { name: '추리' })
+    fireEvent.change(box, { target: { value: 't' } })
+    await act(async () => {
+      fireEvent.submit(box.closest('form')!)
+    })
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('정답 추리 응답이 오면 교신 종료 연출 뒤 onEnded', async () => {
+    const onEnded = vi.fn()
+    await openPlaying(onEnded)
+    vi.useFakeTimers()
+    vi.mocked(api.guess).mockResolvedValue(solvedGame)
+    await sendGuess()
+    expect(screen.getByRole('status').textContent).toContain('교신 종료')
+    expect(onEnded).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1600))
+    expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+
+  it('포기해도 같은 연출 뒤 onEnded', async () => {
+    const onEnded = vi.fn()
+    await openPlaying(onEnded)
+    vi.useFakeTimers()
+    vi.mocked(api.giveUp).mockResolvedValue({ ...solvedGame, status: 'GAVE_UP', guesses: [], hints: [] })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    })
+    expect(screen.getByRole('status').textContent).toContain('교신 종료')
+    act(() => vi.advanceTimersByTime(1600))
+    expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+
+  it('이미 끝난 게임을 열면 연출 없이 바로 onEnded', async () => {
+    const onEnded = vi.fn()
+    vi.mocked(api.game).mockResolvedValue({ ...solvedGame, status: 'FAILED' })
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={onEnded} />)
+    await vi.waitFor(() => expect(onEnded).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('교신 종료')).toBeNull()
+  })
+
+  it('게임이 끝나면서 계시가 새로 열려도 계시창은 뜨지 않는다', async () => {
+    await openPlaying(() => {})
+    vi.useFakeTimers()
+    vi.mocked(api.guess).mockResolvedValue(solvedGame)
+    await sendGuess()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('움직임 줄이기면 연출 화면 없이 바로 onEnded', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('reduce'), media: q }))
+    const onEnded = vi.fn()
+    await openPlaying(onEnded)
+    vi.mocked(api.guess).mockResolvedValue(solvedGame)
+    await sendGuess()
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('교신 종료')).toBeNull()
+  })
+
+  it('연출 도중 화면이 사라지면 onEnded를 부르지 않는다', async () => {
+    const onEnded = vi.fn()
+    const view = await openPlaying(onEnded)
+    vi.useFakeTimers()
+    vi.mocked(api.guess).mockResolvedValue(solvedGame)
+    await sendGuess()
+    view.unmount()
+    act(() => vi.advanceTimersByTime(1600))
+    expect(onEnded).not.toHaveBeenCalled()
   })
 })

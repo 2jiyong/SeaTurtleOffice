@@ -38,3 +38,29 @@
 - [ ] **Step 4: 통과 확인** — `cd frontend && npm test && npx tsc -b && npm run lint`
 - [ ] **Step 5: 눈으로 확인** — 진행 중 게임을 1280px·520px로 찍어 Review Focus 두 항목 확인.
 - [ ] **Step 6: 커밋** — `git commit -m "화면: 클립보드 사건 기록과 무전기 조작판(50:50)"`
+
+---
+
+### Task 2: A1 송신 단말과 계시창
+
+**Files:**
+- Modify: `frontend/index.html`(Black Han Sans, Nanum Gothic Coding), `frontend/src/GamePage.tsx`, `frontend/src/index.css`
+- Create: `frontend/src/RevelationDialog.tsx`
+- Test: `frontend/src/GamePage.test.tsx`
+
+**Interfaces:**
+- Produces: `<RevelationDialog hints={HintRecord[]} index={number} onIndex={(i)=>void} onClose={()=>void} />` — `role="dialog"`, `aria-modal="true"`, 이름 `계시 N`, 그림은 `alt="계시 N 이미지"`, 버튼 `닫기`, 열린 계시 버튼들.
+
+- [ ] **Step 1: 실패하는 테스트**
+  - `계시는 수신 기록 줄에 없고 막대에서 연다`: 힌트 1개가 열린 게임 → `.log`에 `계시 1` 글자가 없다. 막대의 `계시 1` 버튼을 누르면 `getByRole('dialog', { name: '계시 1' })` 안에 계시 문장. `닫기`를 누르면 창이 사라진다. Esc로도 닫힌다.
+  - `다음 계시 눈금으로 힌트를 요청한다`: `nextHintAt: 20`, 힌트 1개 → `계시 2 요청 (사용 20으로)` 버튼을 누르면 `api.hint` 호출. 잠긴 `계시 3`은 `disabled`.
+  - `계시창 그림`: 그림이 있는 계시를 열면 창 안에 `img`(이름 `계시 1 이미지`), 없는 계시는 `img` 없음.
+  - `새로 열린 계시는 계시창이 자동으로 뜬다`: `api.ask`가 힌트 1개가 새로 열린 게임을 돌려주면 `findByRole('dialog', { name: '계시 1' })`. 처음 불러온 게임에 이미 있던 계시는 창이 없다.
+  - `클립보드에 힌트 요청 버튼이 없다`: `queryByRole('button', { name: /힌트 요청/ })` 가 null.
+  - `송신 단말 머리와 명령조 문구`: `송신 단말 // CH-07`, 질문 입력칸 placeholder `예나 아니오로 답할 수 있는 질문을 입력하라`, `모든 송신은 기록된다`.
+  - 기존 테스트 정리: 힌트 버튼을 찾던 테스트(`힌트 요청 (사용 N으로)`)는 막대의 `계시 N 요청 (사용 M으로)`로, `openGame`이 기다리는 요소는 `송신 ▶` 버튼으로, 계시를 수신 기록 줄 순서로 확인하던 테스트와 계시 그림 테스트는 계시창 테스트로 바꾼다.
+- [ ] **Step 2: 실패 확인** — `cd frontend && npm test`
+- [ ] **Step 3: 구현** (설계 문서 "추가 결정"대로)
+- [ ] **Step 4: 통과 확인** — `cd frontend && npm test && npx tsc -b && npm run lint`
+- [ ] **Step 5: 눈으로 확인** — 진행 중 게임 1280px·520px, 계시창 열린 상태 스크린샷
+- [ ] **Step 6: 커밋** — `git commit -m "화면: 송신 단말 조작판, 사용 막대에서 여는 계시창"`

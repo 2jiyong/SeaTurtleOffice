@@ -380,7 +380,8 @@ h3 {
 /* 게임: 책상 위 두 장 */
 .game {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
+  /* 사건 기록(클립보드) : 수신 기록(무전기) = 50 : 50 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
@@ -1275,6 +1276,669 @@ h3 {
     justify-self: start;
     white-space: normal;
   }
+}
+
+/* ── 클립보드: 사건 기록 서류를 끼운 판 ── */
+.clipboard {
+  position: sticky;
+  top: 20px;
+  padding: 30px 14px 14px;
+  background: linear-gradient(160deg, #75603f, #5c4a31);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.clipboard-clamp {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 132px;
+  height: 28px;
+  translate: -50% 0;
+  background: linear-gradient(#d2d6da, #8b9096);
+  border-radius: 6px;
+  box-shadow: 0 3px 6px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+
+.clipboard-clamp::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 30px;
+  height: 8px;
+  translate: -50% 0;
+  border-radius: 4px;
+  background: #6f757b;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+/* 클립보드 안의 서류는 판이 붙어 다니므로 따로 붙지 않는다 */
+.clipboard .case {
+  position: static;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.clipboard .case h1 {
+  font-size: 1.9rem;
+}
+
+.clipboard .problem {
+  font-size: 1.05rem;
+}
+
+/* ── 사건 기록 단말: 수신 기록과 같은 디지털 화면 ── */
+.case-device {
+  position: sticky;
+  top: 20px;
+  padding: 10px;
+  background: linear-gradient(#2d3337, #1f2427);
+  border: 1px solid #3a4246;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.case-device .case-screen {
+  position: relative;
+  /* 예전 사건 기록의 sticky 위치(top: 20px)를 지운다 */
+  top: 0;
+  overflow: hidden;
+  padding: 18px 22px 20px;
+  background: #121517;
+  color: #dfe2d6;
+  border: 1px solid #2c3337;
+  border-top: 1px solid #2c3337;
+  border-radius: 4px;
+  box-shadow: inset 0 0 50px rgb(0 0 0 / 0.7);
+}
+
+/* 수신 기록과 같은 옅은 주사선 */
+.case-device .case-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.case-device .case-head {
+  border-bottom-color: #2c3337;
+}
+
+.case-device .case-label {
+  font: 0.72rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.case-device .risk-label {
+  color: #7d8682;
+}
+
+.case-device .risk-bars i {
+  background: #2c3337;
+}
+
+.case-device .case h1 {
+  font-size: 1.9rem;
+  color: #e6e9e0;
+  text-shadow: 0 0 10px rgb(230 233 224 / 0.25);
+}
+
+.case-field {
+  display: block;
+  margin-bottom: 4px;
+  font: 0.68rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #5f9e7a;
+}
+
+.case-device .problem {
+  font-size: 1.05rem;
+  color: #dfe2d6;
+}
+
+.case-device .case-cover {
+  border-color: #2c3337;
+}
+
+.case-device .btn-quiet {
+  color: #7d8682;
+}
+
+.case-device .btn-quiet:hover:not(:disabled) {
+  color: #f08a7e;
+}
+
+@media (max-width: 760px) {
+  .case-device {
+    position: static;
+  }
+}
+
+/* ── 무전기 몸체: 수신 기록 화면 + 조작판 ── */
+.radio-unit {
+  padding: 10px;
+  background: linear-gradient(#2d3337, #1f2427);
+  border: 1px solid #3a4246;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.radio-unit .transcript.radio {
+  border-radius: 4px;
+}
+
+/* 좁아진 수신 기록에서는 답을 질문 아래로 내린다(겹치지 않게). 안쪽 모양은 그대로. */
+.transcript.radio {
+  container-type: inline-size;
+}
+
+@media (max-width: 760px) {
+  .clipboard {
+    position: static;
+  }
+}
+
+@container (max-width: 460px) {
+  /* 좁으면 계시 눈금을 막대 아래에 차례로 늘어놓는다(잘리지 않게) */
+  .transcript.radio .usage-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    height: auto;
+  }
+
+  .transcript.radio .usage-steps .usage-step {
+    position: static;
+    translate: none;
+  }
+
+  .transcript.radio .entry {
+    grid-template-columns: 40px 1fr;
+    grid-template-areas:
+      'no text'
+      '. stamp'
+      '. note';
+    row-gap: 4px;
+  }
+}
+
+/* 조작판 */
+.radio-unit .composer {
+  position: static;
+  margin-top: 0;
+  padding: 12px 4px 2px;
+  background: none;
+}
+
+.radio-unit .final-chance {
+  margin-bottom: 10px;
+}
+
+.radio-unit .composer-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.radio-unit .tabs {
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.radio-unit .tabs button {
+  min-width: 58px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  background: #3a4246;
+  color: #c9cec6;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #15191b;
+}
+
+.radio-unit .tabs button.on {
+  background: var(--hazard);
+  color: var(--hazard-ink);
+  box-shadow: 0 3px 0 #7d6118;
+}
+
+.radio-unit .tabs button:disabled {
+  opacity: 0.35;
+}
+
+.radio-unit .input-row {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 녹색 액정 입력칸 */
+.radio-unit .input-row textarea {
+  color: #9fe0b4;
+  background: #0f1a14;
+  border: 1px solid #2c3d33;
+  box-shadow: inset 0 0 14px rgb(0 0 0 / 0.8);
+  font-family: var(--sans);
+  caret-color: #9fe0b4;
+}
+
+.radio-unit .input-row textarea::placeholder {
+  color: #4f7a5d;
+}
+
+.radio-unit .input-row textarea:focus {
+  outline: 2px solid #5fd38a;
+  outline-offset: -1px;
+}
+
+/* 송신 버튼 */
+.send-btn {
+  flex: none;
+  min-width: 84px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #b3261e;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #5e130e, 0 8px 14px -6px rgb(0 0 0 / 0.8);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #5e130e;
+}
+
+.send-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.radio-unit .counter {
+  padding-left: 2px;
+}
+
+/* 수신 기록은 칸 안에서 스크롤한다(계속 길어지지 않게) */
+/* 무전기(수신 기록 + 송신 단말)는 한 화면 높이로 고정한다. 기록이 늘면 수신 기록 칸 안에서만 스크롤. */
+.radio-unit {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  /* 머리말(약 104px)과 아래 여백을 뺀 한 화면 높이 */
+  height: calc(100vh - 128px);
+  min-height: 520px;
+}
+
+.radio-unit .transcript.radio {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.radio-unit .composer {
+  flex: none;
+}
+
+.transcript.radio .log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4246 transparent;
+}
+
+.transcript.radio .log:focus-visible {
+  outline: 1px solid #7d8682;
+  outline-offset: -1px;
+}
+
+/* 송신 단말은 질문·추리 어느 쪽이든 같은 크기 */
+.radio-unit .input-row textarea {
+  resize: none;
+}
+
+/* ── 사용 막대의 계시 눈금(버튼) ── */
+/* 눈금 버튼이 겹치지 않게, 막대는 제목 아래 한 줄을 다 쓴다 */
+.transcript.radio .usage {
+  flex: 1 1 100%;
+  max-width: none;
+}
+
+.transcript.radio .usage-bar {
+  margin-bottom: 0;
+}
+
+.transcript.radio .usage-bar {
+  position: relative;
+  overflow: visible;
+}
+
+/* 막대 위의 자리 선(점선): 계시 10·20·30, 최종 추리 40 */
+.usage-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 0;
+  translate: -1px 0;
+  border-left: 2px dotted rgb(214 169 53 / 0.55);
+}
+
+.usage-mark.open {
+  border-left-style: solid;
+  border-left-color: var(--hazard);
+  box-shadow: 0 0 6px rgb(214 169 53 / 0.6);
+}
+
+.usage-mark.final {
+  translate: -2px 0;
+  border-left-color: rgb(240 138 126 / 0.6);
+}
+
+.usage-mark.final.open {
+  border-left-color: #f08a7e;
+  box-shadow: 0 0 8px rgb(240 138 126 / 0.8);
+}
+
+/* 막대 위 한 줄: 왼쪽 사용 횟수, 오른쪽 끝(40 자리) 최종 추리 */
+.usage-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-final {
+  padding: 2px 8px;
+  border: 1px dotted rgb(240 138 126 / 0.6);
+  border-radius: 2px;
+  color: #a86a63;
+  font: 700 0.7rem/1.5 var(--sans);
+  white-space: nowrap;
+}
+
+.usage-final.on {
+  border-style: solid;
+  border-color: #f08a7e;
+  background: rgb(240 138 126 / 0.15);
+  color: #f08a7e;
+  text-shadow: 0 0 6px rgb(240 138 126 / 0.6);
+}
+
+.usage-steps {
+  position: relative;
+  height: 26px;
+  margin-top: 6px;
+}
+
+.usage-steps .usage-step {
+  position: absolute;
+  top: 0;
+  width: auto;
+  height: auto;
+  translate: -50% 0;
+  padding: 2px 8px;
+  border: 1px solid #2c3337;
+  border-radius: 2px;
+  background: transparent;
+  color: #5c6467;
+  font: 700 0.7rem/1.5 var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.usage-steps .usage-step.open {
+  background: var(--hazard);
+  border-color: var(--hazard);
+  color: var(--hazard-ink);
+}
+
+.usage-steps .usage-step.open:hover {
+  box-shadow: 0 0 10px rgb(214 169 53 / 0.6);
+}
+
+.usage-steps .usage-step.next {
+  border-style: dashed;
+  border-color: var(--hazard);
+  color: var(--hazard);
+}
+
+.usage-steps .usage-step.next:hover:not(:disabled) {
+  background: rgb(214 169 53 / 0.12);
+}
+
+.usage-steps .usage-step:disabled {
+  cursor: default;
+}
+
+/* ── 송신 단말: 수신 기록과 같은 화면(어두운 바탕, 회색 테두리, 옅은 주사선, 은은한 빛) ── */
+.radio-unit .composer {
+  position: relative;
+  margin-top: 10px;
+  padding: 12px 12px 10px;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-radius: 4px;
+  clip-path: none;
+  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.7);
+}
+
+.radio-unit .composer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.terminal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font: 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.terminal-bars {
+  display: flex;
+  gap: 2px;
+}
+
+.terminal-bars i {
+  width: 3px;
+  height: 9px;
+  background: #5f9e7a;
+  box-shadow: 0 0 6px rgb(95 158 122 / 0.8);
+}
+
+.terminal-bars i.off {
+  background: #22302a;
+  box-shadow: none;
+}
+
+.radio-unit .tabs button {
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  color: #6f777a;
+  background: #0d0f10;
+  border-radius: 2px;
+  clip-path: none;
+  box-shadow: inset 0 0 0 1px #2c3337;
+}
+
+.radio-unit .tabs button.on {
+  color: #e6e9e0;
+  background: #1b2023;
+  text-shadow: 0 0 8px rgb(230 233 224 / 0.55);
+  box-shadow: inset 0 0 0 1px #7d8682, inset 3px 0 0 #b3261e;
+}
+
+.radio-unit .input-row textarea {
+  color: #dfe2d6;
+  background: #0b0d0e;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #2c3337, inset 0 0 14px rgb(0 0 0 / 0.8);
+  font-family: 'Nanum Gothic Coding', monospace;
+  caret-color: #e6e9e0;
+}
+
+.radio-unit .input-row textarea::placeholder {
+  color: #5c6467;
+}
+
+.radio-unit .input-row textarea:focus {
+  outline: 1px solid #7d8682;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px #7d8682, 0 0 10px rgb(230 233 224 / 0.12);
+}
+
+/* 송신 버튼: 주시자 눈동자의 빨강을 차분하게 */
+.send-btn {
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.1em;
+  color: #f3e9e7;
+  border: 0;
+  border-radius: 2px;
+  background: #7a1c16;
+  clip-path: none;
+  text-shadow: 0 0 8px rgb(255 170 160 / 0.45);
+  box-shadow: inset 0 0 0 1px #b3261e, 0 0 14px rgb(179 38 30 / 0.3);
+}
+
+.send-btn:hover:not(:disabled) {
+  background: #8f2219;
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 0 0 1px #b3261e;
+}
+
+.radio-unit .counter {
+  position: relative;
+  font-family: 'Nanum Gothic Coding', monospace;
+  color: #7d8682;
+}
+
+/* ── 계시창 ── */
+.revelation-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(8 10 11 / 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.revelation {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: #121517;
+  border: 1px solid var(--hazard);
+  box-shadow: 0 0 40px rgb(214 169 53 / 0.2), 0 20px 50px #000;
+  animation: revelation-in 0.25s ease-out;
+}
+
+.revelation::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.02) 0 1px, transparent 1px 3px);
+}
+
+@keyframes revelation-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.revelation-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid #3a3320;
+}
+
+.revelation-head h2 {
+  margin: 0;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
+  color: var(--hazard);
+}
+
+.revelation-image {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 16px 16px 0;
+  border: 1px solid #3a3320;
+}
+
+.revelation-text {
+  margin: 16px;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #f0e2b0;
+  text-shadow: 0 0 6px rgb(240 226 176 / 0.25);
+}
+
+.revelation-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid #3a3320;
+}
+
+.revelation-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.revelation-nav button,
+.revelation-close {
+  padding: 3px 10px;
+  border: 1px solid #3a3320;
+  background: transparent;
+  color: #a08a52;
+  font: 700 0.75rem var(--sans);
+  cursor: pointer;
+}
+
+.revelation-nav button.on {
+  background: var(--hazard);
+  border-color: var(--hazard);
+  color: var(--hazard-ink);
+}
+
+.revelation-close {
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: #c9cec6;
+  border-color: #4a4f52;
 }
 
 @media (prefers-reduced-motion: reduce) {

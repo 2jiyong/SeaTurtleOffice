@@ -1,14 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type HintRecord, type QuestionRecord } from './api.ts'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import RevelationDialog from './RevelationDialog.tsx'
 import Risk from './Risk.tsx'
 import Transmission from './Transmission.tsx'
 import WatcherEye from './WatcherEye.tsx'
 
 type Mode = 'question' | 'guess'
-type Entry =
-  | { kind: 'question'; item: QuestionRecord }
-  | { kind: 'guess'; item: GuessRecord }
-  | { kind: 'hint'; item: HintRecord }
+type Entry = { kind: 'question'; item: QuestionRecord } | { kind: 'guess'; item: GuessRecord }
 type Pending = { mode: Mode; text: string } | null
 
 const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
@@ -26,6 +24,19 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const [error, setError] = useState<string | null>(null)
   // 응답으로 새로 들어온 기록의 seq. 처음 불러온 기록과 이미 있던 기록은 다시 일그러지지 않는다.
   const [freshSeqs, setFreshSeqs] = useState<Set<number>>(() => new Set())
+  // 계시창에 띄운 계시의 순서(0부터). 닫혀 있으면 null.
+  const [openHint, setOpenHint] = useState<number | null>(null)
+  // 계시창을 닫으면 초점을 돌려줄 곳(누른 눈금)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  // 수신 기록 칸(스크롤 영역)
+  const logRef = useRef<HTMLOListElement>(null)
+  const closeHint = useCallback(() => {
+    setOpenHint(null)
+    // 원래 자리가 화면에서 사라졌으면(게임이 끝나 송신 단말이 없어짐) 마지막으로 열린 계시 눈금으로 돌아간다.
+    const el = returnFocus.current
+    if (el && el.isConnected) el.focus()
+    else [...document.querySelectorAll<HTMLElement>('.usage-step.open')].pop()?.focus()
+  }, [])
   // 기본 사건 표지 파일이 없으면 표지 자리를 숨긴다.
   const [coverFailed, setCoverFailed] = useState(false)
 
@@ -35,11 +46,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     )
   }, [gameId])
 
-  // 기록이 늘면 페이지 맨 아래로 내린다. 그러면 입력칸이 제자리에 놓이고 새 기록이 바로 위에 보인다.
-  // (기록 끝을 화면 아래에 맞추면 화면 아래에 고정된 입력칸이 마지막 기록을 가린다.)
+  // 기록이 늘면 수신 기록 칸 안에서만 맨 아래로 내린다(페이지 전체는 움직이지 않는다).
   useEffect(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
-  }, [game?.questions.length, game?.guesses.length, game?.hints.length, pending])
+    const log = logRef.current
+    log?.scrollTo({ top: log.scrollHeight, behavior: 'smooth' })
+  }, [game?.questions.length, game?.guesses.length, pending])
 
   if (loadError) {
     return (
@@ -58,7 +69,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const entries: Entry[] = [
     ...game.questions.map((item) => ({ kind: 'question' as const, item })),
     ...game.guesses.map((item) => ({ kind: 'guess' as const, item })),
-    ...game.hints.map((item) => ({ kind: 'hint' as const, item })),
   ].sort((a, b) => a.item.seq - b.item.seq)
   const fresh = (seq: number) => freshSeqs.has(seq)
   // 서버가 돌려준 게임으로 바꾸면서, 이전에 없던 기록만 '새로 들어온 것'으로 표시한다.
@@ -66,6 +76,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     const seqsOf = (g: GameView) => [...g.questions, ...g.guesses, ...g.hints].map((e) => e.seq)
     const before = new Set(seqsOf(game))
     setFreshSeqs(new Set(seqsOf(next).filter((s) => !before.has(s))))
+    // 계시가 새로 열리는 순간에는 계시창을 자동으로 띄운다.
+    if (next.hints.length > game.hints.length) {
+      returnFocus.current = document.activeElement as HTMLElement | null
+      setOpenHint(next.hints.length - 1)
+    }
     setGame(next)
   }
   const cover = game.scenario.cover ?? (coverFailed ? null : '/covers/default.webp')
@@ -113,9 +128,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
   return (
     <section className="game">
-      <aside className="case">
+      <aside className="case-device">
+        <div className="case case-screen">
         <div className="case-head">
-          <span className="case-label">사건 기록</span>
+          <span className="case-label">사건 기록 // 열람 중</span>
           <Risk difficulty={game.scenario.difficulty} />
         </div>
         {cover && (
@@ -127,23 +143,21 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           />
         )}
         <h1>{game.scenario.title}</h1>
+        <span className="case-field">문제</span>
         <p className="problem">{game.scenario.problem}</p>
 
         {playing && (
           <div className="case-actions">
-            {game.nextHintAt !== null && (
-              <button className="btn btn-paper" disabled={busy} onClick={() => act(() => api.hint(game.id))}>
-                힌트 받기 (사용 {game.nextHintAt}으로)
-              </button>
-            )}
             <button className="btn btn-quiet" disabled={busy} onClick={giveUp}>
               포기하고 진상 보기
             </button>
           </div>
         )}
+        </div>
       </aside>
 
       <div className="board">
+        <div className="radio-unit">
         <div className="transcript radio">
           <div className="radio-roll" aria-hidden />
           <div className="transcript-head">
@@ -153,9 +167,17 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               <i aria-hidden />
               주시자와 연결됨
             </span>
-            <UsageBar game={game} />
+            <UsageBar
+              game={game}
+              busy={busy}
+              onOpen={(i, el) => {
+                returnFocus.current = el
+                setOpenHint(i)
+              }}
+              onRequest={() => act(() => api.hint(game.id))}
+            />
           </div>
-          <ol className="log" aria-live="polite">
+          <ol ref={logRef} className="log" aria-live="polite" tabIndex={0} aria-label="수신 기록 목록">
             {entries.length === 0 && !pending && (
               <li className="empty">
                 아직 기록된 질문이 없습니다. 예나 아니오로 답할 수 있는 질문부터 시작하세요.
@@ -173,17 +195,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                     <p className="entry-text">{e.item.text}</p>
                     <Transmission text={a.say} animate={isNew} className={`ans s-${a.tone}`} />
                     <span className="stamp-note">{a.note}</span>
-                  </li>
-                )
-              }
-              if (e.kind === 'hint') {
-                return (
-                  <li key={`h${e.item.seq}`} className={`entry entry-hint ${isNew ? 'fresh' : ''}`}>
-                    <span className="entry-no">계시 {e.item.no}</span>
-                    <p className="entry-text hint-text">
-                      <Transmission text={e.item.text} animate={isNew} className="hint-tx" />
-                    </p>
-                    {e.item.image && <img className="hint-image" src={e.item.image} alt={`계시 ${e.item.no} 이미지`} />}
                   </li>
                 )
               }
@@ -218,33 +229,48 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           </ol>
         </div>
 
-        {error && <p className="error">{error}</p>}
-
-        {playing ? (
+        {playing && (
           <form className="composer" onSubmit={submit}>
+            <div className="terminal-head">
+              <span>송신 단말 // CH-07</span>
+              <span className="terminal-bars" aria-hidden>
+                {[8, 16, 24, 32, 40].map((n) => (
+                  <i key={n} className={game.used >= n ? 'off' : ''} />
+                ))}
+              </span>
+            </div>
             {game.finalChance && <p className="final-chance">질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.</p>}
+            <div className="composer-row">
             <div className="tabs" role="tablist" aria-label="입력 종류">
               <button
                 type="button"
                 role="tab"
+                aria-label="질문하기"
                 aria-selected={inputMode === 'question'}
                 className={inputMode === 'question' ? 'on' : ''}
                 disabled={game.finalChance}
                 onClick={() => setMode('question')}
               >
-                질문하기
+                질문
               </button>
-              <button type="button" role="tab" aria-selected={inputMode === 'guess'} className={inputMode === 'guess' ? 'on' : ''} onClick={() => setMode('guess')}>
-                추리 제출
+              <button
+                type="button"
+                role="tab"
+                aria-label="추리 제출"
+                aria-selected={inputMode === 'guess'}
+                className={inputMode === 'guess' ? 'on' : ''}
+                onClick={() => setMode('guess')}
+              >
+                추리
               </button>
             </div>
             <div className="input-row">
               <textarea
                 value={text}
                 maxLength={LIMIT[inputMode]}
-                rows={inputMode === 'guess' ? 4 : 2}
+                rows={3}
                 aria-label={inputMode === 'question' ? '질문' : '추리'}
-                placeholder={inputMode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하세요' : '사건의 전말을 설명하세요. 무엇이 일어났고, 누가 왜 그랬는지.'}
+                placeholder={inputMode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하라' : '사건의 전말을 송신하라. 무엇이 일어났고, 누가 왜 그랬는지.'}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -253,18 +279,29 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                   }
                 }}
               />
-              <button className="btn btn-primary" disabled={!text.trim() || busy}>
-                {inputMode === 'question' ? '질문하기' : '제출하기'}
+              <button className="send-btn" disabled={!text.trim() || busy}>
+                {pending ? '수신 대기' : '송신 ▶'}
               </button>
             </div>
+            </div>
             <span className="counter">
-              {text.length}/{LIMIT[inputMode]}자. Enter로 보내고 Shift+Enter로 줄을 바꿉니다.
-              {inputMode === 'guess' && (
-                <span className="cost-note">{game.finalChance ? '이 추리는 횟수를 쓰지 않습니다.' : `추리는 사용 ${GUESS_COST}를 씁니다.`}</span>
-              )}
+              {text.length}/{LIMIT[inputMode]} {'//'} 모든 송신은 기록된다
+              {/* 질문·추리 모두 안내 줄을 한 줄 둬서 송신 단말 크기가 바뀌지 않게 한다 */}
+              <span className="cost-note">
+                {inputMode === 'question'
+                  ? '질문은 사용 1을 씁니다.'
+                  : game.finalChance
+                    ? '이 추리는 횟수를 쓰지 않습니다.'
+                    : `추리는 사용 ${GUESS_COST}를 씁니다.`}
+              </span>
             </span>
           </form>
-        ) : (
+        )}
+        </div>
+
+        {error && <p className="error">{error}</p>}
+
+        {!playing &&
           game.reveal && (
             <article className={`reveal ${game.status === 'SOLVED' ? 'solved' : 'closed'}`}>
               <span className="verdict" aria-hidden>
@@ -313,9 +350,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 다른 사건 고르기
               </button>
             </article>
-          )
-        )}
+          )}
       </div>
+      {openHint !== null && (
+        <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
+      )}
     </section>
   )
 }
@@ -324,13 +363,28 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 const VERDICT: Record<string, string> = { SOLVED: '해결', FAILED: '실패', GAVE_UP: '미해결 종결' }
 
 /** 사용 횟수 막대. 질문할 때마다 차오르고, 힌트가 열리는 자리에 눈금을 둔다. */
-function UsageBar({ game }: { game: GameView }) {
+function UsageBar({
+  game,
+  busy,
+  onOpen,
+  onRequest,
+}: {
+  game: GameView
+  busy: boolean
+  onOpen: (index: number, el: HTMLElement) => void
+  onRequest: () => void
+}) {
   const pct = (n: number) => `${(Math.min(n, game.limit) / game.limit) * 100}%`
+  const playing = game.status === 'PLAYING'
   return (
     <div className="usage">
-      <span className="usage-label">
-        사용 {game.used} / {game.limit}
-      </span>
+      <div className="usage-top">
+        <span className="usage-label">
+          사용 {game.used} / {game.limit}
+        </span>
+        {/* 막대 오른쪽 끝(40) 위: 사용을 다 쓰면 최종 추리 한 번 */}
+        <span className={`usage-final ${game.finalChance ? 'on' : ''}`}>최종 추리</span>
+      </div>
       <div
         className="usage-bar"
         role="progressbar"
@@ -340,11 +394,32 @@ function UsageBar({ game }: { game: GameView }) {
         aria-valuenow={game.used}
       >
         <div className="usage-fill" style={{ width: pct(game.used) }} />
-        {game.hintSteps.map((step, i) => (
-          <span key={step} className={`usage-step ${game.used >= step ? 'open' : ''}`} style={{ left: pct(step) }}>
-            <span className="usage-step-label">힌트{i + 1}</span>
-          </span>
+        {/* 막대 위의 자리 선: 계시(10·20·30)와 최종 추리(40) */}
+        {game.hintSteps.map((step) => (
+          <span key={step} className={`usage-mark ${game.used >= step ? 'open' : ''}`} style={{ left: pct(step) }} aria-hidden />
         ))}
+        <span className={`usage-mark final ${game.finalChance ? 'open' : ''}`} style={{ left: pct(game.limit) }} aria-hidden />
+      </div>
+      {/* 힌트 눈금: 열린 계시는 계시창, 다음 계시는 요청, 그 뒤는 잠김 */}
+      <div className="usage-steps">
+        {game.hintSteps.map((step, i) => {
+          const no = i + 1
+          const open = i < game.hints.length
+          const next = !open && playing && game.nextHintAt === step
+          const label = open ? `계시 ${no}` : next ? `계시 ${no} 요청 (사용 ${step}으로)` : `계시 ${no}`
+          return (
+            <button
+              key={step}
+              type="button"
+              className={`usage-step ${open ? 'open' : next ? 'next' : 'locked'}`}
+              style={{ left: pct(step) }}
+              disabled={(!open && !next) || (next && busy)}
+              onClick={(e) => (open ? onOpen(i, e.currentTarget) : onRequest())}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

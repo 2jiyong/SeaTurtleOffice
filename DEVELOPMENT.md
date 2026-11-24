@@ -65,6 +65,19 @@ cd frontend && npm install && npm run dev
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 호환 서버도 쓸 수 있다 |
 | `OPENAI_REASONING_EFFORT` | `low` | 추론 모델이 아니면 빈 값으로 둔다 |
 | `HISTORY_LIMIT` | `40` | 프롬프트에 넣을 최근 질문 수 |
+| `OPENAI_TIMEOUT` | `20` | OpenAI 요청 하나를 기다리는 시간(초) |
+| `OPENAI_MAX_RETRIES` | `1` | 실패했을 때 다시 시도하는 횟수 |
+
+### 타임아웃
+안쪽이 먼저 포기하도록 맞춘다. 바깥이 먼저 포기하면 안쪽이 받은 결과가 버려지고 비용만 나간다.
+
+| 구간 | 타임아웃 | 설정 |
+|---|---|---|
+| AI 서버 → OpenAI | 20초 × 최대 2번 = 40초 | `ai/.env`의 `OPENAI_TIMEOUT`, `OPENAI_MAX_RETRIES` |
+| 백엔드 → AI 서버 | 45초 | `backend/src/main/resources/application.yml`의 `judge.timeout` |
+| 화면 → 백엔드 | 50초 | `frontend/src/api.ts`의 `REQUEST_TIMEOUT_MS` |
+
+판정 요청이 실패하면 사용 횟수는 늘지 않는다.
 
 다른 공급자를 붙이려면 `ai/app/judges.py`에 `Judge`를 구현하고 `make_judge`에 등록한다.
 

@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-5-mini"
     # 추론 모델에만 보낸다. 비우면 보내지 않는다.
     openai_reasoning_effort: str = "low"
-    openai_timeout: float = 60.0
+    # 요청 하나를 기다리는 시간(초)과 재시도 횟수. 최악 = timeout × (1 + max_retries) = 40초.
+    # 백엔드(judge.timeout 45초)보다 먼저 끝나야 결과가 버려지지 않는다.
+    openai_timeout: float = 20.0
+    openai_max_retries: int = 1
 
     # 판정 프롬프트에 넣을 최근 질문 수
     history_limit: int = 40

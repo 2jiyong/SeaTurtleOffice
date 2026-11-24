@@ -49,6 +49,7 @@ class OpenAiJudge:
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
             timeout=settings.openai_timeout,
+            max_retries=settings.openai_max_retries,
         )
 
     async def complete_json(self, prompt: Prompt) -> dict:

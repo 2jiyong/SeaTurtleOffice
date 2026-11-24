@@ -2,6 +2,7 @@
 id: scenario.left-behind
 title: 두고 온 선배
 difficulty: normal
+status: reserve
 era: [all]
 works: [ruina, limbus]
 uses: [technology.warp-train.truth, technology.warp-train.cleanup]
@@ -58,3 +59,6 @@ updated: 2026-11-23
 1. 선배가 건 전화는 남자의 안부를 확인하는 전화가 아니었다. 근처에 왔으니 저녁을 같이 먹자는 전화였다.
 2. 선배는 목적지까지 가려고 그곳에 들어갔다. 후배는 목적지에서 자기 일을 하려고 들어갔다.
 3. 그곳에서는 출발할 때 기록된 사람만 그때의 몸과 기억으로 되돌릴 수 있다. 후배가 다친 건 도착한 뒤였다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

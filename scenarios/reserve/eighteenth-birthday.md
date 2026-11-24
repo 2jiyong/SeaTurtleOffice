@@ -2,6 +2,7 @@
 id: scenario.eighteenth-birthday
 title: 열여덟 번째 생일
 difficulty: normal
+status: reserve
 era: [all]
 works: [limbus]
 uses: [syndicate.fingers.middle, syndicate.fingers.middle.vengeance, syndicate.fingers.middle.ledger-rules]
@@ -64,3 +65,6 @@ updated: 2026-11-23
 1. 소년이 정말 노린 사람은 뺨을 맞은 사람이 아니었다.
 2. 그 조직에서는 아랫사람이 잘못하면, 그 아랫사람을 맡은 윗사람도 정해진 벌을 받는다.
 3. 소년은 남자를 처음 찾아가기 전부터 남자를 알고 있었다. 남자는 몇 년 전 어느 집에서 한 일을 기억하지도 못했다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

@@ -2,6 +2,7 @@
 id: scenario.regular-customer
 title: 단골손님
 difficulty: normal
+status: reserve
 era: [all]
 works: [ruina, limbus, other]
 uses: [syndicate.fingers.thumb, syndicate.fingers.thumb.etiquette, syndicate.fingers.thumb.ranks]
@@ -54,3 +55,6 @@ updated: 2026-11-22
 1. 그날 바뀐 것은 남자도, 청년도 아니었다.
 2. 남자가 속한 곳에서는 "누구를 어떻게 부르는가"가 몸으로 매겨진다.
 3. 그곳은 바깥사람에게도 계급을 붙인다. 그리고 그 계급은 가족을 따라간다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

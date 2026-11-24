@@ -2,6 +2,7 @@
 id: scenario.after-funeral
 title: 장례식 다음 날
 difficulty: normal
+status: reserve
 era: [limbus-era]
 works: [limbus]
 uses: [wing.n-corp, technology.prosthetics, concept.daily-life.body-and-life, base.common-sense]
@@ -55,3 +56,6 @@ N사는 고통도 겪어야 할 경험이라며 의체를 기피하고, N사의 
 1. 아버지는 남자와 같은 이유로 죽었다.
 2. 그 동네에서는 사람의 몸에 쇠붙이를 다는 것이 신앙을 어기는 일이다.
 3. 이 도시에서 장례를 제대로 치르는 곳은 많지 않다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

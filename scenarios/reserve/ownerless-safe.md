@@ -2,6 +2,7 @@
 id: scenario.ownerless-safe
 title: 주인 없는 금고
 difficulty: normal
+status: reserve
 era: [all]
 works: [limbus]
 uses: [technology.chung, wing.h-corp, region.district-8]
@@ -60,3 +61,6 @@ updated: 2026-11-22
 1. 남자는 비밀번호를 누구에게서도 듣지 않았다. 그런데도 알고 있었다.
 2. 남자가 가져온 것은 숫자 몇 개가 아니라, 한 사람의 삶 전부였다.
 3. 남자는 이제 그 집 여자를, 한 번도 본 적 없는데도 사랑했던 것처럼 기억한다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

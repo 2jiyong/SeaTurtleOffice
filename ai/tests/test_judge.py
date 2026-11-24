@@ -48,10 +48,10 @@ def test_every_uses_id_exists_in_world(content):
 
 
 def test_prompt_carries_truth_and_used_details(content):
-    s = content.scenario("last-rent")
+    s = content.scenario("boys-order")
     prompt = JudgePrompts(content, 40).question(s, [], "질문")
     assert s.truth in prompt.system
-    assert "(syndicate.sweepers)" in prompt.system
+    assert "(syndicate.fingers.thumb)" in prompt.system
     assert "## 출처" not in prompt.system
     assert "<question>\n질문\n</question>" in prompt.user
 
@@ -59,11 +59,11 @@ def test_prompt_carries_truth_and_used_details(content):
 def test_fake_judge_flow(client):
     assert client.get("/health").json()["fake"] is True
 
-    r = client.post("/judge/question", json={"scenario": "last-rent", "question": "세입자들은 죽었나요?"})
+    r = client.post("/judge/question", json={"scenario": "boys-order", "question": "세입자들은 죽었나요?"})
     assert r.status_code == 200
     assert r.json() == {"answer": "IRRELEVANT_UNRELATED"}
 
-    r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "모르겠어요"})
+    r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "모르겠어요"})
     assert r.status_code == 200
     assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 2}
 
@@ -85,7 +85,7 @@ def test_rules_explain_every_code():
 
 
 def test_history_uses_new_codes(content):
-    s = content.scenario("last-rent")
+    s = content.scenario("boys-order")
     prompt = JudgePrompts(content, 40).question(s, [HistoryItem("건물주는 몇 살?", "IRRELEVANT_UNDECIDED")], "q")
     assert "- 건물주는 몇 살? → IRRELEVANT_UNDECIDED" in prompt.user
 
@@ -101,20 +101,20 @@ def test_old_answer_code_is_rejected(client):
     saved = app.state.judge
     app.state.judge = OldJudge()
     try:
-        r = client.post("/judge/question", json={"scenario": "last-rent", "question": "q"})
+        r = client.post("/judge/question", json={"scenario": "boys-order", "question": "q"})
         assert r.status_code == 502
     finally:
         app.state.judge = saved
 
 
 def test_parses_keywords_and_bonuses(content):
-    s = content.scenario("last-rent")
-    assert [k.name for k in s.keywords] == ["거주구역 등록 만료", "청소부", "건물주가 노림"]
-    assert s.keywords[0].required == ["거주구역"]
-    assert s.keywords[2].required == []
-    assert "밤의 괴물" in s.keywords[1].reject
-    assert s.keywords[1].missing == "건물이 어떻게 하룻밤 사이에 비었는지가 빠져 있구나."
-    assert [b.name for b in s.bonuses] == ["월세 체납", "증거가 남지 않음"]
+    s = content.scenario("boys-order")
+    assert [k.name for k in s.keywords] == ["카포의 권위", "해낼 수 없는 지시", "엄지의 규율"]
+    assert s.keywords[0].required == ["카포"]
+    assert s.keywords[1].required == []
+    assert "꼬마가 무서웠다" in s.keywords[0].reject
+    assert s.keywords[1].missing == "꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나."
+    assert [b.name for b in s.bonuses] == ["부활은 금기", "손목 재생"]
 
 
 def test_keyword_lines_in_any_order():
@@ -123,9 +123,9 @@ def test_keyword_lines_in_any_order():
 
 
 def test_materials_carry_keywords_not_missing_lines(content):
-    m = JudgePrompts(content, 40).materials("last-rent")
+    m = JudgePrompts(content, 40).materials("boys-order")
     assert "## [핵심 키워드]" in m and "## [보너스 키워드]" in m
-    assert "필수 용어: 청소부" in m and "불인정:" in m
+    assert "필수 용어: 엄지" in m and "불인정:" in m
     assert "빠졌을 때" not in m and "## [핵심 포인트]" not in m
 
 
@@ -148,7 +148,7 @@ def test_guess_numbers_are_cleaned(client):
     saved = app.state.judge
     app.state.judge = Messy()
     try:
-        r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "g"})
+        r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "g"})
         assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [2], "bonusTotal": 2}
     finally:
         app.state.judge = saved
@@ -165,6 +165,5 @@ def test_every_scenario_uses_new_format(content):
 
 
 def test_required_terms_are_not_too_strict(content):
-    # 일반어(갈증)나 두 용어를 함께 요구하는 키워드(R사+부화장)는 팬에게도 깐깐하다.
-    assert content.scenario("be-your-family").keywords[1].required == []
+    # 두 용어를 함께 요구하는 키워드(R사+부화장)는 팬에게도 깐깐하다.
     assert content.scenario("one-week").keywords[0].required == ["R사"]

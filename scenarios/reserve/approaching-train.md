@@ -2,6 +2,7 @@
 id: scenario.approaching-train
 title: 다가오는 열차
 difficulty: normal
+status: reserve
 era: [limbus-era]
 works: [limbus]
 uses: [technology.suicide-vending-machine, wing.n-corp, region.district-14, technology.glass-window]
@@ -60,3 +61,6 @@ N사 사람들은 원래 체험한 것과 실제로 겪은 것을 똑같이 여�
 1. 남자에게 열차에 치이는 일은 처음이 아니었다.
 2. 남자가 사는 곳에서는 무언가를 "겪어 본 것"과 "실제로 일어난 것"을 구별하지 않는다.
 3. 남자는 돈을 내고, 여러 번 죽었다가 살아서 나왔다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

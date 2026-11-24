@@ -2,6 +2,7 @@
 id: scenario.be-your-family
 title: 가족이 되어 줄게
 difficulty: normal
+status: reserve
 era: [all]
 works: [limbus]
 uses: [species.bloodfiend, species.bloodfiend.kindred, species.bloodfiend.thirst, species.bloodfiend.society]
@@ -68,3 +69,6 @@ updated: 2026-11-23
 1. 남자는 친구를 미워해서 내쫓은 것이 아니다.
 2. 가족이 줄어들수록, 남자가 혼자 견뎌야 하는 것이 커진다.
 3. 친구는 남자가 무엇인지 알고 있었고, 그 말을 정말로 실행할 생각이었다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

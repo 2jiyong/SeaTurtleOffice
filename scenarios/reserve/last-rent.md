@@ -2,6 +2,7 @@
 id: scenario.last-rent
 title: 마지막 월세
 difficulty: normal
+status: reserve
 era: [all]
 works: [ruina, limbus]
 uses: [syndicate.sweepers, syndicate.sweepers.night, concept.night-in-backstreets, concept.taboo.city-taboos.night]
@@ -58,3 +59,6 @@ updated: 2026-11-22
 1. 건물주가 한 일은 "무언가를 하지 않은 것"이다.
 2. 뒷골목에서 집은 언제나 안전한 곳이지만, 그 안전에는 조건이 있다.
 3. 새벽에 오는 손님들은 허가받지 않은 집을 집으로 보지 않는다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

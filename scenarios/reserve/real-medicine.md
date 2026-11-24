@@ -2,6 +2,7 @@
 id: scenario.real-medicine
 title: 진짜 약
 difficulty: hard
+status: reserve
 era: [limbus-era]
 works: [limbus]
 uses: [technology.hp-ampoule.truth, technology.hp-ampoule, wing.k-corp]
@@ -57,3 +58,6 @@ updated: 2026-11-22
 1. 그 약은 몸이 "원래 어떤 모습이었는지"를 맞은 사람에게 묻는다.
 2. 남자는 다친 뒤 며칠 동안, 같은 말을 들으며 누워 있었다.
 3. 남자가 마지막에 된 것은, 누군가 남자에게 계속 "너는 이것이다"라고 말해 준 그것이다.
+
+## 보류 사유
+2026-11-24 사용자 평가에서 우선 시나리오(꼬마의 부탁, 스승이 태운 것, 일주일 연수)에 들지 못해 임시로 보관한다. 핵심 키워드·보너스 키워드 형식으로 이미 바뀌어 있어, 다듬으면 바로 다시 쓸 수 있다.

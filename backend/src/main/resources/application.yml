@@ -14,5 +14,5 @@ game:
 # 판정은 파이썬 AI 서버(ai/)가 한다. OpenAI 키도 거기에만 둔다.
 judge:
   base-url: ${AI_BASE_URL:http://localhost:8000}
-  # AI 서버(OpenAI 최대 40초)보다 조금 길게, 화면(50초)보다 짧게. 안쪽이 먼저 포기해야 결과가 버려지지 않는다.
-  timeout: 45s
+  # AI 서버(OpenAI 최대 24초)보다 조금 길게, 화면(30초)보다 짧게. 안쪽이 먼저 포기해야 결과가 버려지지 않는다.
+  timeout: 28s

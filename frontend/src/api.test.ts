@@ -7,11 +7,11 @@ afterEach(() => {
 })
 
 describe('요청 타임아웃', () => {
-  it('백엔드(45초)보다 조금 길게 기다린다', () => {
-    expect(REQUEST_TIMEOUT_MS).toBe(50_000)
+  it('백엔드(28초)보다 조금 길게 기다린다', () => {
+    expect(REQUEST_TIMEOUT_MS).toBe(30_000)
   })
 
-  it('응답이 오지 않으면 50초 뒤 안내 문장과 함께 실패한다', async () => {
+  it('응답이 오지 않으면 30초 뒤 안내 문장과 함께 실패한다', async () => {
     vi.useFakeTimers()
     // 서버가 답하지 않는 fetch: 요청이 취소될 때만 끝난다.
     vi.stubGlobal(

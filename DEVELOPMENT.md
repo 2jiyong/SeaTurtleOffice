@@ -65,7 +65,7 @@ cd frontend && npm install && npm run dev
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 호환 서버도 쓸 수 있다 |
 | `OPENAI_REASONING_EFFORT` | `low` | 추론 모델이 아니면 빈 값으로 둔다 |
 | `HISTORY_LIMIT` | `40` | 프롬프트에 넣을 최근 질문 수 |
-| `OPENAI_TIMEOUT` | `20` | OpenAI 요청 하나를 기다리는 시간(초) |
+| `OPENAI_TIMEOUT` | `12` | OpenAI 요청 하나를 기다리는 시간(초) |
 | `OPENAI_MAX_RETRIES` | `1` | 실패했을 때 다시 시도하는 횟수 |
 
 ### 타임아웃
@@ -73,9 +73,9 @@ cd frontend && npm install && npm run dev
 
 | 구간 | 타임아웃 | 설정 |
 |---|---|---|
-| AI 서버 → OpenAI | 20초 × 최대 2번 = 40초 | `ai/.env`의 `OPENAI_TIMEOUT`, `OPENAI_MAX_RETRIES` |
-| 백엔드 → AI 서버 | 45초 | `backend/src/main/resources/application.yml`의 `judge.timeout` |
-| 화면 → 백엔드 | 50초 | `frontend/src/api.ts`의 `REQUEST_TIMEOUT_MS` |
+| AI 서버 → OpenAI | 12초 × 최대 2번 = 24초 | `ai/.env`의 `OPENAI_TIMEOUT`, `OPENAI_MAX_RETRIES` |
+| 백엔드 → AI 서버 | 28초 | `backend/src/main/resources/application.yml`의 `judge.timeout` |
+| 화면 → 백엔드 | 30초 | `frontend/src/api.ts`의 `REQUEST_TIMEOUT_MS` |
 
 판정 요청이 실패하면 사용 횟수는 늘지 않는다.
 

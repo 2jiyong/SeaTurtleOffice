@@ -170,13 +170,13 @@ def test_required_terms_are_not_too_strict(content):
 
 
 def test_openai_timeout_and_retries():
-    # 평소 판정은 3초 안팎. 20초씩 최대 2번(재시도 1번) = 40초 안에 끝나야
-    # 백엔드(45초)보다 먼저 포기해서 버려지는 요청이 없다.
+    # 평소 판정은 3초 안팎. 12초씩 최대 2번(재시도 1번) = 24초 안에 끝나야
+    # 백엔드(28초)보다 먼저 포기해서 버려지는 요청이 없다.
     from app.config import Settings
     from app.judges import OpenAiJudge
 
     s = Settings(openai_api_key="test")
-    assert s.openai_timeout == 20.0 and s.openai_max_retries == 1
+    assert s.openai_timeout == 12.0 and s.openai_max_retries == 1
     judge = OpenAiJudge(s)
     assert judge.client.max_retries == 1
-    assert judge.client.timeout == 20.0
+    assert judge.client.timeout == 12.0

@@ -65,10 +65,10 @@ export class ApiError extends Error {
 }
 
 /**
- * 요청 하나를 기다리는 최대 시간. 백엔드(45초)보다 조금 길게 잡아서, 보통은 백엔드가 먼저 오류를 돌려준다.
+ * 요청 하나를 기다리는 최대 시간. 백엔드(28초)보다 조금 길게 잡아서, 보통은 백엔드가 먼저 오류를 돌려준다.
  * 백엔드가 아예 답하지 않을 때만 여기서 끊는다.
  */
-export const REQUEST_TIMEOUT_MS = 50_000
+export const REQUEST_TIMEOUT_MS = 30_000
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
   const controller = new AbortController()

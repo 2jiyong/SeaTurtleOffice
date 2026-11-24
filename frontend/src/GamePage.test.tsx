@@ -304,7 +304,7 @@ describe('주시자 무전 수신 기록', () => {
 
   it('클립보드에는 힌트 요청 버튼이 없고, 송신 단말 문구가 보인다', async () => {
     await openGame()
-    expect(document.querySelector('.clipboard')?.textContent).not.toContain('요청')
+    expect(document.querySelector('.case-device')?.textContent).not.toContain('요청')
     expect(screen.getByText('송신 단말 // CH-07')).toBeTruthy()
     expect(screen.getByRole('textbox', { name: '질문' }).getAttribute('placeholder')).toBe('예나 아니오로 답할 수 있는 질문을 입력하라')
     expect(screen.getByText(/모든 송신은 기록된다/)).toBeTruthy()
@@ -414,5 +414,16 @@ describe('사용 막대 표시', () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
     render(<GamePage gameId="g1" onExit={() => {}} />)
     expect((await screen.findByText('최종 추리')).className).toContain('on')
+  })
+})
+
+describe('사건 기록 화면', () => {
+  it('사건 기록은 종이 클립보드가 아니라 단말 화면에 뜬다', async () => {
+    await openGame()
+    expect(document.querySelector('.clipboard')).toBeNull()
+    const screenEl = document.querySelector('.case-device .case-screen')
+    expect(screenEl).not.toBeNull()
+    expect(screenEl?.textContent).toContain('사건 기록')
+    expect(screenEl?.textContent).toContain('문제')
   })
 })

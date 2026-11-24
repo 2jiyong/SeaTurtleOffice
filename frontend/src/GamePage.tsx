@@ -128,11 +128,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
   return (
     <section className="game">
-      <aside className="clipboard">
-        <span className="clipboard-clamp" aria-hidden />
-        <div className="case">
+      <aside className="case-device">
+        <div className="case case-screen">
         <div className="case-head">
-          <span className="case-label">사건 기록</span>
+          <span className="case-label">사건 기록 // 열람 중</span>
           <Risk difficulty={game.scenario.difficulty} />
         </div>
         {cover && (
@@ -144,6 +143,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           />
         )}
         <h1>{game.scenario.title}</h1>
+        <span className="case-field">문제</span>
         <p className="problem">{game.scenario.problem}</p>
 
         {playing && (

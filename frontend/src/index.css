@@ -1327,6 +1327,95 @@ h3 {
   font-size: 1.05rem;
 }
 
+/* ── 사건 기록 단말: 수신 기록과 같은 디지털 화면 ── */
+.case-device {
+  position: sticky;
+  top: 20px;
+  padding: 10px;
+  background: linear-gradient(#2d3337, #1f2427);
+  border: 1px solid #3a4246;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.case-device .case-screen {
+  position: relative;
+  /* 예전 사건 기록의 sticky 위치(top: 20px)를 지운다 */
+  top: 0;
+  overflow: hidden;
+  padding: 18px 22px 20px;
+  background: #121517;
+  color: #dfe2d6;
+  border: 1px solid #2c3337;
+  border-top: 1px solid #2c3337;
+  border-radius: 4px;
+  box-shadow: inset 0 0 50px rgb(0 0 0 / 0.7);
+}
+
+/* 수신 기록과 같은 옅은 주사선 */
+.case-device .case-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.case-device .case-head {
+  border-bottom-color: #2c3337;
+}
+
+.case-device .case-label {
+  font: 0.72rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.case-device .risk-label {
+  color: #7d8682;
+}
+
+.case-device .risk-bars i {
+  background: #2c3337;
+}
+
+.case-device .case h1 {
+  font-size: 1.9rem;
+  color: #e6e9e0;
+  text-shadow: 0 0 10px rgb(230 233 224 / 0.25);
+}
+
+.case-field {
+  display: block;
+  margin-bottom: 4px;
+  font: 0.68rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #5f9e7a;
+}
+
+.case-device .problem {
+  font-size: 1.05rem;
+  color: #dfe2d6;
+}
+
+.case-device .case-cover {
+  border-color: #2c3337;
+}
+
+.case-device .btn-quiet {
+  color: #7d8682;
+}
+
+.case-device .btn-quiet:hover:not(:disabled) {
+  color: #f08a7e;
+}
+
+@media (max-width: 760px) {
+  .case-device {
+    position: static;
+  }
+}
+
 /* ── 무전기 몸체: 수신 기록 화면 + 조작판 ── */
 .radio-unit {
   padding: 10px;

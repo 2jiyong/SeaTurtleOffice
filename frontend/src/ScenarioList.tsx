@@ -39,6 +39,7 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
           <li key={s.slug}>
             <button className="file" onClick={() => start(s.slug)} disabled={starting !== null}>
               <span className="file-tab">사건 {String(i + 1).padStart(3, '0')}</span>
+              {s.cover && <img className="file-cover" src={s.cover} alt="" />}
               <span className="file-head">
                 <span className="file-title">{s.title}</span>
                 <Risk difficulty={s.difficulty} />

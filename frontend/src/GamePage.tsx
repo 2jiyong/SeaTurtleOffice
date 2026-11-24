@@ -1,9 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type HintRecord, type QuestionRecord } from './api.ts'
 import Risk from './Risk.tsx'
+import Transmission from './Transmission.tsx'
+import WatcherEye from './WatcherEye.tsx'
 
 type Mode = 'question' | 'guess'
-type Entry = { kind: 'question'; item: QuestionRecord } | { kind: 'guess'; item: GuessRecord }
+type Entry =
+  | { kind: 'question'; item: QuestionRecord }
+  | { kind: 'guess'; item: GuessRecord }
+  | { kind: 'hint'; item: HintRecord }
 type Pending = { mode: Mode; text: string } | null
 
 const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
@@ -19,6 +24,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   // 힌트·포기 요청 중. 질문 판정(pending)과 함께, 진행 중에는 게임 상태를 바꾸는 요청을 더 보내지 않는다.
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 응답으로 새로 들어온 기록의 seq. 처음 불러온 기록과 이미 있던 기록은 다시 일그러지지 않는다.
+  const [freshSeqs, setFreshSeqs] = useState<Set<number>>(() => new Set())
+  // 기본 사건 표지 파일이 없으면 표지 자리를 숨긴다.
+  const [coverFailed, setCoverFailed] = useState(false)
 
   useEffect(() => {
     api.game(gameId).then(setGame, (e: Error) =>
@@ -30,7 +39,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   // (기록 끝을 화면 아래에 맞추면 화면 아래에 고정된 입력칸이 마지막 기록을 가린다.)
   useEffect(() => {
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
-  }, [game?.questions.length, game?.guesses.length, pending])
+  }, [game?.questions.length, game?.guesses.length, game?.hints.length, pending])
 
   if (loadError) {
     return (
@@ -49,7 +58,17 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const entries: Entry[] = [
     ...game.questions.map((item) => ({ kind: 'question' as const, item })),
     ...game.guesses.map((item) => ({ kind: 'guess' as const, item })),
+    ...game.hints.map((item) => ({ kind: 'hint' as const, item })),
   ].sort((a, b) => a.item.seq - b.item.seq)
+  const fresh = (seq: number) => freshSeqs.has(seq)
+  // 서버가 돌려준 게임으로 바꾸면서, 이전에 없던 기록만 '새로 들어온 것'으로 표시한다.
+  const receive = (next: GameView) => {
+    const seqsOf = (g: GameView) => [...g.questions, ...g.guesses, ...g.hints].map((e) => e.seq)
+    const before = new Set(seqsOf(game))
+    setFreshSeqs(new Set(seqsOf(next).filter((s) => !before.has(s))))
+    setGame(next)
+  }
+  const cover = game.scenario.cover ?? (coverFailed ? null : '/covers/default.webp')
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -61,9 +80,9 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     try {
       if (inputMode === 'question') {
         // 질문 하나로 힌트가 열릴 수 있어서 게임 전체를 받는다.
-        setGame(await api.ask(game.id, value))
+        receive(await api.ask(game.id, value))
       } else {
-        setGame(await api.guess(game.id, value))
+        receive(await api.guess(game.id, value))
       }
     } catch (err) {
       setError((err as Error).message)
@@ -78,7 +97,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     setActing(true)
     setError(null)
     try {
-      setGame(await fn())
+      receive(await fn())
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -99,19 +118,16 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           <span className="case-label">사건 기록</span>
           <Risk difficulty={game.scenario.difficulty} />
         </div>
+        {cover && (
+          <img
+            className="case-cover"
+            src={cover}
+            alt="사건 표지"
+            onError={() => (game.scenario.cover ? undefined : setCoverFailed(true))}
+          />
+        )}
         <h1>{game.scenario.title}</h1>
         <p className="problem">{game.scenario.problem}</p>
-
-        {game.hints.length > 0 && (
-          <ol className="hints">
-            {game.hints.map((h, i) => (
-              <li key={i} className="hint">
-                <span className="hint-no">추가 정보 {i + 1}</span>
-                {h}
-              </li>
-            ))}
-          </ol>
-        )}
 
         {playing && (
           <div className="case-actions">
@@ -128,9 +144,15 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
       </aside>
 
       <div className="board">
-        <div className="transcript">
+        <div className="transcript radio">
+          <div className="radio-roll" aria-hidden />
           <div className="transcript-head">
-            <h2>심문 기록</h2>
+            <WatcherEye />
+            <h2>수신 기록</h2>
+            <span className="signal">
+              <i aria-hidden />
+              주시자와 연결됨
+            </span>
             <UsageBar game={game} />
           </div>
           <ol className="log" aria-live="polite">
@@ -141,21 +163,39 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 <span className="example">예: “건물주가 직접 무언가를 했나요?”</span>
               </li>
             )}
-            {entries.map((e) =>
-              e.kind === 'question' ? (
-                <li key={`q${e.item.seq}`} className="entry">
-                  <span className="entry-no">Q{e.item.no}</span>
-                  <p className="entry-text">{e.item.text}</p>
-                  <span className={`stamp s-${ANSWER_TEXT[e.item.answer].tone}`}>{ANSWER_TEXT[e.item.answer].say}</span>
-                  <span className="stamp-note">{ANSWER_TEXT[e.item.answer].note}</span>
-                </li>
-              ) : (
-                <li key={`g${e.item.seq}`} className="entry entry-guess">
+            {entries.map((e) => {
+              const isNew = fresh(e.item.seq)
+              if (e.kind === 'question') {
+                const a = ANSWER_TEXT[e.item.answer]
+                return (
+                  <li key={`q${e.item.seq}`} className={`entry ${isNew ? 'fresh' : ''}`}>
+                    <span className="entry-no">Q{e.item.no}</span>
+                    <p className="entry-text">{e.item.text}</p>
+                    <Transmission text={a.say} animate={isNew} className={`ans s-${a.tone}`} />
+                    <span className="stamp-note">{a.note}</span>
+                  </li>
+                )
+              }
+              if (e.kind === 'hint') {
+                return (
+                  <li key={`h${e.item.seq}`} className={`entry entry-hint ${isNew ? 'fresh' : ''}`}>
+                    <span className="entry-no">계시 {e.item.no}</span>
+                    <p className="entry-text hint-text">
+                      <Transmission text={e.item.text} animate={isNew} className="hint-tx" />
+                    </p>
+                    {e.item.image && <img className="hint-image" src={e.item.image} alt={`계시 ${e.item.no} 이미지`} />}
+                  </li>
+                )
+              }
+              return (
+                <li key={`g${e.item.seq}`} className={`entry entry-guess ${isNew ? 'fresh' : ''}`}>
                   <span className="entry-no">추리</span>
                   <p className="entry-text">{e.item.text}</p>
-                  <span className={`stamp ${e.item.correct ? 's-yes' : 's-guess'}`}>
-                    {e.item.correct ? '정답' : `핵심 ${e.item.matched}/${e.item.total}`}
-                  </span>
+                  <Transmission
+                    text={e.item.correct ? '모두 맞혔구나.' : `핵심 ${e.item.matched}/${e.item.total}`}
+                    animate={isNew}
+                    className={`ans ${e.item.correct ? 's-yes' : 's-guess'}`}
+                  />
                   {!e.item.correct && e.item.missing.length > 0 && (
                     <span className="stamp-note">
                       {e.item.missing.map((m, i) => (
@@ -166,13 +206,13 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                     </span>
                   )}
                 </li>
-              ),
-            )}
+              )
+            })}
             {pending && (
               <li className={`entry ${pending.mode === 'guess' ? 'entry-guess' : ''}`}>
                 <span className="entry-no">{pending.mode === 'question' ? `Q${game.questions.length + 1}` : '추리'}</span>
                 <p className="entry-text">{pending.text}</p>
-                <span className="stamp s-pending">판정 중</span>
+                <span className="ans receiving">▓▒░ 수신 중</span>
               </li>
             )}
           </ol>

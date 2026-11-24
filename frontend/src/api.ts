@@ -20,6 +20,8 @@ export interface ScenarioSummary {
   difficulty: 'easy' | 'normal' | 'hard' | string
   problem: string
   hintCount: number
+  /** 대표 이미지 주소. 그림이 없으면 null */
+  cover: string | null
 }
 
 export interface QuestionRecord {
@@ -27,6 +29,15 @@ export interface QuestionRecord {
   seq: number
   text: string
   answer: Answer
+}
+
+export interface HintRecord {
+  no: number
+  /** 열린 순간의 순번 */
+  seq: number
+  text: string
+  /** 힌트 그림 주소. 없으면 null */
+  image: string | null
 }
 
 export interface GuessRecord {
@@ -54,7 +65,8 @@ export interface GameView {
   scenario: ScenarioSummary
   status: GameStatus
   questions: QuestionRecord[]
-  hints: string[]
+  /** 열린 힌트(계시). seq 순으로 질문 사이에 끼워 보여 준다 */
+  hints: HintRecord[]
   guesses: GuessRecord[]
   /** 사용 횟수(질문 1, 추리 5). 한도는 limit */
   used: number

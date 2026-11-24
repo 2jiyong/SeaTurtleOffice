@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ANSWER_TEXT, type GameView, type QuestionRecord } from './api.ts'
+import { ANSWER_TEXT, type GameView } from './api.ts'
 import GamePage from './GamePage.tsx'
 
 // 네트워크(api)만 바꾼다. 응답 시점은 테스트가 정한다.
@@ -21,6 +21,11 @@ const game: GameView = {
   questions: [],
   hints: [],
   guesses: [],
+  used: 0,
+  limit: 40,
+  hintSteps: [10, 20, 30],
+  finalChance: false,
+  nextHintAt: 10,
   reveal: null,
 }
 
@@ -78,7 +83,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
   it('질문을 판정하는 중에는 힌트를 요청할 수 없다', async () => {
     const user = userEvent.setup()
     await openGame()
-    vi.mocked(api.ask).mockImplementation(never as () => Promise<QuestionRecord>)
+    vi.mocked(api.ask).mockImplementation(never as () => Promise<GameView>)
 
     await user.type(screen.getByRole('textbox', { name: '질문' }), '건물주가 했나요?{Enter}')
     await user.click(screen.getByRole('button', { name: /힌트 받기/ }))
@@ -150,11 +155,76 @@ describe('추리 결과와 진상 공개', () => {
           { name: '월세 체납', description: 'd1', found: true },
           { name: '증거가 남지 않음', description: 'd2', found: false },
         ],
+        score: 87,
+        bonusPoints: 10,
       },
     })
     render(<GamePage gameId="g1" onExit={() => {}} />)
     expect(await screen.findByText('청소부')).toBeTruthy()
     expect(screen.getByText('보너스 1/2')).toBeTruthy()
     expect(screen.getByText('맞힘')).toBeTruthy()
+  })
+})
+
+describe('사용 횟수와 점수', () => {
+  it('사용 막대와 힌트 자리를 보여 준다', async () => {
+    await openGame({ used: 13, nextHintAt: 20, hints: ['h1'] })
+    expect(screen.getByText('사용 13 / 40')).toBeTruthy()
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('13')
+    expect(screen.getByRole('button', { name: '힌트 받기 (사용 20으로)' })).toBeTruthy()
+  })
+
+  it('힌트가 다 열리면 힌트 받기 버튼을 숨긴다', async () => {
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: ['a', 'b', 'c'] })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    await screen.findByText('사용 30 / 40')
+    expect(screen.queryByRole('button', { name: /힌트 받기/ })).toBeNull()
+  })
+
+  it('마지막 기회에는 질문 탭을 막고 안내를 보여 준다', async () => {
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    expect(await screen.findByText('질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.')).toBeTruthy()
+    expect((screen.getByRole('tab', { name: '질문하기' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('이 추리는 횟수를 쓰지 않습니다.')).toBeTruthy()
+  })
+
+  it('질문 응답으로 받은 게임 상태로 화면을 바꾼다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 9 })
+    vi.mocked(api.ask).mockResolvedValue({
+      ...game,
+      used: 10,
+      hints: ['첫 힌트'],
+      nextHintAt: 20,
+      questions: [{ no: 1, seq: 1, text: 'q', answer: 'YES' }],
+    })
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
+    expect(await screen.findByText('첫 힌트')).toBeTruthy()
+    expect(screen.getByText('사용 10 / 40')).toBeTruthy()
+  })
+
+  it('진상 공개에서 점수와 계산을 보여 준다', async () => {
+    vi.mocked(api.game).mockResolvedValue({
+      ...game,
+      status: 'SOLVED',
+      used: 23,
+      reveal: { truth: 't', keywords: [], bonuses: [], score: 87, bonusPoints: 10 },
+    })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    expect(await screen.findByText('87점')).toBeTruthy()
+    expect(screen.getByText('100 − 사용 23 + 보너스 10 = 87')).toBeTruthy()
+  })
+
+  it('실패하면 실패 도장과 0점', async () => {
+    vi.mocked(api.game).mockResolvedValue({
+      ...game,
+      status: 'FAILED',
+      used: 40,
+      reveal: { truth: 't', keywords: [], bonuses: [], score: 0, bonusPoints: 0 },
+    })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    expect(await screen.findByText('0점')).toBeTruthy()
+    expect(screen.getByText('실패')).toBeTruthy()
   })
 })

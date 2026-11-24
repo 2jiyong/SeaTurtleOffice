@@ -61,8 +61,10 @@ public class GameController {
 	}
 
 	@PostMapping("/games/{id}/questions")
-	public Game.QuestionRecord ask(@PathVariable String id, @Valid @RequestBody QuestionRequest request) {
-		return games.ask(id, request.text().strip());
+	public GameView ask(@PathVariable String id, @Valid @RequestBody QuestionRequest request) {
+		// 질문 하나로 힌트가 열리거나 마지막 기회가 될 수 있어서 게임 전체를 돌려준다.
+		games.ask(id, request.text().strip());
+		return GameView.of(games.get(id));
 	}
 
 	@PostMapping("/games/{id}/guesses")

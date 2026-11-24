@@ -11,6 +11,14 @@ import com.seaturtle.office.content.Scenario;
 /** 한 판의 진행 상태. 메모리에만 있다. */
 public class Game {
 
+	/** 한 판에 쓸 수 있는 사용 횟수. 질문 1, 추리 5. */
+	public static final int LIMIT = 40;
+	public static final int GUESS_COST = 5;
+	/** 사용 10, 20, 30에서 힌트가 하나씩 열린다. */
+	public static final int HINT_STEP = 10;
+	/** 힌트는 한도 전까지만(10, 20, 30). 40에는 힌트가 없다. */
+	public static final int MAX_HINTS = (LIMIT - 1) / HINT_STEP;
+
 	public record QuestionRecord(int no, int seq, String text, Answer answer) {
 	}
 
@@ -25,7 +33,8 @@ public class Game {
 	/** 여러 추리에 걸쳐 맞힌 보너스 번호(1부터) */
 	private final Set<Integer> bonusFound = new TreeSet<>();
 	private GameStatus status = GameStatus.PLAYING;
-	private int hintsUsed;
+	/** 사용 횟수. 열린 힌트 수와 점수는 모두 이 값에서 계산한다. */
+	private int used;
 	/** 질문과 답안을 한 줄로 늘어놓기 위한 순번 */
 	private int seq;
 	private volatile Instant lastActive = Instant.now();
@@ -55,8 +64,58 @@ public class Game {
 		return status;
 	}
 
-	public synchronized int hintsUsed() {
-		return hintsUsed;
+	public synchronized int used() {
+		return used;
+	}
+
+	/** 힌트가 열리는 사용 횟수 목록. 힌트가 2개면 [10, 20]. */
+	public static List<Integer> hintStepsFor(int hintCount) {
+		List<Integer> steps = new ArrayList<>();
+		for (int i = 1; i <= Math.min(hintCount, MAX_HINTS); i++) {
+			steps.add(i * HINT_STEP);
+		}
+		return List.copyOf(steps);
+	}
+
+	public List<Integer> hintSteps() {
+		return hintStepsFor(scenario.hints().size());
+	}
+
+	/** 이 게임에서 쓸 수 있는 힌트 수(시나리오 힌트 수, 최대 MAX_HINTS) */
+	private int hintCount() {
+		return Math.min(scenario.hints().size(), MAX_HINTS);
+	}
+
+	public synchronized int hintsOpen() {
+		return Math.min(hintCount(), used / HINT_STEP);
+	}
+
+	/** 힌트 받기를 누르면 올라갈 사용 횟수. 남은 힌트가 없으면 null. */
+	public synchronized Integer nextHintAt() {
+		int open = hintsOpen();
+		return open < hintCount() ? (open + 1) * HINT_STEP : null;
+	}
+
+	/** 사용 횟수를 다 써서 마지막 추리 한 번만 남은 상태. */
+	public synchronized boolean finalChance() {
+		return status == GameStatus.PLAYING && used >= LIMIT;
+	}
+
+	/** 해결하면 100 − 사용 + 맞힌 보너스 × 10. 실패·포기·진행 중은 0. */
+	public synchronized int score() {
+		return status == GameStatus.SOLVED ? 100 - used + bonusPoints() : 0;
+	}
+
+	public synchronized int bonusPoints() {
+		return status == GameStatus.SOLVED ? 10 * bonusFound.size() : 0;
+	}
+
+	/** 질문할 수 있는지 판정 전에 확인한다(한도를 넘으면 판정 비용을 쓰지 않는다). */
+	public synchronized void requireQuestionAllowed() {
+		requirePlaying();
+		if (used >= LIMIT) {
+			throw new IllegalStateException("질문을 모두 썼습니다. 마지막 추리만 남았습니다.");
+		}
 	}
 
 	public synchronized List<QuestionRecord> questions() {
@@ -74,7 +133,8 @@ public class Game {
 	}
 
 	public synchronized QuestionRecord addQuestion(String text, Answer answer) {
-		requirePlaying();
+		requireQuestionAllowed();
+		used++;
 		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer);
 		questions.add(record);
 		return record;
@@ -82,6 +142,7 @@ public class Game {
 
 	public synchronized GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
 		requirePlaying();
+		boolean last = used >= LIMIT;
 		var keywords = scenario.keywords();
 		int total = keywords.size();
 		Set<Integer> hit = new TreeSet<>();
@@ -96,18 +157,25 @@ public class Game {
 		boolean correct = total > 0 && hit.size() == total;
 		var record = new GuessRecord(++seq, text, hit.size(), total, correct, List.copyOf(missing));
 		guesses.add(record);
+		if (!last) {
+			used = Math.min(LIMIT, used + GUESS_COST);
+		}
 		if (correct) {
 			status = GameStatus.SOLVED;
+		} else if (last) {
+			// 마지막 추리까지 틀렸다.
+			status = GameStatus.FAILED;
 		}
 		return record;
 	}
 
 	public synchronized void useHint() {
 		requirePlaying();
-		if (hintsUsed >= scenario.hints().size()) {
+		Integer next = nextHintAt();
+		if (next == null) {
 			throw new IllegalStateException("남은 힌트가 없습니다");
 		}
-		hintsUsed++;
+		used = next;
 	}
 
 	public synchronized void giveUp() {

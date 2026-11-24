@@ -380,7 +380,8 @@ h3 {
 /* 게임: 책상 위 두 장 */
 .game {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
+  /* 사건 기록(클립보드) : 수신 기록(무전기) = 50 : 50 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
@@ -1275,6 +1276,187 @@ h3 {
     justify-self: start;
     white-space: normal;
   }
+}
+
+/* ── 클립보드: 사건 기록 서류를 끼운 판 ── */
+.clipboard {
+  position: sticky;
+  top: 20px;
+  padding: 30px 14px 14px;
+  background: linear-gradient(160deg, #75603f, #5c4a31);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.clipboard-clamp {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 132px;
+  height: 28px;
+  translate: -50% 0;
+  background: linear-gradient(#d2d6da, #8b9096);
+  border-radius: 6px;
+  box-shadow: 0 3px 6px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+
+.clipboard-clamp::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 30px;
+  height: 8px;
+  translate: -50% 0;
+  border-radius: 4px;
+  background: #6f757b;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+/* 클립보드 안의 서류는 판이 붙어 다니므로 따로 붙지 않는다 */
+.clipboard .case {
+  position: static;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.clipboard .case h1 {
+  font-size: 1.9rem;
+}
+
+.clipboard .problem {
+  font-size: 1.05rem;
+}
+
+/* ── 무전기 몸체: 수신 기록 화면 + 조작판 ── */
+.radio-unit {
+  padding: 10px;
+  background: linear-gradient(#2d3337, #1f2427);
+  border: 1px solid #3a4246;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.radio-unit .transcript.radio {
+  border-radius: 4px;
+}
+
+/* 좁아진 수신 기록에서는 답을 질문 아래로 내린다(겹치지 않게). 안쪽 모양은 그대로. */
+.transcript.radio {
+  container-type: inline-size;
+}
+
+@media (max-width: 760px) {
+  .clipboard {
+    position: static;
+  }
+}
+
+@container (max-width: 460px) {
+  .transcript.radio .entry {
+    grid-template-columns: 40px 1fr;
+    grid-template-areas:
+      'no text'
+      '. stamp'
+      '. note';
+    row-gap: 4px;
+  }
+}
+
+/* 조작판 */
+.radio-unit .composer {
+  position: static;
+  margin-top: 0;
+  padding: 12px 4px 2px;
+  background: none;
+}
+
+.radio-unit .final-chance {
+  margin-bottom: 10px;
+}
+
+.radio-unit .composer-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.radio-unit .tabs {
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.radio-unit .tabs button {
+  min-width: 58px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  background: #3a4246;
+  color: #c9cec6;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #15191b;
+}
+
+.radio-unit .tabs button.on {
+  background: var(--hazard);
+  color: var(--hazard-ink);
+  box-shadow: 0 3px 0 #7d6118;
+}
+
+.radio-unit .tabs button:disabled {
+  opacity: 0.35;
+}
+
+.radio-unit .input-row {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 녹색 액정 입력칸 */
+.radio-unit .input-row textarea {
+  color: #9fe0b4;
+  background: #0f1a14;
+  border: 1px solid #2c3d33;
+  box-shadow: inset 0 0 14px rgb(0 0 0 / 0.8);
+  font-family: var(--sans);
+  caret-color: #9fe0b4;
+}
+
+.radio-unit .input-row textarea::placeholder {
+  color: #4f7a5d;
+}
+
+.radio-unit .input-row textarea:focus {
+  outline: 2px solid #5fd38a;
+  outline-offset: -1px;
+}
+
+/* 송신 버튼 */
+.send-btn {
+  flex: none;
+  min-width: 84px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #b3261e;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #5e130e, 0 8px 14px -6px rgb(0 0 0 / 0.8);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #5e130e;
+}
+
+.send-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.radio-unit .counter {
+  padding-left: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

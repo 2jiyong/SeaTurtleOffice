@@ -35,7 +35,7 @@ const never = () => new Promise<never>(() => {})
 async function openGame(overrides: Partial<GameView> = {}) {
   vi.mocked(api.game).mockResolvedValue({ ...game, ...overrides })
   render(<GamePage gameId="g1" onExit={() => {}} />)
-  await screen.findByRole('button', { name: /힌트 받기/ })
+  await screen.findByRole('button', { name: /힌트 요청/ })
 }
 
 beforeEach(() => {
@@ -52,7 +52,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    const hint = screen.getByRole('button', { name: /힌트 받기/ })
+    const hint = screen.getByRole('button', { name: /힌트 요청/ })
     await user.click(hint)
     await user.click(hint)
 
@@ -64,7 +64,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    await user.click(screen.getByRole('button', { name: /힌트 받기/ }))
+    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
     await user.click(screen.getByRole('button', { name: /포기하고 진상 보기/ }))
 
     expect(api.giveUp).not.toHaveBeenCalled()
@@ -75,7 +75,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    await user.click(screen.getByRole('button', { name: /힌트 받기/ }))
+    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
     await user.type(screen.getByRole('textbox', { name: '질문' }), '건물주가 했나요?{Enter}')
 
     expect(api.ask).not.toHaveBeenCalled()
@@ -87,7 +87,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     vi.mocked(api.ask).mockImplementation(never as () => Promise<GameView>)
 
     await user.type(screen.getByRole('textbox', { name: '질문' }), '건물주가 했나요?{Enter}')
-    await user.click(screen.getByRole('button', { name: /힌트 받기/ }))
+    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
 
     expect(api.ask).toHaveBeenCalledTimes(1)
     expect(api.hint).not.toHaveBeenCalled()
@@ -172,14 +172,14 @@ describe('사용 횟수와 점수', () => {
     await openGame({ used: 13, nextHintAt: 20, hints: [{ no: 1, seq: 101, text: 'h1', image: null }] })
     expect(screen.getByText('사용 13 / 40')).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('13')
-    expect(screen.getByRole('button', { name: '힌트 받기 (사용 20으로)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '힌트 요청 (사용 20으로)' })).toBeTruthy()
   })
 
   it('힌트가 다 열리면 힌트 받기 버튼을 숨긴다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: [{ no: 1, seq: 101, text: 'a', image: null }, { no: 2, seq: 102, text: 'b', image: null }, { no: 3, seq: 103, text: 'c', image: null }] })
     render(<GamePage gameId="g1" onExit={() => {}} />)
     await screen.findByText('사용 30 / 40')
-    expect(screen.queryByRole('button', { name: /힌트 받기/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /힌트 요청/ })).toBeNull()
   })
 
   it('마지막 기회에는 질문 탭을 막고 안내를 보여 준다', async () => {
@@ -297,5 +297,23 @@ describe('주시자 무전 수신 기록', () => {
   it('사건 서류에 대표 이미지가 있으면 보여 준다', async () => {
     await openGame({ scenario: { ...game.scenario, cover: '/api/scenarios/s/images/cover' } })
     expect(screen.getByRole('img', { name: '사건 표지' }).getAttribute('src')).toBe('/api/scenarios/s/images/cover')
+  })
+})
+
+describe('무전기 조작판', () => {
+  it('송신 버튼은 기다리는 동안 수신 대기로 바뀌고 눌리지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.ask).mockImplementation(never as () => Promise<GameView>)
+    expect(screen.getByRole('button', { name: '송신 ▶' })).toBeTruthy()
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
+    const waiting = screen.getByRole('button', { name: '수신 대기' }) as HTMLButtonElement
+    expect(waiting.disabled).toBe(true)
+  })
+
+  it('조작판 버튼 글자는 질문·추리, 탭 이름은 그대로', async () => {
+    await openGame()
+    expect(screen.getByRole('tab', { name: '질문하기' }).textContent).toBe('질문')
+    expect(screen.getByRole('tab', { name: '추리 제출' }).textContent).toBe('추리')
   })
 })

@@ -113,7 +113,9 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
   return (
     <section className="game">
-      <aside className="case">
+      <aside className="clipboard">
+        <span className="clipboard-clamp" aria-hidden />
+        <div className="case">
         <div className="case-head">
           <span className="case-label">사건 기록</span>
           <Risk difficulty={game.scenario.difficulty} />
@@ -133,7 +135,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           <div className="case-actions">
             {game.nextHintAt !== null && (
               <button className="btn btn-paper" disabled={busy} onClick={() => act(() => api.hint(game.id))}>
-                힌트 받기 (사용 {game.nextHintAt}으로)
+                힌트 요청 (사용 {game.nextHintAt}으로)
               </button>
             )}
             <button className="btn btn-quiet" disabled={busy} onClick={giveUp}>
@@ -141,9 +143,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
             </button>
           </div>
         )}
+        </div>
       </aside>
 
       <div className="board">
+        <div className="radio-unit">
         <div className="transcript radio">
           <div className="radio-roll" aria-hidden />
           <div className="transcript-head">
@@ -218,24 +222,31 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           </ol>
         </div>
 
-        {error && <p className="error">{error}</p>}
-
-        {playing ? (
+        {playing && (
           <form className="composer" onSubmit={submit}>
             {game.finalChance && <p className="final-chance">질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.</p>}
+            <div className="composer-row">
             <div className="tabs" role="tablist" aria-label="입력 종류">
               <button
                 type="button"
                 role="tab"
+                aria-label="질문하기"
                 aria-selected={inputMode === 'question'}
                 className={inputMode === 'question' ? 'on' : ''}
                 disabled={game.finalChance}
                 onClick={() => setMode('question')}
               >
-                질문하기
+                질문
               </button>
-              <button type="button" role="tab" aria-selected={inputMode === 'guess'} className={inputMode === 'guess' ? 'on' : ''} onClick={() => setMode('guess')}>
-                추리 제출
+              <button
+                type="button"
+                role="tab"
+                aria-label="추리 제출"
+                aria-selected={inputMode === 'guess'}
+                className={inputMode === 'guess' ? 'on' : ''}
+                onClick={() => setMode('guess')}
+              >
+                추리
               </button>
             </div>
             <div className="input-row">
@@ -253,9 +264,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                   }
                 }}
               />
-              <button className="btn btn-primary" disabled={!text.trim() || busy}>
-                {inputMode === 'question' ? '질문하기' : '제출하기'}
+              <button className="send-btn" disabled={!text.trim() || busy}>
+                {pending ? '수신 대기' : '송신 ▶'}
               </button>
+            </div>
             </div>
             <span className="counter">
               {text.length}/{LIMIT[inputMode]}자. Enter로 보내고 Shift+Enter로 줄을 바꿉니다.
@@ -264,7 +276,12 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               )}
             </span>
           </form>
-        ) : (
+        )}
+        </div>
+
+        {error && <p className="error">{error}</p>}
+
+        {!playing &&
           game.reveal && (
             <article className={`reveal ${game.status === 'SOLVED' ? 'solved' : 'closed'}`}>
               <span className="verdict" aria-hidden>
@@ -313,8 +330,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                 다른 사건 고르기
               </button>
             </article>
-          )
-        )}
+          )}
       </div>
     </section>
   )

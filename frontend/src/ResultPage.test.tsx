@@ -24,7 +24,10 @@ const solved: GameView = {
   nextHintAt: null,
   reveal: {
     truth: '진상 문장',
-    keywords: [{ name: '청소부', description: '청소부가 쓸어 갔다.' }],
+    keywords: [
+      { name: '청소부', description: '청소부가 쓸어 갔다.', found: true },
+      { name: '월세', description: '월세를 못 냈다.', found: false },
+    ],
     bonuses: [
       { name: '월세 체납', description: 'd1', found: true },
       { name: '증거가 남지 않음', description: 'd2', found: false },
@@ -103,6 +106,17 @@ describe('결과 페이지 탭', () => {
     expect(conditions.textContent).toContain('청소부')
     expect(conditions.textContent).toContain('놓침')
     expect(story.textContent).toContain('진상 문장')
+  })
+
+  it('추리로 맞힌 핵심과 보너스는 맞힘으로 표시한다', async () => {
+    await openResult({ status: 'GAVE_UP', reveal: { ...solved.reveal!, score: 0 } })
+    const conditions = await screen.findByRole('region', { name: '정답 조건' })
+    const cards = conditions.querySelectorAll('.key-card')
+    expect(cards[0].className).toContain('found')
+    expect(cards[0].textContent).toContain('밝힘')
+    expect(cards[1].className).not.toContain('found')
+    expect(cards[1].textContent).toContain('놓침')
+    expect(conditions.textContent).toContain('밝힌 핵심 1/2')
   })
 
   it('기록 탭은 사건 기록과 수신 기록을 함께, 읽기 전용으로', async () => {

@@ -37,7 +37,8 @@ public final class GameDtos {
 	public record HintView(int no, int seq, String text, String image) {
 	}
 
-	public record KeywordView(String name, String description) {
+	/** found: 이번 게임에서 낸 추리 중 하나라도 이 핵심을 맞혔는가 */
+	public record KeywordView(String name, String description, boolean found) {
 	}
 
 	public record BonusView(String name, String description, boolean found) {
@@ -46,6 +47,15 @@ public final class GameDtos {
 	/** score: 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0. */
 	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses, int score,
 			int bonusPoints) {
+
+		private static List<KeywordView> keywords(com.seaturtle.office.content.Scenario s, java.util.Set<Integer> found) {
+			List<KeywordView> result = new java.util.ArrayList<>();
+			for (int i = 0; i < s.keywords().size(); i++) {
+				var k = s.keywords().get(i);
+				result.add(new KeywordView(k.name(), k.description(), found.contains(i + 1)));
+			}
+			return result;
+		}
 
 		static Reveal of(Game game) {
 			Scenario s = game.scenario();
@@ -56,7 +66,7 @@ public final class GameDtos {
 				bonuses.add(new BonusView(b.name(), b.description(), found.contains(i + 1)));
 			}
 			return new Reveal(s.truth(),
-					s.keywords().stream().map(k -> new KeywordView(k.name(), k.description())).toList(),
+					keywords(s, game.keywordFound()),
 					List.copyOf(bonuses), game.score(), game.bonusPoints());
 		}
 	}

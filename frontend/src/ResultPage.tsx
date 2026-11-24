@@ -123,12 +123,15 @@ export default function ResultPage({
             <section className="conditions" aria-labelledby="conditions-title">
               <div className="conditions-head">
                 <h2 id="conditions-title">정답 조건</h2>
-                <span>핵심 {reveal.keywords.length}개를 모두 밝혀야 해결</span>
+                <span>
+                  밝힌 핵심 {reveal.keywords.filter((k) => k.found).length}/{reveal.keywords.length}
+                </span>
               </div>
               <ol className="key-cards">
                 {reveal.keywords.map((k, i) => (
-                  <li key={i} className="key-card">
+                  <li key={i} className={`key-card ${k.found ? 'found' : 'missed'}`}>
                     <span className="key-no">핵심 {String(i + 1).padStart(2, '0')}</span>
+                    <span className="key-mark">{k.found ? '밝힘' : '놓침'}</span>
                     <strong className="key-name">{k.name}</strong>
                     <p className="key-desc">{k.description}</p>
                   </li>

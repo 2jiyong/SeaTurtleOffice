@@ -157,6 +157,17 @@ class GameFlowTests {
 	}
 
 	@Test
+	void revealMarksKeywordsFoundAcrossGuesses() throws Exception {
+		var game = games.start("boys-order");
+		// 오답 추리는 핵심 1·3을 맞힌다. 포기하면 진상 공개에서 맞힌 핵심이 표시된다.
+		mvc.perform(post("/api/games/" + game.id() + "/guesses").contentType(APPLICATION_JSON).content("{\"text\":\"모르겠어요\"}"));
+		mvc.perform(post("/api/games/" + game.id() + "/give-up"))
+				.andExpect(jsonPath("$.reveal.keywords[0].found").value(true))
+				.andExpect(jsonPath("$.reveal.keywords[1].found").value(false))
+				.andExpect(jsonPath("$.reveal.keywords[2].found").value(true));
+	}
+
+	@Test
 	void bonusHiddenUntilEndThenMerged() throws Exception {
 		var game = games.start("boys-order");
 		String guessUrl = "/api/games/" + game.id() + "/guesses";

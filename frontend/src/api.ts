@@ -52,7 +52,8 @@ export interface GuessRecord {
 
 export interface Reveal {
   truth: string
-  keywords: { name: string; description: string }[]
+  /** found: 이번 게임에서 낸 추리 중 하나라도 이 핵심을 맞혔는가 */
+  keywords: { name: string; description: string; found: boolean }[]
   /** found: 이번 게임에서 낸 추리 중 하나라도 이 보너스를 맞혔는가 */
   bonuses: { name: string; description: string; found: boolean }[]
   /** 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0 */

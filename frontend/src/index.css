@@ -2760,3 +2760,40 @@ h3 {
 .truth-panel .reveal-meta {
   margin-top: 16px;
 }
+
+/* 추리로 밝힌 핵심과 맞힌 보너스는 초록(그렇단다와 같은 색) */
+.key-mark {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  padding: 1px 7px;
+  font: 700 0.66rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  rotate: -4deg;
+  color: #7d8682;
+}
+
+.key-card.found {
+  --verdict: #8fd6a6;
+  --verdict-glow: rgb(143 214 166 / 0.45);
+}
+
+.key-card.found .key-mark {
+  color: #8fd6a6;
+}
+
+.key-card.missed .key-mark {
+  color: var(--verdict);
+  opacity: 0.8;
+}
+
+.bonus-card.found {
+  border-color: rgb(143 214 166 / 0.55);
+  box-shadow: 0 0 14px -8px rgb(143 214 166 / 0.7);
+}
+
+.bonus-card.found strong,
+.bonus-card.found .bonus-mark {
+  color: #8fd6a6;
+}

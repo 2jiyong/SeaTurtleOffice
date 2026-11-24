@@ -378,9 +378,13 @@ function UsageBar({
   const playing = game.status === 'PLAYING'
   return (
     <div className="usage">
-      <span className="usage-label">
-        사용 {game.used} / {game.limit}
-      </span>
+      <div className="usage-top">
+        <span className="usage-label">
+          사용 {game.used} / {game.limit}
+        </span>
+        {/* 막대 오른쪽 끝(40) 위: 사용을 다 쓰면 최종 추리 한 번 */}
+        <span className={`usage-final ${game.finalChance ? 'on' : ''}`}>최종 추리</span>
+      </div>
       <div
         className="usage-bar"
         role="progressbar"
@@ -390,6 +394,11 @@ function UsageBar({
         aria-valuenow={game.used}
       >
         <div className="usage-fill" style={{ width: pct(game.used) }} />
+        {/* 막대 위의 자리 선: 계시(10·20·30)와 최종 추리(40) */}
+        {game.hintSteps.map((step) => (
+          <span key={step} className={`usage-mark ${game.used >= step ? 'open' : ''}`} style={{ left: pct(step) }} aria-hidden />
+        ))}
+        <span className={`usage-mark final ${game.finalChance ? 'open' : ''}`} style={{ left: pct(game.limit) }} aria-hidden />
       </div>
       {/* 힌트 눈금: 열린 계시는 계시창, 다음 계시는 요청, 그 뒤는 잠김 */}
       <div className="usage-steps">

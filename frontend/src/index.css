@@ -1525,6 +1525,62 @@ h3 {
   margin-bottom: 0;
 }
 
+.transcript.radio .usage-bar {
+  position: relative;
+  overflow: visible;
+}
+
+/* 막대 위의 자리 선(점선): 계시 10·20·30, 최종 추리 40 */
+.usage-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 0;
+  translate: -1px 0;
+  border-left: 2px dotted rgb(214 169 53 / 0.55);
+}
+
+.usage-mark.open {
+  border-left-style: solid;
+  border-left-color: var(--hazard);
+  box-shadow: 0 0 6px rgb(214 169 53 / 0.6);
+}
+
+.usage-mark.final {
+  translate: -2px 0;
+  border-left-color: rgb(240 138 126 / 0.6);
+}
+
+.usage-mark.final.open {
+  border-left-color: #f08a7e;
+  box-shadow: 0 0 8px rgb(240 138 126 / 0.8);
+}
+
+/* 막대 위 한 줄: 왼쪽 사용 횟수, 오른쪽 끝(40 자리) 최종 추리 */
+.usage-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-final {
+  padding: 2px 8px;
+  border: 1px dotted rgb(240 138 126 / 0.6);
+  border-radius: 2px;
+  color: #a86a63;
+  font: 700 0.7rem/1.5 var(--sans);
+  white-space: nowrap;
+}
+
+.usage-final.on {
+  border-style: solid;
+  border-color: #f08a7e;
+  background: rgb(240 138 126 / 0.15);
+  color: #f08a7e;
+  text-shadow: 0 0 6px rgb(240 138 126 / 0.6);
+}
+
 .usage-steps {
   position: relative;
   height: 26px;

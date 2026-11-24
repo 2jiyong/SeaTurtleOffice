@@ -400,3 +400,19 @@ describe('송신 단말 크기', () => {
     expect(document.querySelectorAll('.cost-note').length).toBe(notesQ)
   })
 })
+
+describe('사용 막대 표시', () => {
+  it('막대 위에 계시 자리(10·20·30)와 최종 추리 자리(40) 선을 그린다', async () => {
+    await openGame({ used: 13, hints: [{ no: 1, seq: 1, text: 'a', image: null }], nextHintAt: 20 })
+    const marks = document.querySelectorAll('.usage-bar .usage-mark')
+    expect(marks).toHaveLength(4)
+    expect(document.querySelectorAll('.usage-bar .usage-mark.final')).toHaveLength(1)
+    expect(screen.getByText('최종 추리')).toBeTruthy()
+  })
+
+  it('마지막 기회가 오면 최종 추리 표시가 켜진다', async () => {
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    expect((await screen.findByText('최종 추리')).className).toContain('on')
+  })
+})

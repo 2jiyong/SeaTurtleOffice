@@ -811,11 +811,6 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* 빠졌을 때 문장은 한 줄에 하나 */
-.missing-line {
-  display: block;
-}
-
 /* 진상 보고서 */
 .reveal {
   position: relative;
@@ -944,7 +939,7 @@ h3 {
   }
 }
 
-/* ── 수신 기록(주시자 무전) ──
+/* ── 수신 기록(응시자 무전) ──
    어두운 화면, 아주 옅은 주사선, 위에서 아래로 천천히 흐르는 밝은 띠.
    계속 깔리는 노이즈와 화면 흔들림은 눈이 아파서 쓰지 않는다. */
 .transcript.radio {
@@ -1071,7 +1066,7 @@ h3 {
   color: var(--radio-muted);
 }
 
-/* 주시자의 답: 은은하게 빛나는 글자. 예전 도장(.s-* 테두리·기울기)이 남지 않게 지운다. */
+/* 응시자의 답: 은은하게 빛나는 글자. 예전 도장(.s-* 테두리·기울기)이 남지 않게 지운다. */
 .transcript.radio .ans {
   border: 0;
   padding: 0;
@@ -1802,7 +1797,7 @@ h3 {
   box-shadow: inset 0 0 0 1px #7d8682, 0 0 10px rgb(230 233 224 / 0.12);
 }
 
-/* 송신 버튼: 주시자 눈동자의 빨강을 차분하게 */
+/* 송신 버튼: 응시자 눈동자의 빨강을 차분하게 */
 .send-btn {
   font-family: 'Black Han Sans', var(--sans);
   font-weight: 400;
@@ -1939,6 +1934,52 @@ h3 {
   letter-spacing: 0.1em;
   color: #c9cec6;
   border-color: #4a4f52;
+}
+
+/* ── 메인 화면: 사무소 공지와 응시자의 한마디 ── */
+.office-notice {
+  max-width: 880px;
+  margin-bottom: 26px;
+  padding: 12px 16px 14px 18px;
+  background: rgb(18 21 23 / 0.7);
+  border-left: 3px solid #b3261e;
+}
+
+.office-notice-head {
+  display: block;
+  margin-bottom: 6px;
+  font: 0.72rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.office-notice p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.85;
+  color: var(--room-muted);
+}
+
+.office-notice b {
+  color: var(--room-text);
+}
+
+.watcher-line {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 22px;
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(1.4rem, 3.4vw, 2rem);
+  letter-spacing: -0.01em;
+  color: #e6e9e0;
+  text-shadow: 0 0 14px rgb(230 233 224 / 0.25);
+}
+
+.watcher-line .watcher-eye {
+  color: #e6e9e0;
+  filter: drop-shadow(0 0 6px rgb(179 38 30 / 0.6));
 }
 
 /* ── 메인 화면: 사건 기록 보관소 단말 ── */
@@ -2156,4 +2197,603 @@ h3 {
 
 .bonuses li:not(.found) {
   color: var(--ink-muted);
+}
+
+/* ── 결과 페이지: 교신이 끝나고 봉인된 사건 기록 ── */
+.result {
+  --verdict: #b3261e;
+  --verdict-glow: rgb(179 38 30 / 0.45);
+}
+
+.result:has(.result-head.solved) {
+  --verdict: var(--hazard);
+  --verdict-glow: rgb(214 169 53 / 0.4);
+}
+
+.result-head {
+  position: relative;
+  padding: 16px 18px 12px;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-left: 3px solid var(--verdict);
+  border-radius: 4px;
+  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.7), 0 0 24px -8px var(--verdict-glow);
+  overflow: hidden;
+}
+
+.result-head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.result-label {
+  display: block;
+  font: 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.result-verdict {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 8px;
+}
+
+.result-verdict h1 {
+  margin: 0;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: clamp(1.9rem, 6vw, 2.6rem);
+  letter-spacing: 0.08em;
+  color: var(--verdict);
+  text-shadow: 0 0 14px var(--verdict-glow);
+}
+
+.result-score {
+  margin: 0;
+  font: 700 1.5rem 'Nanum Gothic Coding', monospace;
+  color: #e6e9e0;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-sub {
+  margin: 4px 0 14px;
+  font: 0.85rem 'Nanum Gothic Coding', monospace;
+  color: #a3aba6;
+}
+
+.result-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid #232a2d;
+}
+
+.result-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.result-tabs button {
+  padding: 7px 18px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  color: #6f777a;
+  background: #0d0f10;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #2c3337;
+  cursor: pointer;
+}
+
+.result-tabs button.on {
+  color: #e6e9e0;
+  background: #1b2023;
+  text-shadow: 0 0 8px rgb(230 233 224 / 0.55);
+  box-shadow: inset 0 0 0 1px #7d8682, inset 3px 0 0 var(--verdict);
+}
+
+.result-tabs button:focus-visible,
+.result-exit:focus-visible {
+  outline: 2px solid #7d8682;
+  outline-offset: 2px;
+}
+
+.result #result-panel > .game {
+  margin-top: 18px;
+}
+
+/* ── 신호 단절(3.2초): 잡음(0~0.6초) → 가로선으로 접히며 꺼짐(~1.0초) → "교신 종료"(1.05초~) → 결과 한 줄(1.7초~) ── */
+.signal-cut {
+  --cut: #e2463c;
+  --cut-glow: rgb(226 70 60 / 0.6);
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: all;
+  overflow: hidden;
+}
+
+.signal-cut.solved {
+  --cut: var(--hazard);
+  --cut-glow: rgb(214 169 53 / 0.6);
+}
+
+/* 잡음: 굵어지는 주사선과 색 번짐, 흔들림 */
+.signal-cut-noise {
+  position: absolute;
+  inset: -20px;
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.12) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(90deg, rgb(255 0 60 / 0.06) 0 3px, rgb(0 200 255 / 0.05) 3px 7px, transparent 7px 11px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: cut-noise 1000ms steps(10) forwards;
+}
+
+@keyframes cut-noise {
+  0% { opacity: 0; transform: translate(0, 0); }
+  15% { opacity: 0.5; transform: translate(-6px, 2px); }
+  30% { opacity: 0.3; transform: translate(5px, -3px); }
+  45% { opacity: 0.8; transform: translate(-3px, 4px) skewX(4deg); }
+  60% { opacity: 1; transform: translate(4px, 0) skewX(-6deg); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+/* 꺼지는 화면: 위아래 검은 막이 가운데로 닫히고, 가운데 가로선이 빛나다 사라진다 */
+.signal-cut-shutter {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(#050606, #050606) top / 100% 0 no-repeat,
+    linear-gradient(#050606, #050606) bottom / 100% 0 no-repeat;
+  animation: cut-shutter 400ms cubic-bezier(0.7, 0, 0.3, 1) 600ms forwards;
+}
+
+.signal-cut-shutter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--cut);
+  box-shadow: 0 0 18px 2px var(--cut-glow);
+  opacity: 0;
+  animation: cut-line 500ms ease-out 950ms forwards;
+}
+
+@keyframes cut-shutter {
+  to { background-size: 100% 50.5%, 100% 50.5%; }
+}
+
+@keyframes cut-line {
+  0% { transform: scaleX(1); opacity: 1; }
+  60% { transform: scaleX(0.02); opacity: 1; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+
+.signal-cut-msg {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.signal-cut-text {
+  margin: 0;
+  font-family: 'Black Han Sans', var(--sans);
+  font-size: clamp(1.8rem, 7vw, 3rem);
+  letter-spacing: 0.3em;
+  color: var(--cut);
+  text-shadow: 0 0 16px var(--cut-glow);
+  opacity: 0;
+  animation: cut-text 300ms steps(1) 1050ms forwards;
+}
+
+@keyframes cut-text {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  55% { opacity: 0.2; }
+  80%, 100% { opacity: 1; }
+}
+
+/* 결과 한 줄: 무슨 일이 있었고 사건이 어떻게 되었는지 */
+.signal-cut-sub {
+  margin: 0;
+  font: 0.95rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.14em;
+  color: #a3aba6;
+  opacity: 0;
+  animation: cut-sub 500ms ease-out 1700ms forwards;
+}
+
+.signal-cut-sub b {
+  color: var(--cut);
+  text-shadow: 0 0 10px var(--cut-glow);
+}
+
+@keyframes cut-sub {
+  from { opacity: 0; transform: translateY(6px); letter-spacing: 0.4em; }
+  to { opacity: 1; transform: none; letter-spacing: 0.14em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-cut-noise,
+  .signal-cut-shutter,
+  .signal-cut-shutter::after,
+  .signal-cut-text,
+  .signal-cut-sub {
+    animation: none;
+  }
+}
+
+/* 끝난 게임의 수신 기록: 신호가 끊겨 점이 꺼져 있다 */
+.signal.off {
+  color: #6f777a;
+}
+
+.signal.off i {
+  background: #3a4245;
+  animation: none;
+}
+
+.result-exit {
+  font: 0.8rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.08em;
+  color: #a3aba6;
+  background: #0d0f10;
+  border: 1px solid #2c3337;
+}
+
+.result-exit:hover {
+  color: #e6e9e0;
+  border-color: #7d8682;
+}
+
+.result-verdict h1:focus {
+  outline: none;
+}
+
+/* ── 사무소 확인창(포기 등): 송신 단말과 같은 어두운 화면에 빨간 경고 ── */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(8 10 11 / 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.confirm {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 16px 18px 14px;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-left: 3px solid #b3261e;
+  box-shadow: 0 0 32px rgb(179 38 30 / 0.25), 0 20px 50px #000;
+  animation: revelation-in 0.2s ease-out;
+}
+
+.confirm::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.confirm-label {
+  display: block;
+  font: 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #e2463c;
+}
+
+.confirm h2 {
+  margin: 8px 0 6px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+  color: #e6e9e0;
+}
+
+.confirm p {
+  margin: 0 0 16px;
+  font: 0.9rem/1.7 'Nanum Gothic Coding', monospace;
+  color: #a3aba6;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.confirm-actions button {
+  position: relative;
+  z-index: 1;
+  padding: 8px 14px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.confirm-cancel {
+  color: #c9cec6;
+  background: #0d0f10;
+  box-shadow: inset 0 0 0 1px #4a4f52;
+}
+
+.confirm-ok {
+  color: #fff;
+  background: linear-gradient(#b3261e, #7f1913);
+  box-shadow: 0 0 12px rgb(179 38 30 / 0.4);
+}
+
+.confirm-actions button:focus-visible {
+  outline: 2px solid #e6e9e0;
+  outline-offset: 2px;
+}
+
+/* ── 결과 진상 탭: 정답 조건 카드(핵심·보너스) → 사건의 전말 ── */
+.conditions {
+  margin-top: 18px;
+}
+
+.conditions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2c3337;
+}
+
+.conditions-head h2,
+.conditions-head h3 {
+  margin: 0;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  color: #e6e9e0;
+}
+
+.conditions-head span {
+  font: 0.75rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.08em;
+  color: #7d8682;
+}
+
+.key-cards,
+.bonus-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 핵심 카드: 판정 기준이 찍힌 단말 카드 */
+.key-card {
+  position: relative;
+  padding: 10px 12px 10px;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-top: 2px solid var(--verdict);
+  border-radius: 3px;
+  box-shadow: inset 0 0 30px rgb(0 0 0 / 0.6), 0 0 18px -10px var(--verdict-glow);
+  overflow: hidden;
+  animation: card-in 0.4s ease-out both;
+}
+
+.key-card:nth-child(2) { animation-delay: 0.08s; }
+.key-card:nth-child(3) { animation-delay: 0.16s; }
+.key-card:nth-child(4) { animation-delay: 0.24s; }
+.key-card:nth-child(5) { animation-delay: 0.32s; }
+
+.key-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.02) 0 1px, transparent 1px 3px);
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.key-no {
+  display: block;
+  font: 700 0.64rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.16em;
+  color: #7d8682;
+}
+
+.key-name {
+  display: block;
+  margin: 3px 0 5px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--verdict);
+  text-shadow: 0 0 12px var(--verdict-glow);
+}
+
+.key-desc {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: #c9cec6;
+}
+
+/* 보너스 카드: 맞힘은 노란 도장, 놓침은 흐리게 */
+.bonus-head {
+  margin-top: 14px;
+}
+
+.bonus-card {
+  position: relative;
+  padding: 7px 10px;
+  background: #0f1213;
+  border: 1px dashed #3a4245;
+  border-radius: 3px;
+}
+
+.bonus-card strong {
+  display: block;
+  padding-right: 4.5em;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  color: #c9cec6;
+}
+
+.bonus-card p {
+  margin: 3px 0 0;
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #9aa29d;
+}
+
+.bonus-mark {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  padding: 1px 7px;
+  font: 700 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  rotate: -4deg;
+}
+
+.bonus-card.found {
+  border-style: solid;
+  border-color: rgb(214 169 53 / 0.55);
+  box-shadow: 0 0 14px -8px rgb(214 169 53 / 0.7);
+}
+
+.bonus-card.found strong {
+  color: var(--hazard);
+}
+
+.bonus-card.found .bonus-mark {
+  color: var(--hazard);
+}
+
+.bonus-card.missed {
+  opacity: 0.6;
+}
+
+.bonus-card.missed .bonus-mark {
+  color: #7d8682;
+}
+
+/* 사건의 전말: 정답 조건 아래 종이 기록 */
+/* 사건의 전말: 마지막에 천천히 읽는 글. 가운데 좁은 단으로, 글자는 크게 */
+.truth-panel > .reveal {
+  max-width: 760px;
+  margin: 30px auto 0;
+  padding: 30px clamp(18px, 5vw, 44px) 26px;
+}
+
+.truth-panel > .reveal h2 {
+  padding-right: 0;
+  margin: 2px 0 18px;
+  font-size: 1.55rem;
+}
+
+.truth-panel .truth {
+  max-width: none;
+  font-size: 1.06rem;
+  line-height: 2;
+}
+
+.story-label {
+  display: block;
+  margin-bottom: 4px;
+  font: 700 0.72rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.16em;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key-card {
+    animation: none;
+  }
+}
+
+.truth-panel .reveal-meta {
+  margin-top: 16px;
+}
+
+/* 추리로 밝힌 핵심과 맞힌 보너스는 초록(그렇단다와 같은 색) */
+.key-mark {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  padding: 1px 7px;
+  font: 700 0.66rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  rotate: -4deg;
+  color: #7d8682;
+}
+
+.key-card.found {
+  --verdict: #8fd6a6;
+  --verdict-glow: rgb(143 214 166 / 0.45);
+}
+
+.key-card.found .key-mark {
+  color: #8fd6a6;
+}
+
+.key-card.missed .key-mark {
+  color: var(--verdict);
+  opacity: 0.8;
+}
+
+.bonus-card.found {
+  border-color: rgb(143 214 166 / 0.55);
+  box-shadow: 0 0 14px -8px rgb(143 214 166 / 0.7);
+}
+
+.bonus-card.found strong,
+.bonus-card.found .bonus-mark {
+  color: #8fd6a6;
 }

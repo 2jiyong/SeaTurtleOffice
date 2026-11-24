@@ -34,7 +34,6 @@ class ContentRepositoryTests {
 		Scenario s = content.scenario("boys-order").orElseThrow();
 		assertThat(s.keywords()).extracting(com.seaturtle.office.content.Keyword::name)
 				.containsExactly("카포의 권위", "해낼 수 없는 지시", "엄지의 규율");
-		assertThat(s.keywords().get(1).missing()).isEqualTo("꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나.");
 		assertThat(s.bonuses()).extracting(com.seaturtle.office.content.Bonus::name)
 				.containsExactly("부활은 금기", "손목 재생");
 	}

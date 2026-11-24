@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api, type ServerInfo } from './api.ts'
 import GamePage from './GamePage.tsx'
+import ResultPage from './ResultPage.tsx'
+import { readRoute, replaceRoute } from './route.ts'
 import ScenarioList from './ScenarioList.tsx'
 
-/** 주소는 #/ (목록) 또는 #/game/<id> (게임). 새로고침해도 서버에 남아 있는 게임으로 돌아온다. */
-function readRoute(): { gameId: string | null } {
-  const match = window.location.hash.match(/^#\/game\/([\w-]+)$/)
-  return { gameId: match ? match[1] : null }
-}
-
 export default function App() {
-  const [route, setRoute] = useState(readRoute)
+  const [route, setRoute] = useState(() => readRoute(window.location.hash))
   const [info, setInfo] = useState<ServerInfo | null>(null)
 
   useEffect(() => {
@@ -18,7 +14,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const onHash = () => setRoute(readRoute())
+    const onHash = () => setRoute(readRoute(window.location.hash))
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -44,7 +40,7 @@ export default function App() {
           )}
           <span>바다거북 사무소</span>
         </button>
-        <p className="brand-sub">주시자는 모든 것을 알고 있습니다. 다만 묻는 말에만, 짧게 답할 뿐입니다.</p>
+        <p className="brand-sub">응시자는 모든 것을 알고 있습니다. 다만 묻는 말에만, 짧게 답할 뿐입니다.</p>
       </header>
       {info && !info.judgeOnline && (
         <p className="banner">
@@ -59,8 +55,20 @@ export default function App() {
         </p>
       )}
       <main>
-        {route.gameId ? (
-          <GamePage key={route.gameId} gameId={route.gameId} onExit={goHome} />
+        {route.gameId && route.view === 'result' ? (
+          <ResultPage
+            key={`${route.gameId}/result`}
+            gameId={route.gameId}
+            onExit={goHome}
+            onResume={() => replaceRoute(`#/game/${route.gameId}`)}
+          />
+        ) : route.gameId ? (
+          <GamePage
+            key={route.gameId}
+            gameId={route.gameId}
+            onExit={goHome}
+            onEnded={() => replaceRoute(`#/game/${route.gameId}/result`)}
+          />
         ) : (
           <ScenarioList onStarted={(id) => (window.location.hash = `#/game/${id}`)} />
         )}

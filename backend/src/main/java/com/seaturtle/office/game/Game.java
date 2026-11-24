@@ -22,12 +22,12 @@ public class Game {
 	public record QuestionRecord(int no, int seq, String text, Answer answer) {
 	}
 
-	/** missing: 빠진 핵심 키워드의 '빠졌을 때' 문장. 맞힌 보너스는 담지 않는다(게임이 끝나야 공개). */
 	/** 힌트가 열린 순간의 순번(seq)과 함께 남긴다. 화면은 이 순서대로 질문 사이에 끼워 넣는다. */
 	public record HintRecord(int no, int seq, String text) {
 	}
 
-	public record GuessRecord(int seq, String text, int matched, int total, boolean correct, List<String> missing) {
+	/** 추리 하나. 얼마나 가까운지만 남긴다. 맞힌 개수, 빠진 항목, 보너스는 담지 않는다. */
+	public record GuessRecord(int seq, String text, boolean correct, Closeness closeness) {
 	}
 
 	private final String id;
@@ -37,6 +37,8 @@ public class Game {
 	private final List<HintRecord> hints = new ArrayList<>();
 	/** 여러 추리에 걸쳐 맞힌 보너스 번호(1부터) */
 	private final Set<Integer> bonusFound = new TreeSet<>();
+	/** 여러 추리에 걸쳐 맞힌 핵심 키워드 번호(1부터). 게임이 끝나야 공개한다. */
+	private final Set<Integer> keywordFound = new TreeSet<>();
 	private GameStatus status = GameStatus.PLAYING;
 	/** 사용 횟수. 열린 힌트 수와 점수는 모두 이 값에서 계산한다. */
 	private int used;
@@ -162,19 +164,14 @@ public class Game {
 	public synchronized GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
 		requirePlaying();
 		boolean last = used >= LIMIT;
-		var keywords = scenario.keywords();
-		int total = keywords.size();
+		int total = scenario.keywords().size();
 		Set<Integer> hit = new TreeSet<>();
 		matched.stream().filter(n -> n >= 1 && n <= total).forEach(hit::add);
+		keywordFound.addAll(hit);
 		bonus.stream().filter(n -> n >= 1 && n <= scenario.bonuses().size()).forEach(bonusFound::add);
-		List<String> missing = new ArrayList<>();
-		for (int i = 1; i <= total; i++) {
-			if (!hit.contains(i)) {
-				missing.add(keywords.get(i - 1).missing());
-			}
-		}
 		boolean correct = total > 0 && hit.size() == total;
-		var record = new GuessRecord(++seq, text, hit.size(), total, correct, List.copyOf(missing));
+		var closeness = correct ? Closeness.CORRECT : Closeness.of(Math.max(1, total - hit.size()));
+		var record = new GuessRecord(++seq, text, correct, closeness);
 		guesses.add(record);
 		if (!last) {
 			used = Math.min(LIMIT, used + GUESS_COST);
@@ -202,6 +199,10 @@ public class Game {
 	public synchronized void giveUp() {
 		requirePlaying();
 		status = GameStatus.GAVE_UP;
+	}
+
+	public synchronized Set<Integer> keywordFound() {
+		return Set.copyOf(keywordFound);
 	}
 
 	public synchronized Set<Integer> bonusFound() {

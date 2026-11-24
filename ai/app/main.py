@@ -54,7 +54,7 @@ class GuessRequest(BaseModel):
 
 
 class GuessResult(BaseModel):
-    """번호는 1부터. 빠졌을 때 문장은 백엔드가 시나리오에서 꺼낸다."""
+    """번호는 1부터. 백엔드는 이 번호로 얼마나 가까운지만 계산해 화면에 보낸다."""
 
     matched: list[int]
     total: int

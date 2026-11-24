@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { prefersReducedMotion } from './motion.ts'
 
 const GLYPHS = '▓▒░█#%&*/|?ㅈㅊㅋㅌㅍㅎ'
 /** 깨진 글자에서 맞춰지는 시간 */
@@ -7,9 +8,6 @@ const TICK_MS = 50
 
 const scramble = (s: string) => [...s].map((c) => (c === ' ' ? ' ' : GLYPHS[Math.floor(Math.random() * GLYPHS.length)])).join('')
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
 
 /**
  * 무전으로 들어오는 글자. animate가 참이면 깨진 글자에서 한 글자씩 맞춰진 뒤 빨강·파랑으로 한 번 어긋난다.

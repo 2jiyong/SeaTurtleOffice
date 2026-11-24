@@ -35,7 +35,7 @@ const never = () => new Promise<never>(() => {})
 async function openGame(overrides: Partial<GameView> = {}) {
   vi.mocked(api.game).mockResolvedValue({ ...game, ...overrides })
   render(<GamePage gameId="g1" onExit={() => {}} />)
-  await screen.findByRole('button', { name: /힌트 요청/ })
+  await screen.findByRole('button', { name: '송신 ▶' })
 }
 
 beforeEach(() => {
@@ -52,7 +52,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    const hint = screen.getByRole('button', { name: /힌트 요청/ })
+    const hint = screen.getByRole('button', { name: /계시 \d 요청/ })
     await user.click(hint)
     await user.click(hint)
 
@@ -64,7 +64,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
+    await user.click(screen.getByRole('button', { name: /계시 \d 요청/ }))
     await user.click(screen.getByRole('button', { name: /포기하고 진상 보기/ }))
 
     expect(api.giveUp).not.toHaveBeenCalled()
@@ -75,7 +75,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     await openGame()
     vi.mocked(api.hint).mockImplementation(never)
 
-    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
+    await user.click(screen.getByRole('button', { name: /계시 \d 요청/ }))
     await user.type(screen.getByRole('textbox', { name: '질문' }), '건물주가 했나요?{Enter}')
 
     expect(api.ask).not.toHaveBeenCalled()
@@ -87,7 +87,7 @@ describe('요청이 진행 중일 때 게임 상태를 바꾸는 버튼', () => 
     vi.mocked(api.ask).mockImplementation(never as () => Promise<GameView>)
 
     await user.type(screen.getByRole('textbox', { name: '질문' }), '건물주가 했나요?{Enter}')
-    await user.click(screen.getByRole('button', { name: /힌트 요청/ }))
+    await user.click(screen.getByRole('button', { name: /계시 \d 요청/ }))
 
     expect(api.ask).toHaveBeenCalledTimes(1)
     expect(api.hint).not.toHaveBeenCalled()
@@ -172,14 +172,14 @@ describe('사용 횟수와 점수', () => {
     await openGame({ used: 13, nextHintAt: 20, hints: [{ no: 1, seq: 101, text: 'h1', image: null }] })
     expect(screen.getByText('사용 13 / 40')).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('13')
-    expect(screen.getByRole('button', { name: '힌트 요청 (사용 20으로)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '계시 2 요청 (사용 20으로)' })).toBeTruthy()
   })
 
   it('힌트가 다 열리면 힌트 받기 버튼을 숨긴다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: [{ no: 1, seq: 101, text: 'a', image: null }, { no: 2, seq: 102, text: 'b', image: null }, { no: 3, seq: 103, text: 'c', image: null }] })
     render(<GamePage gameId="g1" onExit={() => {}} />)
     await screen.findByText('사용 30 / 40')
-    expect(screen.queryByRole('button', { name: /힌트 요청/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /계시 \d 요청/ })).toBeNull()
   })
 
   it('마지막 기회에는 질문 탭을 막고 안내를 보여 준다', async () => {
@@ -245,30 +245,68 @@ describe('기록이 늘어날 때 화면 위치', () => {
 })
 
 describe('주시자 무전 수신 기록', () => {
-  it('계시를 질문 사이 seq 자리에 "계시 N"으로 보여 준다', async () => {
-    await openGame({
-      used: 11,
-      questions: [
-        { no: 1, seq: 1, text: 'q1', answer: 'NO' },
-        { no: 2, seq: 3, text: 'q2', answer: 'YES' },
-      ],
-      hints: [{ no: 1, seq: 2, text: '첫 계시', image: null }],
-    })
-    const rows = Array.from(document.querySelectorAll('.log > li')).map((li) => li.textContent ?? '')
-    expect(rows.findIndex((t) => t.includes('계시 1'))).toBe(1)
-    expect(screen.getByText('첫 계시')).toBeTruthy()
+  it('계시는 수신 기록 줄에 없고, 막대에서 계시창으로 연다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 11, nextHintAt: 20, hints: [{ no: 1, seq: 2, text: '첫 계시', image: null }] })
+    expect(document.querySelector('.log')?.textContent).not.toContain('계시')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    const dialog = screen.getByRole('dialog', { name: '계시 1' })
+    expect(dialog.textContent).toContain('첫 계시')
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('힌트 이미지가 있으면 계시 안에, 없으면 이미지 요소가 없다', async () => {
+  it('다음 계시 눈금으로 힌트를 요청하고, 잠긴 계시는 누를 수 없다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 11, nextHintAt: 20, hints: [{ no: 1, seq: 2, text: 'a', image: null }] })
+    vi.mocked(api.hint).mockImplementation(never)
+    expect((screen.getByRole('button', { name: '계시 3' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.click(screen.getByRole('button', { name: '계시 2 요청 (사용 20으로)' }))
+    expect(api.hint).toHaveBeenCalledTimes(1)
+  })
+
+  it('계시창은 그림이 있을 때만 그림을 보여 준다', async () => {
+    const user = userEvent.setup()
     await openGame({
+      used: 21,
+      nextHintAt: 30,
       hints: [
         { no: 1, seq: 1, text: 'a', image: '/api/scenarios/s/images/hint-1' },
         { no: 2, seq: 2, text: 'b', image: null },
       ],
     })
-    const imgs = screen.getAllByRole('img', { name: /계시/ })
-    expect(imgs).toHaveLength(1)
-    expect(imgs[0].getAttribute('src')).toBe('/api/scenarios/s/images/hint-1')
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    expect(screen.getByRole('img', { name: '계시 1 이미지' }).getAttribute('src')).toBe('/api/scenarios/s/images/hint-1')
+    await user.click(screen.getByRole('button', { name: '계시 2 보기' }))
+    expect(screen.getByRole('dialog', { name: '계시 2' })).toBeTruthy()
+    expect(screen.queryByRole('img', { name: /계시 \d 이미지/ })).toBeNull()
+  })
+
+  it('새로 열린 계시는 계시창이 자동으로 뜨고, 처음부터 있던 계시는 뜨지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 9, hints: [] })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    vi.mocked(api.ask).mockResolvedValue({
+      ...game,
+      used: 10,
+      nextHintAt: 20,
+      questions: [{ no: 1, seq: 1, text: 'q', answer: 'YES' }],
+      hints: [{ no: 1, seq: 2, text: '새 계시', image: null }],
+    })
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
+    expect(await screen.findByRole('dialog', { name: '계시 1' })).toBeTruthy()
+  })
+
+  it('클립보드에는 힌트 요청 버튼이 없고, 송신 단말 문구가 보인다', async () => {
+    await openGame()
+    expect(document.querySelector('.clipboard')?.textContent).not.toContain('요청')
+    expect(screen.getByText('송신 단말 // CH-07')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: '질문' }).getAttribute('placeholder')).toBe('예나 아니오로 답할 수 있는 질문을 입력하라')
+    expect(screen.getByText(/모든 송신은 기록된다/)).toBeTruthy()
   })
 
   it('처음 불러온 기록은 연출 없이, 새로 온 답만 연출한다', async () => {

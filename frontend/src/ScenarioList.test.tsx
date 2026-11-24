@@ -29,6 +29,9 @@ describe('메인 화면', () => {
     expect(document.body.textContent).not.toContain('정해진 말')
     expect(document.body.textContent).toContain('바다거북 사무소는 도시에 남은 미해결 사건을 조사합니다.')
     expect(document.body.textContent).toContain('모종의 방법으로 주시자와 교신할 수 있습니다.')
+    expect(screen.getByText('주시자는 모든 것을 알고 있다.')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: '미해결 사건' })).toBeNull()
+    expect(screen.getByText('바다거북 사무소 // 안내')).toBeTruthy()
   })
 
   it('사건 목록은 단말 화면에 뜨고, 사건마다 열람 버튼이 있다', async () => {

@@ -811,11 +811,6 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* 빠졌을 때 문장은 한 줄에 하나 */
-.missing-line {
-  display: block;
-}
-
 /* 진상 보고서 */
 .reveal {
   position: relative;

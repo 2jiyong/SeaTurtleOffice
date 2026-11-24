@@ -77,22 +77,18 @@ public class ContentRepository {
 	}
 
 	private static final Pattern KEYWORD_LINE = Pattern.compile("^\\d+\\.\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
-	private static final Pattern MISSING_LINE = Pattern.compile("^\\s+-\\s+빠졌을 때:\\s*(.*)$");
 	private static final Pattern BONUS_LINE = Pattern.compile("^-\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
 
 	/** '## 핵심 키워드' 절을 읽는다. 규칙은 ai/app/content.py의 parse_keywords와 같다. */
 	static List<Keyword> keywords(Map<String, String> sec) {
-		List<String[]> items = new ArrayList<>();
+		List<Keyword> items = new ArrayList<>();
 		for (String line : sec.getOrDefault("핵심 키워드", "").split("\n")) {
 			Matcher k = KEYWORD_LINE.matcher(line);
-			Matcher m = MISSING_LINE.matcher(line);
 			if (k.matches()) {
-				items.add(new String[] { k.group(1).strip(), k.group(2).strip(), "" });
-			} else if (m.matches() && !items.isEmpty()) {
-				items.getLast()[2] = m.group(1).strip();
+				items.add(new Keyword(k.group(1).strip(), k.group(2).strip()));
 			}
 		}
-		return items.stream().map(a -> new Keyword(a[0], a[1], a[2])).toList();
+		return items;
 	}
 
 	/** '## 보너스 키워드' 절을 읽는다. */

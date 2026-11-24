@@ -23,6 +23,7 @@ import com.seaturtle.office.game.Answer;
 import com.seaturtle.office.game.Game;
 import com.seaturtle.office.game.GameEndedException;
 import com.seaturtle.office.game.GameService;
+import com.seaturtle.office.game.Closeness;
 import com.seaturtle.office.game.GameStatus;
 import com.seaturtle.office.judge.Judge;
 import com.seaturtle.office.judge.JudgeException;
@@ -134,11 +135,25 @@ class GameFlowTests {
 	}
 
 	@Test
-	void wrongGuessShowsMissingSentences() {
+	void wrongGuessShowsOnlyCloseness() throws Exception {
 		var game = games.start("boys-order");
-		games.guess(game.id(), "모르겠어요");
-		assertThat(game.guesses().getFirst().missing())
-				.containsExactly("꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나.");
+		// 핵심 하나가 빠진 추리: 얼마나 가까운지만 나가고, 개수와 빠진 항목은 나가지 않는다.
+		mvc.perform(post("/api/games/" + game.id() + "/guesses").contentType(APPLICATION_JSON)
+				.content("{\"text\":\"모르겠어요\"}"))
+				.andExpect(jsonPath("$.guesses[0].closeness").value("ONE_SHORT"))
+				.andExpect(jsonPath("$.guesses[0].correct").value(false))
+				.andExpect(jsonPath("$.guesses[0].matched").doesNotExist())
+				.andExpect(jsonPath("$.guesses[0].total").doesNotExist())
+				.andExpect(jsonPath("$.guesses[0].missing").doesNotExist());
+	}
+
+	@Test
+	void closenessByMissingCount() {
+		assertThat(Closeness.of(0)).isEqualTo(Closeness.CORRECT);
+		assertThat(Closeness.of(1)).isEqualTo(Closeness.ONE_SHORT);
+		assertThat(Closeness.of(2)).isEqualTo(Closeness.TWO_SHORT);
+		assertThat(Closeness.of(3)).isEqualTo(Closeness.FAR);
+		assertThat(Closeness.of(5)).isEqualTo(Closeness.FAR);
 	}
 
 	@Test

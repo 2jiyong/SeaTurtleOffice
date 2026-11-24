@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import { ANSWER_TEXT, api, ApiError, type Closeness, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
 import RevelationDialog from './RevelationDialog.tsx'
 import Risk from './Risk.tsx'
 import Transmission from './Transmission.tsx'
@@ -12,6 +12,14 @@ type Pending = { mode: Mode; text: string } | null
 const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
 /** 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다) */
 const GUESS_COST = 5
+
+/** 추리에 대한 응시자의 한마디. 빠진 핵심 개수(0, 1, 2, 3 이상)로만 나뉜다. */
+const CLOSENESS_LINES: Record<Closeness, string> = {
+  CORRECT: '모두 맞혔구나.',
+  ONE_SHORT: '거의 다 왔구나. 조금만 더 들여다보렴.',
+  TWO_SHORT: '아직 부족하구나.',
+  FAR: '아직 멀었단다.',
+}
 
 export default function GamePage({ gameId, onExit }: { gameId: string; onExit: () => void }) {
   const [game, setGame] = useState<GameView | null>(null)
@@ -203,19 +211,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                   <span className="entry-no">추리</span>
                   <p className="entry-text">{e.item.text}</p>
                   <Transmission
-                    text={e.item.correct ? '모두 맞혔구나.' : `핵심 ${e.item.matched}/${e.item.total}`}
+                    text={CLOSENESS_LINES[e.item.closeness]}
                     animate={isNew}
                     className={`ans ${e.item.correct ? 's-yes' : 's-guess'}`}
                   />
-                  {!e.item.correct && e.item.missing.length > 0 && (
-                    <span className="stamp-note">
-                      {e.item.missing.map((m, i) => (
-                        <span key={i} className="missing-line">
-                          {m}
-                        </span>
-                      ))}
-                    </span>
-                  )}
                 </li>
               )
             })}

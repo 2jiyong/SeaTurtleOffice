@@ -135,14 +135,14 @@ it('ANSWER_TEXT가 9개 코드를 모두 담는다', () => {
 })
 
 describe('추리 결과와 진상 공개', () => {
-  it('오답 추리 아래에 빠졌을 때 문장을 보여 주고 보너스는 보여 주지 않는다', async () => {
-    await openGame({
-      guesses: [
-        { seq: 1, text: 't', matched: 2, total: 3, correct: false, missing: ['건물주가 무엇을 바랐는지가 빠져 있구나.'] },
-      ],
-    })
-    expect(screen.getByText('핵심 2/3')).toBeTruthy()
-    expect(screen.getByText('건물주가 무엇을 바랐는지가 빠져 있구나.')).toBeTruthy()
+  it.each([
+    ['ONE_SHORT', '거의 다 왔구나. 조금만 더 들여다보렴.'],
+    ['TWO_SHORT', '아직 부족하구나.'],
+    ['FAR', '아직 멀었단다.'],
+  ] as const)('오답 추리(%s)에는 응시자의 한마디만 보여 주고 개수와 보너스는 보여 주지 않는다', async (closeness, line) => {
+    await openGame({ guesses: [{ seq: 1, text: 't', correct: false, closeness }] })
+    expect(screen.getAllByText(line).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/핵심 \d/)).toBeNull()
     expect(screen.queryByText(/보너스/)).toBeNull()
   })
 
@@ -327,7 +327,7 @@ describe('응시자 무전 수신 기록', () => {
   })
 
   it('수신 기록 머리와 정답 문구', async () => {
-    await openGame({ guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }] })
+    await openGame({ guesses: [{ seq: 1, text: 't', correct: true, closeness: 'CORRECT' }] })
     expect(screen.getByText('수신 기록')).toBeTruthy()
     expect(screen.getByText('응시자와 연결됨')).toBeTruthy()
     expect(screen.getByText('모두 맞혔구나.')).toBeTruthy()
@@ -378,7 +378,7 @@ describe('계시창 초점', () => {
       used: 14,
       nextHintAt: null,
       hints: [{ no: 1, seq: 2, text: '계시', image: null }],
-      guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }],
+      guesses: [{ seq: 1, text: 't', correct: true, closeness: 'CORRECT' }],
       reveal: { truth: 't', keywords: [], bonuses: [], score: 86, bonusPoints: 0 },
     })
     await user.click(screen.getByRole('tab', { name: '추리 제출' }))

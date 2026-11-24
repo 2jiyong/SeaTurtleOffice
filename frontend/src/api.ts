@@ -40,14 +40,14 @@ export interface HintRecord {
   image: string | null
 }
 
+/** 추리가 진상에 얼마나 가까운지. 맞힌 개수와 빠진 항목은 알려 주지 않는다. */
+export type Closeness = 'CORRECT' | 'ONE_SHORT' | 'TWO_SHORT' | 'FAR'
+
 export interface GuessRecord {
   seq: number
   text: string
-  matched: number
-  total: number
   correct: boolean
-  /** 빠진 핵심 키워드마다 진행자가 하는 말 */
-  missing: string[]
+  closeness: Closeness
 }
 
 export interface Reveal {

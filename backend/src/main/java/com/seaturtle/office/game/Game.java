@@ -23,6 +23,10 @@ public class Game {
 	}
 
 	/** missing: 빠진 핵심 키워드의 '빠졌을 때' 문장. 맞힌 보너스는 담지 않는다(게임이 끝나야 공개). */
+	/** 힌트가 열린 순간의 순번(seq)과 함께 남긴다. 화면은 이 순서대로 질문 사이에 끼워 넣는다. */
+	public record HintRecord(int no, int seq, String text) {
+	}
+
 	public record GuessRecord(int seq, String text, int matched, int total, boolean correct, List<String> missing) {
 	}
 
@@ -30,6 +34,7 @@ public class Game {
 	private final Scenario scenario;
 	private final List<QuestionRecord> questions = new ArrayList<>();
 	private final List<GuessRecord> guesses = new ArrayList<>();
+	private final List<HintRecord> hints = new ArrayList<>();
 	/** 여러 추리에 걸쳐 맞힌 보너스 번호(1부터) */
 	private final Set<Integer> bonusFound = new TreeSet<>();
 	private GameStatus status = GameStatus.PLAYING;
@@ -87,7 +92,20 @@ public class Game {
 	}
 
 	public synchronized int hintsOpen() {
-		return Math.min(hintCount(), used / HINT_STEP);
+		return hints.size();
+	}
+
+	public synchronized List<HintRecord> hints() {
+		return List.copyOf(hints);
+	}
+
+	/** 사용 횟수가 힌트 자리를 넘었으면, 아직 열리지 않은 힌트를 지금 순번으로 남긴다. */
+	private void openHints() {
+		int due = Math.min(hintCount(), used / HINT_STEP);
+		while (hints.size() < due) {
+			int no = hints.size() + 1;
+			hints.add(new HintRecord(no, ++seq, scenario.hints().get(no - 1)));
+		}
 	}
 
 	/** 힌트 받기를 누르면 올라갈 사용 횟수. 남은 힌트가 없으면 null. */
@@ -137,6 +155,7 @@ public class Game {
 		used++;
 		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer);
 		questions.add(record);
+		openHints();
 		return record;
 	}
 
@@ -159,6 +178,7 @@ public class Game {
 		guesses.add(record);
 		if (!last) {
 			used = Math.min(LIMIT, used + GUESS_COST);
+			openHints();
 		}
 		if (correct) {
 			status = GameStatus.SOLVED;
@@ -176,6 +196,7 @@ public class Game {
 			throw new IllegalStateException("남은 힌트가 없습니다");
 		}
 		used = next;
+		openHints();
 	}
 
 	public synchronized void giveUp() {

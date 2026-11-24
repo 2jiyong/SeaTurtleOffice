@@ -249,4 +249,46 @@ class GameFlowTests {
 		// 힌트가 4개 이상이어도 40에는 힌트가 없다.
 		assertThat(Game.hintStepsFor(4)).containsExactly(10, 20, 30);
 	}
+
+	// ── 힌트가 열린 순서 ──
+
+	@Test
+	void hintRecordedAtTheMomentItOpens() {
+		var game = playing(8);
+		games.guess(game.id(), "모르겠어요");
+		assertThat(game.hints()).extracting(Game.HintRecord::no, Game.HintRecord::seq).containsExactly(org.assertj.core.groups.Tuple.tuple(1, 10));
+		games.ask(game.id(), "q");
+		games.ask(game.id(), "q");
+		games.hint(game.id());
+		assertThat(game.hints()).extracting(Game.HintRecord::seq).containsExactly(10, 13);
+		assertThat(game.hints().get(0).text()).isEqualTo(game.scenario().hints().get(0));
+	}
+
+	@Test
+	void hintButtonKeepsEarlierHintPositions() {
+		var game = playing(25);
+		assertThat(game.hints()).extracting(Game.HintRecord::seq).containsExactly(11, 22);
+		games.hint(game.id());
+		assertThat(game.hints()).extracting(Game.HintRecord::seq).containsExactly(11, 22, 28);
+	}
+
+	@Test
+	void gameViewHintsCarrySeq() throws Exception {
+		var game = playing(10);
+		mvc.perform(get("/api/games/" + game.id()))
+				.andExpect(jsonPath("$.hints[0].no").value(1))
+				.andExpect(jsonPath("$.hints[0].seq").value(11))
+				.andExpect(jsonPath("$.hints[0].image").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.scenario.cover").value(org.hamcrest.Matchers.nullValue()));
+	}
+
+	@Test
+	void imageEndpointRejectsMissingAndUnknownNames() throws Exception {
+		mvc.perform(get("/api/scenarios/boys-order/images/cover"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+		mvc.perform(get("/api/scenarios/boys-order/images/secret"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+		mvc.perform(get("/api/scenarios/nope/images/cover"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+	}
 }

@@ -16,7 +16,7 @@ const { api } = await import('./api.ts')
 
 const game: GameView = {
   id: 'g1',
-  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제', hintCount: 3 },
+  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제', hintCount: 3, cover: null },
   status: 'PLAYING',
   questions: [],
   hints: [],
@@ -169,14 +169,14 @@ describe('추리 결과와 진상 공개', () => {
 
 describe('사용 횟수와 점수', () => {
   it('사용 막대와 힌트 자리를 보여 준다', async () => {
-    await openGame({ used: 13, nextHintAt: 20, hints: ['h1'] })
+    await openGame({ used: 13, nextHintAt: 20, hints: [{ no: 1, seq: 101, text: 'h1', image: null }] })
     expect(screen.getByText('사용 13 / 40')).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('13')
     expect(screen.getByRole('button', { name: '힌트 받기 (사용 20으로)' })).toBeTruthy()
   })
 
   it('힌트가 다 열리면 힌트 받기 버튼을 숨긴다', async () => {
-    vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: ['a', 'b', 'c'] })
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 30, nextHintAt: null, hints: [{ no: 1, seq: 101, text: 'a', image: null }, { no: 2, seq: 102, text: 'b', image: null }, { no: 3, seq: 103, text: 'c', image: null }] })
     render(<GamePage gameId="g1" onExit={() => {}} />)
     await screen.findByText('사용 30 / 40')
     expect(screen.queryByRole('button', { name: /힌트 받기/ })).toBeNull()
@@ -196,7 +196,7 @@ describe('사용 횟수와 점수', () => {
     vi.mocked(api.ask).mockResolvedValue({
       ...game,
       used: 10,
-      hints: ['첫 힌트'],
+      hints: [{ no: 1, seq: 101, text: '첫 힌트', image: null }],
       nextHintAt: 20,
       questions: [{ no: 1, seq: 1, text: 'q', answer: 'YES' }],
     })
@@ -241,5 +241,61 @@ describe('기록이 늘어날 때 화면 위치', () => {
     // 기록 끝을 화면 아래에 맞추면(scrollIntoView) 고정된 입력칸이 마지막 기록을 가린다.
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
     expect(window.scrollTo).toHaveBeenCalledWith({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  })
+})
+
+describe('주시자 무전 수신 기록', () => {
+  it('계시를 질문 사이 seq 자리에 "계시 N"으로 보여 준다', async () => {
+    await openGame({
+      used: 11,
+      questions: [
+        { no: 1, seq: 1, text: 'q1', answer: 'NO' },
+        { no: 2, seq: 3, text: 'q2', answer: 'YES' },
+      ],
+      hints: [{ no: 1, seq: 2, text: '첫 계시', image: null }],
+    })
+    const rows = Array.from(document.querySelectorAll('.log > li')).map((li) => li.textContent ?? '')
+    expect(rows.findIndex((t) => t.includes('계시 1'))).toBe(1)
+    expect(screen.getByText('첫 계시')).toBeTruthy()
+  })
+
+  it('힌트 이미지가 있으면 계시 안에, 없으면 이미지 요소가 없다', async () => {
+    await openGame({
+      hints: [
+        { no: 1, seq: 1, text: 'a', image: '/api/scenarios/s/images/hint-1' },
+        { no: 2, seq: 2, text: 'b', image: null },
+      ],
+    })
+    const imgs = screen.getAllByRole('img', { name: /계시/ })
+    expect(imgs).toHaveLength(1)
+    expect(imgs[0].getAttribute('src')).toBe('/api/scenarios/s/images/hint-1')
+  })
+
+  it('처음 불러온 기록은 연출 없이, 새로 온 답만 연출한다', async () => {
+    const user = userEvent.setup()
+    await openGame({ questions: [{ no: 1, seq: 1, text: 'q1', answer: 'NO' }] })
+    expect(document.querySelectorAll('.transmitting')).toHaveLength(0)
+    vi.mocked(api.ask).mockResolvedValue({
+      ...game,
+      used: 2,
+      questions: [
+        { no: 1, seq: 1, text: 'q1', answer: 'NO' },
+        { no: 2, seq: 2, text: 'q2', answer: 'YES' },
+      ],
+    })
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q2{Enter}')
+    await vi.waitFor(() => expect(document.querySelectorAll('.transmitting')).toHaveLength(1))
+  })
+
+  it('수신 기록 머리와 정답 문구', async () => {
+    await openGame({ guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }] })
+    expect(screen.getByText('수신 기록')).toBeTruthy()
+    expect(screen.getByText('주시자와 연결됨')).toBeTruthy()
+    expect(screen.getByText('모두 맞혔구나.')).toBeTruthy()
+  })
+
+  it('사건 서류에 대표 이미지가 있으면 보여 준다', async () => {
+    await openGame({ scenario: { ...game.scenario, cover: '/api/scenarios/s/images/cover' } })
+    expect(screen.getByRole('img', { name: '사건 표지' }).getAttribute('src')).toBe('/api/scenarios/s/images/cover')
   })
 })

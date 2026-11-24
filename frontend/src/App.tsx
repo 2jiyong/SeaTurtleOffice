@@ -27,14 +27,21 @@ export default function App() {
     window.location.hash = '#/'
   }
 
+  const [logoFailed, setLogoFailed] = useState(false)
+
   return (
     <div className="app">
       <header className="topbar">
         <button className="brand" onClick={goHome}>
-          <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-            <path d="M16 3.5 27 9.75v12.5L16 28.5 5 22.25V9.75Z" />
-            <path className="core" d="M16 10.5 21 13.4v5.2L16 21.5l-5-2.9v-5.2Z" />
-          </svg>
+          {/* 사이트 상징: frontend/public/brand/logo.webp가 있으면 그 그림, 없으면 기본 육각형 */}
+          {logoFailed ? (
+            <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
+              <path d="M16 3.5 27 9.75v12.5L16 28.5 5 22.25V9.75Z" />
+              <path className="core" d="M16 10.5 21 13.4v5.2L16 21.5l-5-2.9v-5.2Z" />
+            </svg>
+          ) : (
+            <img className="brand-logo" src="/brand/logo.webp" alt="" onError={() => setLogoFailed(true)} />
+          )}
           <span>바다거북 사무소</span>
         </button>
         <p className="brand-sub">진행자는 모든 것을 알지만 정해진 말로만 답합니다. 그 사이에서 사건의 전말을 찾아내세요.</p>

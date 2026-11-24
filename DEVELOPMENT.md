@@ -92,6 +92,18 @@ cd frontend && npm install && npm run dev
 - 판정 요청(AI 서버)이 실패하면 사용 횟수는 늘지 않는다.
 - 질문·추리·힌트·포기 API(`/api/games/{id}/...`)는 모두 게임 상태 전체(`GameView`: `used`, `limit`, `hintSteps`, `finalChance`, `nextHintAt`, `reveal.score` 등)를 돌려준다.
 
+## 이미지 자리
+그림 파일을 정해진 자리에 넣으면 화면에 나온다. 없으면 지금 모습 그대로다.
+
+| 그림 | 자리 |
+|---|---|
+| 전체 배경 | `frontend/public/backgrounds/room.webp` (어둡게 덮어 깐다) |
+| 사이트 상징(머리말 로고) | `frontend/public/brand/logo.webp` (없으면 육각형 SVG). 탭 아이콘은 `frontend/public/favicon.svg` |
+| 기본 사건 표지 | `frontend/public/covers/default.webp` (문제별 `cover`가 없을 때) |
+| 문제별 대표·힌트 그림 | `scenarios/images/<slug>/cover`, `hint-1~3` (`scenarios/README.md`) |
+
+문제별 그림은 백엔드 `GET /api/scenarios/{slug}/images/{name}`이 내보낸다(`name`은 `cover`, `hint-1~3`만, 그 밖은 404).
+
 ## 판정 방식
 - 질문: 베이스 세계관 전체 + 시나리오 `uses`의 상세 항목 + 시나리오(문제·진상·핵심 포인트·판정 메모)를 프롬프트에 넣는다(`ai/app/prompts.py`).
   답은 아래 9가지 코드 중 하나다. 서버끼리는 코드만 주고받고, 진행자의 말과 안내 문장은 `frontend/src/api.ts`의 `ANSWER_TEXT`에만 있다.

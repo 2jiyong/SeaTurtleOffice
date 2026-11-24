@@ -3,6 +3,7 @@ package com.seaturtle.office.game;
 import java.util.List;
 
 import com.seaturtle.office.content.Scenario;
+import com.seaturtle.office.content.ScenarioImages;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -22,11 +23,18 @@ public final class GameDtos {
 	public record GuessRequest(@NotBlank @Size(max = 1000) String text) {
 	}
 
-	public record ScenarioSummary(String slug, String title, String difficulty, String problem, int hintCount) {
+	/** cover: 대표 이미지 주소. 그림이 없으면 null. */
+	public record ScenarioSummary(String slug, String title, String difficulty, String problem, int hintCount,
+			String cover) {
 
-		static ScenarioSummary of(Scenario s) {
-			return new ScenarioSummary(s.slug(), s.title(), s.difficulty(), s.problem(), s.hints().size());
+		static ScenarioSummary of(Scenario s, ScenarioImages images) {
+			return new ScenarioSummary(s.slug(), s.title(), s.difficulty(), s.problem(), s.hints().size(),
+					images.url(s.slug(), "cover"));
 		}
+	}
+
+	/** 열린 힌트(계시). seq는 열린 순간의 순번, image는 힌트 그림 주소(없으면 null). */
+	public record HintView(int no, int seq, String text, String image) {
 	}
 
 	public record KeywordView(String name, String description) {
@@ -58,7 +66,7 @@ public final class GameDtos {
 			ScenarioSummary scenario,
 			GameStatus status,
 			List<Game.QuestionRecord> questions,
-			List<String> hints,
+			List<HintView> hints,
 			List<Game.GuessRecord> guesses,
 			int used,
 			int limit,
@@ -67,12 +75,15 @@ public final class GameDtos {
 			Integer nextHintAt,
 			Reveal reveal) {
 
-		static GameView of(Game game) {
+		static GameView of(Game game, ScenarioImages images) {
 			Scenario s = game.scenario();
 			GameStatus status = game.status();
 			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game);
-			return new GameView(game.id(), ScenarioSummary.of(s), status, game.questions(),
-					s.hints().subList(0, game.hintsOpen()), game.guesses(), game.used(), Game.LIMIT,
+			List<HintView> hints = game.hints().stream()
+					.map(h -> new HintView(h.no(), h.seq(), h.text(), images.url(s.slug(), "hint-" + h.no())))
+					.toList();
+			return new GameView(game.id(), ScenarioSummary.of(s, images), status, game.questions(),
+					hints, game.guesses(), game.used(), Game.LIMIT,
 					game.hintSteps(), game.finalChance(), game.nextHintAt(), reveal);
 		}
 	}

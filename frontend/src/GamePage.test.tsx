@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollIntoView = vi.fn()
   window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
+  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
   vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 afterEach(cleanup)
@@ -231,16 +232,16 @@ describe('사용 횟수와 점수', () => {
 })
 
 describe('기록이 늘어날 때 화면 위치', () => {
-  it('페이지 맨 아래로 내려서, 새 기록이 입력칸에 가려지지 않게 한다', async () => {
+  it('새 기록이 오면 수신 기록 칸 안에서만 맨 아래로 스크롤한다', async () => {
     const user = userEvent.setup()
     await openGame()
-    vi.mocked(window.scrollTo).mockClear()
+    vi.mocked(Element.prototype.scrollTo).mockClear()
     vi.mocked(api.ask).mockResolvedValue({ ...game, used: 1, questions: [{ no: 1, seq: 1, text: 'q', answer: 'YES' }] })
     await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
     await screen.findByText('그렇단다')
-    // 기록 끝을 화면 아래에 맞추면(scrollIntoView) 고정된 입력칸이 마지막 기록을 가린다.
-    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+    const log = document.querySelector('.log')
+    expect(vi.mocked(Element.prototype.scrollTo).mock.contexts).toContain(log)
+    expect(window.scrollTo).not.toHaveBeenCalled()
   })
 })
 
@@ -385,5 +386,17 @@ describe('계시창 초점', () => {
     await screen.findByRole('dialog', { name: '계시 1' })
     await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '계시 1' }))
+  })
+})
+
+describe('송신 단말 크기', () => {
+  it('질문과 추리를 바꿔도 입력칸 줄 수와 안내 줄이 같다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    const rowsQ = screen.getByRole('textbox', { name: '질문' }).getAttribute('rows')
+    const notesQ = document.querySelectorAll('.cost-note').length
+    await user.click(screen.getByRole('tab', { name: '추리 제출' }))
+    expect(screen.getByRole('textbox', { name: '추리' }).getAttribute('rows')).toBe(rowsQ)
+    expect(document.querySelectorAll('.cost-note').length).toBe(notesQ)
   })
 })

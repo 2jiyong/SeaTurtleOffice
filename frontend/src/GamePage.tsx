@@ -28,6 +28,8 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const [openHint, setOpenHint] = useState<number | null>(null)
   // 계시창을 닫으면 초점을 돌려줄 곳(누른 눈금)
   const returnFocus = useRef<HTMLElement | null>(null)
+  // 수신 기록 칸(스크롤 영역)
+  const logRef = useRef<HTMLOListElement>(null)
   const closeHint = useCallback(() => {
     setOpenHint(null)
     // 원래 자리가 화면에서 사라졌으면(게임이 끝나 송신 단말이 없어짐) 마지막으로 열린 계시 눈금으로 돌아간다.
@@ -44,10 +46,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     )
   }, [gameId])
 
-  // 기록이 늘면 페이지 맨 아래로 내린다. 그러면 입력칸이 제자리에 놓이고 새 기록이 바로 위에 보인다.
-  // (기록 끝을 화면 아래에 맞추면 화면 아래에 고정된 입력칸이 마지막 기록을 가린다.)
+  // 기록이 늘면 수신 기록 칸 안에서만 맨 아래로 내린다(페이지 전체는 움직이지 않는다).
   useEffect(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+    const log = logRef.current
+    log?.scrollTo({ top: log.scrollHeight, behavior: 'smooth' })
   }, [game?.questions.length, game?.guesses.length, pending])
 
   if (loadError) {
@@ -175,7 +177,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               onRequest={() => act(() => api.hint(game.id))}
             />
           </div>
-          <ol className="log" aria-live="polite">
+          <ol ref={logRef} className="log" aria-live="polite" tabIndex={0} aria-label="수신 기록 목록">
             {entries.length === 0 && !pending && (
               <li className="empty">
                 아직 기록된 질문이 없습니다. 예나 아니오로 답할 수 있는 질문부터 시작하세요.
@@ -266,7 +268,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               <textarea
                 value={text}
                 maxLength={LIMIT[inputMode]}
-                rows={inputMode === 'guess' ? 4 : 2}
+                rows={3}
                 aria-label={inputMode === 'question' ? '질문' : '추리'}
                 placeholder={inputMode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하라' : '사건의 전말을 송신하라. 무엇이 일어났고, 누가 왜 그랬는지.'}
                 onChange={(e) => setText(e.target.value)}
@@ -284,9 +286,14 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
             </div>
             <span className="counter">
               {text.length}/{LIMIT[inputMode]} {'//'} 모든 송신은 기록된다
-              {inputMode === 'guess' && (
-                <span className="cost-note">{game.finalChance ? '이 추리는 횟수를 쓰지 않습니다.' : `추리는 사용 ${GUESS_COST}를 씁니다.`}</span>
-              )}
+              {/* 질문·추리 모두 안내 줄을 한 줄 둬서 송신 단말 크기가 바뀌지 않게 한다 */}
+              <span className="cost-note">
+                {inputMode === 'question'
+                  ? '질문은 사용 1을 씁니다.'
+                  : game.finalChance
+                    ? '이 추리는 횟수를 쓰지 않습니다.'
+                    : `추리는 사용 ${GUESS_COST}를 씁니다.`}
+              </span>
             </span>
           </form>
         )}

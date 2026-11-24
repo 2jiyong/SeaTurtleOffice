@@ -1,6 +1,6 @@
 ---
 id: scenario.boys-order
-title: 꼬마의 부탁
+title: 열 개의 손목
 difficulty: hard
 era: [ruina-era]
 works: [ruina]

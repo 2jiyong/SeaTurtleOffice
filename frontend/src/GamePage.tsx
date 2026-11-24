@@ -242,7 +242,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
           onConfirm={confirmGiveUp}
         />
       )}
-      {ending && <SignalCut solved={game.status === 'SOLVED'} onDone={onEnded} />}
+      {ending && game.status !== 'PLAYING' && <SignalCut status={game.status} onDone={onEnded} />}
       {openHint !== null && (
         <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
       )}

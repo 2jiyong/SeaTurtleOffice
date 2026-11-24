@@ -2316,7 +2316,7 @@ h3 {
   margin-top: 18px;
 }
 
-/* ── 신호 단절: 잡음이 일고(0~0.6초), 가로선으로 접히며 꺼지고(0.6~1.0초), "교신 종료"(1.0~1.6초) ── */
+/* ── 신호 단절(3.2초): 잡음(0~0.6초) → 가로선으로 접히며 꺼짐(~1.0초) → "교신 종료"(1.05초~) → 결과 한 줄(1.7초~) ── */
 .signal-cut {
   --cut: #e2463c;
   --cut-glow: rgb(226 70 60 / 0.6);
@@ -2355,14 +2355,14 @@ h3 {
   100% { opacity: 0; transform: translate(0, 0); }
 }
 
-/* 꺼지는 화면: 위아래 검은 막이 가운데 가로선으로 닫히고, 선이 빛나다 사라진다 */
+/* 꺼지는 화면: 위아래 검은 막이 가운데로 닫히고, 가운데 가로선이 빛나다 사라진다 */
 .signal-cut-shutter {
   position: absolute;
   inset: 0;
   background:
     linear-gradient(#050606, #050606) top / 100% 0 no-repeat,
     linear-gradient(#050606, #050606) bottom / 100% 0 no-repeat;
-  animation: cut-shutter 1600ms cubic-bezier(0.7, 0, 0.3, 1) forwards;
+  animation: cut-shutter 400ms cubic-bezier(0.7, 0, 0.3, 1) 600ms forwards;
 }
 
 .signal-cut-shutter::after {
@@ -2374,25 +2374,30 @@ h3 {
   height: 2px;
   background: var(--cut);
   box-shadow: 0 0 18px 2px var(--cut-glow);
-  transform: scaleX(0);
   opacity: 0;
-  animation: cut-line 1600ms ease-out forwards;
+  animation: cut-line 500ms ease-out 950ms forwards;
 }
 
 @keyframes cut-shutter {
-  0%, 37% { background-size: 100% 0, 100% 0; }
-  62%, 100% { background-size: 100% 50.5%, 100% 50.5%; }
+  to { background-size: 100% 50.5%, 100% 50.5%; }
 }
 
 @keyframes cut-line {
-  0%, 55% { transform: scaleX(1); opacity: 0; }
-  62% { transform: scaleX(1); opacity: 1; }
-  75% { transform: scaleX(0.02); opacity: 1; }
-  82%, 100% { transform: scaleX(0); opacity: 0; }
+  0% { transform: scaleX(1); opacity: 1; }
+  60% { transform: scaleX(0.02); opacity: 1; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+
+.signal-cut-msg {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  text-align: center;
 }
 
 .signal-cut-text {
-  position: relative;
   margin: 0;
   font-family: 'Black Han Sans', var(--sans);
   font-size: clamp(1.8rem, 7vw, 3rem);
@@ -2400,21 +2405,42 @@ h3 {
   color: var(--cut);
   text-shadow: 0 0 16px var(--cut-glow);
   opacity: 0;
-  animation: cut-text 1600ms steps(1) forwards;
+  animation: cut-text 300ms steps(1) 1050ms forwards;
 }
 
 @keyframes cut-text {
-  0%, 64% { opacity: 0; }
-  70% { opacity: 1; }
-  74% { opacity: 0.2; }
-  78%, 100% { opacity: 1; }
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  55% { opacity: 0.2; }
+  80%, 100% { opacity: 1; }
+}
+
+/* 결과 한 줄: 무슨 일이 있었고 사건이 어떻게 되었는지 */
+.signal-cut-sub {
+  margin: 0;
+  font: 0.95rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.14em;
+  color: #a3aba6;
+  opacity: 0;
+  animation: cut-sub 500ms ease-out 1700ms forwards;
+}
+
+.signal-cut-sub b {
+  color: var(--cut);
+  text-shadow: 0 0 10px var(--cut-glow);
+}
+
+@keyframes cut-sub {
+  from { opacity: 0; transform: translateY(6px); letter-spacing: 0.4em; }
+  to { opacity: 1; transform: none; letter-spacing: 0.14em; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .signal-cut-noise,
   .signal-cut-shutter,
   .signal-cut-shutter::after,
-  .signal-cut-text {
+  .signal-cut-text,
+  .signal-cut-sub {
     animation: none;
   }
 }

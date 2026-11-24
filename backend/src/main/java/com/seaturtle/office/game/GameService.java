@@ -45,13 +45,15 @@ public class GameService {
 		Game game = store.get(id);
 		game.requirePlaying();
 		Judge.GuessVerdict verdict = judge.guess(game.scenario().slug(), answer);
-		int total = game.scenario().keyPoints().size();
-		if (verdict.total() != total) {
+		int total = game.scenario().keywords().size();
+		int bonusTotal = game.scenario().bonuses().size();
+		if (verdict.total() != total || verdict.bonusTotal() != bonusTotal) {
 			// 두 서버가 다른 버전의 시나리오를 읽고 있다. 한쪽만 다시 켰을 때 생긴다.
-			throw new JudgeException("핵심 포인트 수가 AI 서버(" + verdict.total() + ")와 백엔드(" + total
-					+ ")에서 다릅니다: " + game.scenario().slug() + ". 두 서버를 모두 다시 켜세요.");
+			throw new JudgeException("키워드 수가 AI 서버(핵심 " + verdict.total() + ", 보너스 " + verdict.bonusTotal()
+					+ ")와 백엔드(핵심 " + total + ", 보너스 " + bonusTotal + ")에서 다릅니다: "
+					+ game.scenario().slug() + ". 두 서버를 모두 다시 켜세요.");
 		}
-		game.addGuess(answer, verdict.matched(), total);
+		game.addGuess(answer, verdict.matched(), verdict.bonus());
 		return game;
 	}
 

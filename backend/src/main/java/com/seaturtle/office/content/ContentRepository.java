@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -67,8 +69,51 @@ public class ContentRepository {
 					doc.string("difficulty"),
 					sec.get("문제"),
 					sec.get("진상"),
-					MarkdownDoc.listItems(sec.get("핵심 포인트")),
+					keywords(sec),
+					bonuses(sec.get("보너스 키워드")),
 					MarkdownDoc.listItems(sec.get("힌트"))));
+		}
+		return result;
+	}
+
+	private static final Pattern KEYWORD_LINE = Pattern.compile("^\\d+\\.\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
+	private static final Pattern MISSING_LINE = Pattern.compile("^\\s+-\\s+빠졌을 때:\\s*(.*)$");
+	private static final Pattern BONUS_LINE = Pattern.compile("^-\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
+	/** 옛 '핵심 포인트' 형식을 읽을 때 쓰는 빠졌을 때 문장. 모든 시나리오를 바꾸면 지운다. */
+	static final String LEGACY_MISSING = "아직 빠진 것이 있구나.";
+
+	/** '## 핵심 키워드' 절을 읽는다. 규칙은 ai/app/content.py의 parse_keywords와 같다. */
+	static List<Keyword> keywords(Map<String, String> sec) {
+		if (!sec.containsKey("핵심 키워드")) {
+			// 옛 형식: 핵심 포인트 한 줄을 키워드 하나로 본다.
+			return MarkdownDoc.listItems(sec.get("핵심 포인트")).stream()
+					.map(p -> new Keyword(p, p, LEGACY_MISSING))
+					.toList();
+		}
+		List<String[]> items = new ArrayList<>();
+		for (String line : sec.get("핵심 키워드").split("\n")) {
+			Matcher k = KEYWORD_LINE.matcher(line);
+			Matcher m = MISSING_LINE.matcher(line);
+			if (k.matches()) {
+				items.add(new String[] { k.group(1).strip(), k.group(2).strip(), "" });
+			} else if (m.matches() && !items.isEmpty()) {
+				items.getLast()[2] = m.group(1).strip();
+			}
+		}
+		return items.stream().map(a -> new Keyword(a[0], a[1], a[2])).toList();
+	}
+
+	/** '## 보너스 키워드' 절을 읽는다. */
+	static List<Bonus> bonuses(String section) {
+		List<Bonus> result = new ArrayList<>();
+		if (section == null) {
+			return result;
+		}
+		for (String line : section.split("\n")) {
+			Matcher b = BONUS_LINE.matcher(line);
+			if (b.matches()) {
+				result.add(new Bonus(b.group(1).strip(), b.group(2).strip()));
+			}
 		}
 		return result;
 	}

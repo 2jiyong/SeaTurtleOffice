@@ -10,6 +10,7 @@ public record Scenario(
 		String difficulty,
 		String problem,
 		String truth,
-		List<String> keyPoints,
+		List<Keyword> keywords,
+		List<Bonus> bonuses,
 		List<String> hints) {
 }

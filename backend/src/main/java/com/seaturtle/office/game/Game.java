@@ -3,6 +3,8 @@ package com.seaturtle.office.game;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.seaturtle.office.content.Scenario;
 
@@ -12,13 +14,16 @@ public class Game {
 	public record QuestionRecord(int no, int seq, String text, Answer answer) {
 	}
 
-	public record GuessRecord(int seq, String text, int matched, int total, boolean correct) {
+	/** missing: 빠진 핵심 키워드의 '빠졌을 때' 문장. 맞힌 보너스는 담지 않는다(게임이 끝나야 공개). */
+	public record GuessRecord(int seq, String text, int matched, int total, boolean correct, List<String> missing) {
 	}
 
 	private final String id;
 	private final Scenario scenario;
 	private final List<QuestionRecord> questions = new ArrayList<>();
 	private final List<GuessRecord> guesses = new ArrayList<>();
+	/** 여러 추리에 걸쳐 맞힌 보너스 번호(1부터) */
+	private final Set<Integer> bonusFound = new TreeSet<>();
 	private GameStatus status = GameStatus.PLAYING;
 	private int hintsUsed;
 	/** 질문과 답안을 한 줄로 늘어놓기 위한 순번 */
@@ -75,10 +80,21 @@ public class Game {
 		return record;
 	}
 
-	public synchronized GuessRecord addGuess(String text, int matched, int total) {
+	public synchronized GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
 		requirePlaying();
-		boolean correct = total > 0 && matched == total;
-		var record = new GuessRecord(++seq, text, matched, total, correct);
+		var keywords = scenario.keywords();
+		int total = keywords.size();
+		Set<Integer> hit = new TreeSet<>();
+		matched.stream().filter(n -> n >= 1 && n <= total).forEach(hit::add);
+		bonus.stream().filter(n -> n >= 1 && n <= scenario.bonuses().size()).forEach(bonusFound::add);
+		List<String> missing = new ArrayList<>();
+		for (int i = 1; i <= total; i++) {
+			if (!hit.contains(i)) {
+				missing.add(keywords.get(i - 1).missing());
+			}
+		}
+		boolean correct = total > 0 && hit.size() == total;
+		var record = new GuessRecord(++seq, text, hit.size(), total, correct, List.copyOf(missing));
 		guesses.add(record);
 		if (correct) {
 			status = GameStatus.SOLVED;
@@ -97,5 +113,9 @@ public class Game {
 	public synchronized void giveUp() {
 		requirePlaying();
 		status = GameStatus.GAVE_UP;
+	}
+
+	public synchronized Set<Integer> bonusFound() {
+		return Set.copyOf(bonusFound);
 	}
 }

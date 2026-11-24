@@ -355,3 +355,35 @@ describe('무전기 조작판', () => {
     expect(screen.getByRole('tab', { name: '추리 제출' }).textContent).toBe('추리')
   })
 })
+
+describe('계시창 초점', () => {
+  it('Tab 초점이 계시창 밖으로 나가지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 21, nextHintAt: 30, hints: [{ no: 1, seq: 1, text: 'a', image: null }, { no: 2, seq: 2, text: 'b', image: null }] })
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    const dialog = screen.getByRole('dialog')
+    for (let i = 0; i < 5; i++) {
+      await user.tab()
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    }
+  })
+
+  it('원래 초점 자리가 사라졌으면 닫을 때 열린 계시 눈금으로 돌아간다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 9 })
+    vi.mocked(api.guess).mockResolvedValue({
+      ...game,
+      status: 'SOLVED',
+      used: 14,
+      nextHintAt: null,
+      hints: [{ no: 1, seq: 2, text: '계시', image: null }],
+      guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }],
+      reveal: { truth: 't', keywords: [], bonuses: [], score: 86, bonusPoints: 0 },
+    })
+    await user.click(screen.getByRole('tab', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), 't{Enter}')
+    await screen.findByRole('dialog', { name: '계시 1' })
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '계시 1' }))
+  })
+})

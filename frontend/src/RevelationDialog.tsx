@@ -17,6 +17,7 @@ export default function RevelationDialog({
   onClose: () => void
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const hint = hints[index]
 
   useEffect(() => {
@@ -26,6 +27,21 @@ export default function RevelationDialog({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      // Tab 초점이 창 밖(가려진 화면)으로 나가지 않게 창 안에서 돈다.
+      if (e.key === 'Tab' && dialogRef.current) {
+        const items = [...dialogRef.current.querySelectorAll<HTMLElement>('button')]
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        const inside = dialogRef.current.contains(document.activeElement)
+        if (e.shiftKey && (document.activeElement === first || !inside)) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -35,7 +51,7 @@ export default function RevelationDialog({
   const title = `계시 ${hint.no}`
   return (
     <div className="revelation-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="revelation" role="dialog" aria-modal="true" aria-labelledby="revelation-title">
+      <div ref={dialogRef} className="revelation" role="dialog" aria-modal="true" aria-labelledby="revelation-title">
         <div className="revelation-head">
           <h2 id="revelation-title">{title}</h2>
         </div>

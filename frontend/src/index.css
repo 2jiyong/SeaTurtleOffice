@@ -1352,6 +1352,19 @@ h3 {
 }
 
 @container (max-width: 460px) {
+  /* 좁으면 계시 눈금을 막대 아래에 차례로 늘어놓는다(잘리지 않게) */
+  .transcript.radio .usage-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    height: auto;
+  }
+
+  .transcript.radio .usage-steps .usage-step {
+    position: static;
+    translate: none;
+  }
+
   .transcript.radio .entry {
     grid-template-columns: 40px 1fr;
     grid-template-areas:

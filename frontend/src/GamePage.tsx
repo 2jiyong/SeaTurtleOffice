@@ -30,7 +30,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   const returnFocus = useRef<HTMLElement | null>(null)
   const closeHint = useCallback(() => {
     setOpenHint(null)
-    returnFocus.current?.focus()
+    // 원래 자리가 화면에서 사라졌으면(게임이 끝나 송신 단말이 없어짐) 마지막으로 열린 계시 눈금으로 돌아간다.
+    const el = returnFocus.current
+    if (el && el.isConnected) el.focus()
+    else [...document.querySelectorAll<HTMLElement>('.usage-step.open')].pop()?.focus()
   }, [])
   // 기본 사건 표지 파일이 없으면 표지 자리를 숨긴다.
   const [coverFailed, setCoverFailed] = useState(false)

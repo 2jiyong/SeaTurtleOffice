@@ -77,12 +77,31 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 요청 하나를 기다리는 최대 시간. 백엔드(28초)보다 조금 길게 잡아서, 보통은 백엔드가 먼저 오류를 돌려준다.
+ * 백엔드가 아예 답하지 않을 때만 여기서 끊는다.
+ */
+export const REQUEST_TIMEOUT_MS = 30_000
+
 async function request<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch(`/api${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    if (controller.signal.aborted) {
+      throw new ApiError('응답이 너무 늦습니다. 다시 시도해 주세요.', 0)
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
   if (!res.ok) {
     let message = `요청이 실패했습니다 (${res.status})`
     try {

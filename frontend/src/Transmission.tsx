@@ -42,9 +42,14 @@ export default function Transmission({ text, animate, className = '' }: { text: 
   }, [phase])
 
   const state = phase === 'decoding' ? 'transmitting' : phase === 'glitch' ? 'transmitting glitch' : ''
+  if (phase === 'done') {
+    return <span className={`tx ${className}`}>{text}</span>
+  }
+  // 연출 중: 깨진 글자는 화면 낭독기에서 숨기고, 완성된 문장을 따로 읽게 한다.
   return (
-    <span className={`tx ${className} ${state}`} data-t={text} aria-label={text}>
-      {phase === 'done' ? text : shown}
+    <span className={`tx ${className} ${state}`} data-t={text}>
+      <span aria-hidden="true">{shown}</span>
+      <span className="sr-only">{text}</span>
     </span>
   )
 }

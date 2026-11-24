@@ -1,5 +1,6 @@
 package com.seaturtle.office.content;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -34,11 +35,20 @@ public class ScenarioImages {
 		}
 		for (String ext : EXTENSIONS) {
 			Path file = dir.resolve(slug).resolve(name + "." + ext);
-			if (Files.isRegularFile(file)) {
+			if (Files.isRegularFile(file) && insideImageFolder(file)) {
 				return Optional.of(file);
 			}
 		}
 		return Optional.empty();
+	}
+
+	/** 링크를 따라간 실제 위치가 이미지 폴더 안인지. 링크로 폴더 밖 파일을 읽지 못하게 한다. */
+	private boolean insideImageFolder(Path file) {
+		try {
+			return file.toRealPath().startsWith(dir.toRealPath());
+		} catch (IOException e) {
+			return false;
+		}
 	}
 
 	/** 화면에 줄 주소. 그림이 없으면 null. */

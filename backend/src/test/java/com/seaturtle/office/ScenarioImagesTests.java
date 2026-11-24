@@ -43,4 +43,18 @@ class ScenarioImagesTests {
 		assertThat(images.find("../..", "cover")).isEmpty();
 		assertThat(images.find("..", "secret")).isEmpty();
 	}
+
+	@Test
+	void doesNotFollowLinksOutsideImageFolder() throws Exception {
+		var images = images();
+		Path dir = root.resolve("scenarios/images");
+		// 파일 링크: hint-1 → 폴더 밖 secret.txt
+		Files.createSymbolicLink(dir.resolve("boys-order/hint-1.webp"), root.resolve("secret.txt"));
+		// 폴더 링크: one-week → 폴더 밖
+		Files.createDirectories(root.resolve("outside"));
+		Files.writeString(root.resolve("outside/cover.webp"), "x");
+		Files.createSymbolicLink(dir.resolve("one-week"), root.resolve("outside"));
+		assertThat(images.find("boys-order", "hint-1")).isEmpty();
+		assertThat(images.find("one-week", "cover")).isEmpty();
+	}
 }

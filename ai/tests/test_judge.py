@@ -162,3 +162,9 @@ def test_every_scenario_uses_new_format(content):
             assert k.name not in k.missing, (s.slug, k.name)
             for term in k.required:
                 assert term not in k.missing, (s.slug, term)
+
+
+def test_required_terms_are_not_too_strict(content):
+    # 일반어(갈증)나 두 용어를 함께 요구하는 키워드(R사+부화장)는 팬에게도 깐깐하다.
+    assert content.scenario("be-your-family").keywords[1].required == []
+    assert content.scenario("one-week").keywords[0].required == ["R사"]

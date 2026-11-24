@@ -54,8 +54,13 @@ class OpenAiJudge:
 
     async def complete_json(self, prompt: Prompt) -> dict:
         extra = {}
-        if self.settings.openai_reasoning_effort:
-            extra["reasoning_effort"] = self.settings.openai_reasoning_effort
+        effort = (
+            self.settings.openai_question_reasoning_effort
+            if prompt.schema_name == "question_judgement"
+            else self.settings.openai_guess_reasoning_effort
+        )
+        if effort:
+            extra["reasoning_effort"] = effort
         try:
             response = await self.client.chat.completions.create(
                 model=self.settings.openai_model,

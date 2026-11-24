@@ -180,3 +180,30 @@ def test_openai_timeout_and_retries():
     judge = OpenAiJudge(s)
     assert judge.client.max_retries == 1
     assert judge.client.timeout == 12.0
+
+
+def test_question_thinks_less_than_guess():
+    # 질문은 한 게임에 수십 번이라 빨라야 한다(minimal ≈ 2초). 추리 채점은 몇 번뿐이라 꼼꼼하게(low).
+    import asyncio
+    from types import SimpleNamespace
+
+    from app.config import Settings
+    from app.judges import OpenAiJudge
+    from app.prompts import GUESS_SCHEMA, QUESTION_SCHEMA, Prompt
+
+    s = Settings(openai_api_key="test")
+    assert s.openai_question_reasoning_effort == "minimal"
+    assert s.openai_guess_reasoning_effort == "low"
+
+    judge = OpenAiJudge(s)
+    sent = []
+
+    async def fake_create(**kwargs):
+        sent.append(kwargs.get("reasoning_effort"))
+        message = SimpleNamespace(refusal=None, content='{"reason": "r", "answer": "YES"}')
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+    judge.client.chat.completions.create = fake_create
+    asyncio.run(judge.complete_json(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
+    asyncio.run(judge.complete_json(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
+    assert sent == ["minimal", "low"]

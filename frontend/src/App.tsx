@@ -44,7 +44,7 @@ export default function App() {
           )}
           <span>바다거북 사무소</span>
         </button>
-        <p className="brand-sub">주시자는 모든 것을 알고 있습니다. 다만 묻는 말에만, 짧게 답할 뿐입니다.</p>
+        <p className="brand-sub">응시자는 모든 것을 알고 있습니다. 다만 묻는 말에만, 짧게 답할 뿐입니다.</p>
       </header>
       {info && !info.judgeOnline && (
         <p className="banner">

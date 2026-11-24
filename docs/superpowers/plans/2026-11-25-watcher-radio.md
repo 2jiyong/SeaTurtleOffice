@@ -1,4 +1,4 @@
-# 주시자 무전 연출과 이미지 자리 구현 계획
+# 응시자 무전 연출과 이미지 자리 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -14,7 +14,7 @@
 - 이미지 이름은 `cover`, `hint-1`, `hint-2`, `hint-3`만. 확장자는 `webp` → `png` → `jpg` 순으로 찾는다. 요청할 때마다 파일을 확인한다.
 - 이미지 주소: `/api/scenarios/{slug}/images/{name}` (확장자 없이). 허용하지 않은 이름, 없는 시나리오, 없는 파일은 404.
 - 화면 고정 이미지 자리: `frontend/public/backgrounds/room.webp`, `frontend/public/brand/logo.webp`, `frontend/public/covers/default.webp`. 없으면 지금 모습.
-- 문구(그대로): 수신 기록 제목 `수신 기록`, 신호 `주시자와 연결됨`, 기다리는 표시 `수신 중`, 힌트 줄 이름 `계시 N`, 정답 `모두 맞혔구나.`
+- 문구(그대로): 수신 기록 제목 `수신 기록`, 신호 `응시자와 연결됨`, 기다리는 표시 `수신 중`, 힌트 줄 이름 `계시 N`, 정답 `모두 맞혔구나.`
 - 계속 깔리는 노이즈와 화면 흔들림은 쓰지 않는다. 일그러짐은 새로 들어온 줄에 한 번, `prefers-reduced-motion`이면 없음.
 - 사용자에게 보이는 문장과 주석은 한국어.
 
@@ -96,7 +96,7 @@ it('처음 불러온 기록은 연출 없이, 새로 온 답만 연출한다', a
 it('수신 기록 머리와 정답 문구', async () => {
   await openGame({ guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }] })
   expect(screen.getByText('수신 기록')).toBeTruthy()
-  expect(screen.getByText('주시자와 연결됨')).toBeTruthy()
+  expect(screen.getByText('응시자와 연결됨')).toBeTruthy()
   expect(screen.getByText('모두 맞혔구나.')).toBeTruthy()
 })
 
@@ -119,7 +119,7 @@ it('사건 서류에 대표 이미지가 있으면 보여 준다', async () => {
   - 배경: `body`에 `/backgrounds/room.webp`를 어둡게 덮어 깐다(없으면 지금 배경색만). 머리말 로고: `/brand/logo.webp`를 `<img>`로 시도하고 실패하면 지금 SVG.
 - [ ] **Step 4: 통과 확인** — `cd frontend && npm test && npx tsc -b && npm run lint`
 - [ ] **Step 5: 눈으로 확인** — 진행 중 게임(계시 1개 포함)에서 질문 하나를 보내 연출이 그 줄에만 나오는지, 새로고침하면 연출 없이 그대로인지. 1280px·520px 스크린샷.
-- [ ] **Step 6: 커밋** — `git commit -m "화면: 주시자 무전 수신 기록, 계시, 이미지 자리"`
+- [ ] **Step 6: 커밋** — `git commit -m "화면: 응시자 무전 수신 기록, 계시, 이미지 자리"`
 
 ---
 
@@ -129,4 +129,4 @@ it('사건 서류에 대표 이미지가 있으면 보여 준다', async () => {
 
 - [ ] **Step 1:** `scenarios/README.md`에 "이미지" 절(폴더, 이름, 확장자, 크기 권장 500KB 안쪽, 진상이 그림으로 새지 않게). `DEVELOPMENT.md`에 이미지 자리 표와 이미지 API. `docs/backlog.md` 2번·4번에 "연출·이미지 자리 완료, 그림 만들기는 남음". `.gitignore`에 `.superpowers/`.
 - [ ] **Step 2:** 세 프로젝트 테스트 — `cd ai && uv run pytest -q && cd ../backend && ./gradlew test && cd ../frontend && npm test`
-- [ ] **Step 3: 커밋** — `git commit -m "문서: 이미지 자리와 주시자 연출"`
+- [ ] **Step 3: 커밋** — `git commit -m "문서: 이미지 자리와 응시자 연출"`

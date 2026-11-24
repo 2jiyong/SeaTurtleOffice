@@ -165,7 +165,7 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
             <h2>수신 기록</h2>
             <span className="signal">
               <i aria-hidden />
-              주시자와 연결됨
+              응시자와 연결됨
             </span>
             <UsageBar
               game={game}

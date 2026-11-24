@@ -245,7 +245,7 @@ describe('기록이 늘어날 때 화면 위치', () => {
   })
 })
 
-describe('주시자 무전 수신 기록', () => {
+describe('응시자 무전 수신 기록', () => {
   it('계시는 수신 기록 줄에 없고, 막대에서 계시창으로 연다', async () => {
     const user = userEvent.setup()
     await openGame({ used: 11, nextHintAt: 20, hints: [{ no: 1, seq: 2, text: '첫 계시', image: null }] })
@@ -329,7 +329,7 @@ describe('주시자 무전 수신 기록', () => {
   it('수신 기록 머리와 정답 문구', async () => {
     await openGame({ guesses: [{ seq: 1, text: 't', matched: 3, total: 3, correct: true, missing: [] }] })
     expect(screen.getByText('수신 기록')).toBeTruthy()
-    expect(screen.getByText('주시자와 연결됨')).toBeTruthy()
+    expect(screen.getByText('응시자와 연결됨')).toBeTruthy()
     expect(screen.getByText('모두 맞혔구나.')).toBeTruthy()
   })
 

@@ -32,15 +32,15 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
         <p>
           바다거북 사무소는 도시에 남은 미해결 사건을 조사합니다.
           <br />
-          사무소는 모종의 방법으로 <b>주시자</b>와 교신할 수 있습니다. 주시자는 묻는 말에만 짧게 답합니다.
+          사무소는 모종의 방법으로 <b>응시자</b>와 교신할 수 있습니다. 응시자는 묻는 말에만 짧게 답합니다.
           <br />
           사건을 열람하고, 질문을 송신해 그 전말을 밝혀내십시오.
         </p>
       </div>
-      {/* 주시자의 한마디 */}
+      {/* 응시자의 한마디 */}
       <p className="watcher-line">
         <WatcherEye size={30} />
-        <span>주시자는 모든 것을 알고 있다.</span>
+        <span>응시자는 모든 것을 알고 있다.</span>
       </p>
       {error && <p className="error">{error}</p>}
       {!scenarios && !error && <p className="muted">기록을 불러오는 중…</p>}

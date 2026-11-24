@@ -33,7 +33,7 @@ public class GameService {
 
 	public Game.QuestionRecord ask(String id, String question) {
 		Game game = store.get(id);
-		game.requirePlaying();
+		game.requireQuestionAllowed();
 		List<Judge.HistoryEntry> history = game.questions().stream()
 				.map(q -> new Judge.HistoryEntry(q.text(), q.answer()))
 				.toList();

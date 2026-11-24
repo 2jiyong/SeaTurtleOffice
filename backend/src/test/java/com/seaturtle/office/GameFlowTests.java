@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import com.seaturtle.office.game.Answer;
+import com.seaturtle.office.game.Game;
 import com.seaturtle.office.game.GameEndedException;
 import com.seaturtle.office.game.GameService;
 import com.seaturtle.office.game.GameStatus;
@@ -36,6 +37,9 @@ class GameFlowTests {
 
 		@Override
 		public Verdict question(String scenario, List<HistoryEntry> history, String question) {
+			if (question.contains("오류")) {
+				throw new JudgeException("테스트용 판정 실패");
+			}
 			histories.add(history);
 			return new Verdict(Answer.IRRELEVANT_UNDECIDED);
 		}
@@ -92,7 +96,7 @@ class GameFlowTests {
 				.containsExactly(new Judge.HistoryEntry("세입자들은 죽었나요?", Answer.IRRELEVANT_UNDECIDED));
 
 		games.hint(game.id());
-		assertThat(game.hintsUsed()).isEqualTo(1);
+		assertThat(game.hintsOpen()).isEqualTo(1);
 
 		games.guess(game.id(), "모르겠어요");
 		assertThat(game.guesses().getFirst().correct()).isFalse();
@@ -125,8 +129,8 @@ class GameFlowTests {
 		var game = games.start("boys-order");
 		// 응답 본문에 answer는 있고 key는 없다.
 		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON).content("{\"text\":\"q\"}"))
-				.andExpect(jsonPath("$.answer").value("IRRELEVANT_UNDECIDED"))
-				.andExpect(jsonPath("$.key").doesNotExist());
+				.andExpect(jsonPath("$.questions[0].answer").value("IRRELEVANT_UNDECIDED"))
+				.andExpect(jsonPath("$.questions[0].key").doesNotExist());
 	}
 
 	@Test
@@ -151,5 +155,96 @@ class GameFlowTests {
 				.andExpect(jsonPath("$.reveal.keywords[0].name").value("카포의 권위"))
 				.andExpect(jsonPath("$.reveal.bonuses[0].found").value(true))
 				.andExpect(jsonPath("$.reveal.bonuses[1].found").value(true));
+	}
+
+	// ── 사용 횟수, 힌트, 마지막 추리, 점수 ──
+
+	private Game playing(int questions) {
+		var game = games.start("boys-order");
+		for (int i = 0; i < questions; i++) {
+			games.ask(game.id(), "q" + i);
+		}
+		return game;
+	}
+
+	@Test
+	void questionsCostOneAndOpenHintAtTen() throws Exception {
+		var game = playing(9);
+		assertThat(game.used()).isEqualTo(9);
+		assertThat(game.hintsOpen()).isZero();
+		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON).content("{\"text\":\"열 번째\"}"))
+				.andExpect(jsonPath("$.used").value(10))
+				.andExpect(jsonPath("$.hints.length()").value(1));
+		assertThat(game.hintsOpen()).isEqualTo(1);
+	}
+
+	@Test
+	void hintButtonJumpsToNextStep() {
+		var game = playing(5);
+		assertThat(game.nextHintAt()).isEqualTo(10);
+		games.hint(game.id());
+		assertThat(game.used()).isEqualTo(10);
+		assertThat(game.hintsOpen()).isEqualTo(1);
+		for (int i = 0; i < 3; i++) {
+			games.ask(game.id(), "q");
+		}
+		assertThat(game.nextHintAt()).isEqualTo(20);
+		games.hint(game.id());
+		assertThat(game.used()).isEqualTo(20);
+		games.hint(game.id());
+		assertThat(game.used()).isEqualTo(30);
+		assertThat(game.hintsOpen()).isEqualTo(3);
+		assertThat(game.nextHintAt()).isNull();
+		assertThatThrownBy(() -> games.hint(game.id())).isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void guessCostsFiveAndCapsAtForty() {
+		var game = playing(38);
+		games.guess(game.id(), "모르겠어요");
+		assertThat(game.used()).isEqualTo(40);
+		assertThat(game.finalChance()).isTrue();
+		assertThat(game.status()).isEqualTo(GameStatus.PLAYING);
+	}
+
+	@Test
+	void questionAtLimitIsRejected() throws Exception {
+		var game = playing(40);
+		assertThatThrownBy(() -> games.ask(game.id(), "41번째")).isInstanceOf(IllegalStateException.class);
+		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON).content("{\"text\":\"q\"}"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict());
+		assertThat(game.used()).isEqualTo(40);
+	}
+
+	@Test
+	void finalGuessWrongFails() {
+		var game = playing(40);
+		games.guess(game.id(), "모르겠어요");
+		assertThat(game.used()).isEqualTo(40);
+		assertThat(game.status()).isEqualTo(GameStatus.FAILED);
+		assertThat(game.score()).isZero();
+	}
+
+	@Test
+	void scoreOnSolve() throws Exception {
+		var game = playing(3);
+		mvc.perform(post("/api/games/" + game.id() + "/guesses").contentType(APPLICATION_JSON).content("{\"text\":\"정답\"}"))
+				.andExpect(jsonPath("$.used").value(8))
+				.andExpect(jsonPath("$.reveal.score").value(102))
+				.andExpect(jsonPath("$.reveal.bonusPoints").value(10));
+		assertThat(game.status()).isEqualTo(GameStatus.SOLVED);
+	}
+
+	@Test
+	void judgeErrorDoesNotSpend() {
+		var game = playing(4);
+		assertThatThrownBy(() -> games.ask(game.id(), "오류")).isInstanceOf(JudgeException.class);
+		assertThat(game.used()).isEqualTo(4);
+	}
+
+	@Test
+	void hintStepsFollowHintCount() {
+		assertThat(Game.hintStepsFor(2)).containsExactly(10, 20);
+		assertThat(Game.hintStepsFor(3)).containsExactly(10, 20, 30);
 	}
 }

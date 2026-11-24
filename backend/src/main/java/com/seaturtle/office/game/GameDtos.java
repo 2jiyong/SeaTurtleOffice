@@ -35,7 +35,9 @@ public final class GameDtos {
 	public record BonusView(String name, String description, boolean found) {
 	}
 
-	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses) {
+	/** score: 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0. */
+	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses, int score,
+			int bonusPoints) {
 
 		static Reveal of(Game game) {
 			Scenario s = game.scenario();
@@ -47,7 +49,7 @@ public final class GameDtos {
 			}
 			return new Reveal(s.truth(),
 					s.keywords().stream().map(k -> new KeywordView(k.name(), k.description())).toList(),
-					List.copyOf(bonuses));
+					List.copyOf(bonuses), game.score(), game.bonusPoints());
 		}
 	}
 
@@ -58,6 +60,11 @@ public final class GameDtos {
 			List<Game.QuestionRecord> questions,
 			List<String> hints,
 			List<Game.GuessRecord> guesses,
+			int used,
+			int limit,
+			List<Integer> hintSteps,
+			boolean finalChance,
+			Integer nextHintAt,
 			Reveal reveal) {
 
 		static GameView of(Game game) {
@@ -65,7 +72,8 @@ public final class GameDtos {
 			GameStatus status = game.status();
 			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game);
 			return new GameView(game.id(), ScenarioSummary.of(s), status, game.questions(),
-					s.hints().subList(0, game.hintsUsed()), game.guesses(), reveal);
+					s.hints().subList(0, game.hintsOpen()), game.guesses(), game.used(), Game.LIMIT,
+					game.hintSteps(), game.finalChance(), game.nextHintAt(), reveal);
 		}
 	}
 }

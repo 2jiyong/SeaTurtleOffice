@@ -117,12 +117,6 @@ def test_parses_keywords_and_bonuses(content):
     assert [b.name for b in s.bonuses] == ["월세 체납", "증거가 남지 않음"]
 
 
-def test_old_format_still_reads(content):
-    s = content.scenario("boys-order")  # Task 6 전까지 옛 형식
-    assert len(s.keywords) == 3 and s.bonuses == []
-    assert s.keywords[0].missing == "아직 빠진 것이 있구나."
-
-
 def test_keyword_lines_in_any_order():
     ks = parse_keywords("1. **가**: 설명\n   - 빠졌을 때: 문장.\n   - 인정: a, b\n")
     assert ks[0].accept == ["a", "b"] and ks[0].required == [] and ks[0].missing == "문장."
@@ -158,3 +152,13 @@ def test_guess_numbers_are_cleaned(client):
         assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [2], "bonusTotal": 2}
     finally:
         app.state.judge = saved
+
+
+def test_every_scenario_uses_new_format(content):
+    for s in content.scenarios.values():
+        assert s.keywords and 1 <= len(s.bonuses) <= 2, s.slug
+        for k in s.keywords:
+            assert k.missing and k.missing != "아직 빠진 것이 있구나.", (s.slug, k.name)
+            assert k.name not in k.missing, (s.slug, k.name)
+            for term in k.required:
+                assert term not in k.missing, (s.slug, term)

@@ -24,6 +24,7 @@ class ContentRepositoryTests {
 			assertThat(s.problem()).as(s.slug()).isNotBlank();
 			assertThat(s.truth()).as(s.slug()).isNotBlank();
 			assertThat(s.keywords()).as(s.slug() + " 핵심 키워드").isNotEmpty();
+			assertThat(s.bonuses()).as(s.slug() + " 보너스 키워드").hasSizeBetween(1, 2);
 			assertThat(s.hints()).as(s.slug() + " 힌트").isNotEmpty();
 		}
 	}
@@ -36,13 +37,5 @@ class ContentRepositoryTests {
 		assertThat(s.keywords().get(1).missing()).isEqualTo("건물이 어떻게 하룻밤 사이에 비었는지가 빠져 있구나.");
 		assertThat(s.bonuses()).extracting(com.seaturtle.office.content.Bonus::name)
 				.containsExactly("월세 체납", "증거가 남지 않음");
-	}
-
-	@Test
-	void oldFormatStillReads() {
-		// 모든 시나리오를 새 형식으로 바꾸면 지운다.
-		Scenario s = content.scenario("boys-order").orElseThrow();
-		assertThat(s.keywords()).hasSize(3);
-		assertThat(s.bonuses()).isEmpty();
 	}
 }

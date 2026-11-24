@@ -79,19 +79,11 @@ public class ContentRepository {
 	private static final Pattern KEYWORD_LINE = Pattern.compile("^\\d+\\.\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
 	private static final Pattern MISSING_LINE = Pattern.compile("^\\s+-\\s+빠졌을 때:\\s*(.*)$");
 	private static final Pattern BONUS_LINE = Pattern.compile("^-\\s+\\*\\*(.+?)\\*\\*:\\s*(.+)$");
-	/** 옛 '핵심 포인트' 형식을 읽을 때 쓰는 빠졌을 때 문장. 모든 시나리오를 바꾸면 지운다. */
-	static final String LEGACY_MISSING = "아직 빠진 것이 있구나.";
 
 	/** '## 핵심 키워드' 절을 읽는다. 규칙은 ai/app/content.py의 parse_keywords와 같다. */
 	static List<Keyword> keywords(Map<String, String> sec) {
-		if (!sec.containsKey("핵심 키워드")) {
-			// 옛 형식: 핵심 포인트 한 줄을 키워드 하나로 본다.
-			return MarkdownDoc.listItems(sec.get("핵심 포인트")).stream()
-					.map(p -> new Keyword(p, p, LEGACY_MISSING))
-					.toList();
-		}
 		List<String[]> items = new ArrayList<>();
-		for (String line : sec.get("핵심 키워드").split("\n")) {
+		for (String line : sec.getOrDefault("핵심 키워드", "").split("\n")) {
 			Matcher k = KEYWORD_LINE.matcher(line);
 			Matcher m = MISSING_LINE.matcher(line);
 			if (k.matches()) {

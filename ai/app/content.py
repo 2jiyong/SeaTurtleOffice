@@ -17,8 +17,6 @@ BULLET = re.compile(r"^(?:[-*]|\d+\.)\s+(.*)$")
 KEYWORD_LINE = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*:\s*(.+)$")
 KEYWORD_FIELD = re.compile(r"^\s+-\s+(필수 용어|인정|불인정|빠졌을 때):\s*(.*)$")
 BONUS_LINE = re.compile(r"^-\s+\*\*(.+?)\*\*:\s*(.+)$")
-# 옛 '핵심 포인트' 형식을 읽을 때 쓰는 빠졌을 때 문장. 모든 시나리오를 바꾸면 지운다.
-LEGACY_MISSING = "아직 빠진 것이 있구나."
 
 
 @dataclass(frozen=True)
@@ -250,11 +248,7 @@ class ContentRepository:
                 log.warning("문제/진상 섹션이 없는 시나리오를 건너뜁니다: %s", path)
                 continue
             slug = path.stem
-            if "핵심 키워드" in sec:
-                keywords = parse_keywords(sec["핵심 키워드"])
-            else:
-                # 옛 형식: 핵심 포인트 한 줄을 예시 없는 키워드 하나로 본다.
-                keywords = [Keyword(p, p, missing=LEGACY_MISSING) for p in list_items(sec.get("핵심 포인트"))]
+            keywords = parse_keywords(sec.get("핵심 키워드"))
             result[slug] = Scenario(
                 slug=slug,
                 title=doc.string("title") or slug,

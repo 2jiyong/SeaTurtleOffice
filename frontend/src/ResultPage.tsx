@@ -29,6 +29,8 @@ export default function ResultPage({
   const [tab, setTab] = useState<Tab>('truth')
   const [openHint, setOpenHint] = useState<number | null>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
+  // 판정 제목. 들어오면 여기에 초점을 둬서, 화면 읽기 프로그램이 판정부터 읽게 한다.
+  const verdictRef = useRef<HTMLHeadingElement>(null)
   const closeHint = useCallback(() => {
     setOpenHint(null)
     returnFocus.current?.focus()
@@ -43,6 +45,14 @@ export default function ResultPage({
     // onResume은 주소를 바꾸는 함수라 다시 불러올 이유가 되지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
+
+  // 게임 화면에서 아래로 내려간 채 넘어와도 판정과 점수부터 보이게 맨 위로 올린다.
+  const loaded = game !== null
+  useEffect(() => {
+    if (!loaded) return
+    window.scrollTo(0, 0)
+    verdictRef.current?.focus()
+  }, [loaded])
 
   if (loadError) {
     return (
@@ -69,7 +79,9 @@ export default function ResultPage({
       <header className={`result-head ${solved ? 'solved' : 'closed'}`}>
         <span className="result-label">교신 종료 {'//'} 사건 기록 봉인</span>
         <div className="result-verdict">
-          <h1>{verdict.title}</h1>
+          <h1 ref={verdictRef} tabIndex={-1}>
+            {verdict.title}
+          </h1>
           <p className="result-score">{reveal.score}점</p>
         </div>
         <p className="result-sub">{solved ? scoreLine : verdict.sub}</p>

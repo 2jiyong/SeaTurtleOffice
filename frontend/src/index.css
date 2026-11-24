@@ -2441,3 +2441,7 @@ h3 {
   color: #e6e9e0;
   border-color: #7d8682;
 }
+
+.result-verdict h1:focus {
+  outline: none;
+}

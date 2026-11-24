@@ -42,6 +42,7 @@ async function openResult(overrides: Partial<GameView> = {}, handlers: { onExit?
 beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
 })
 afterEach(cleanup)
 
@@ -63,6 +64,13 @@ describe('결과 페이지 머리', () => {
     cleanup()
     await openResult({ status: 'GAVE_UP', reveal })
     expect(await screen.findByText('조사 중단')).toBeTruthy()
+  })
+
+  it('들어오면 맨 위로 올리고 판정에 초점을 둔다', async () => {
+    await openResult()
+    const heading = await screen.findByRole('heading', { name: '사건 해결' })
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0)
+    expect(document.activeElement).toBe(heading)
   })
 
   it('목록으로 버튼은 onExit', async () => {

@@ -50,7 +50,7 @@ cd frontend && npm install && npm run dev
 |---|---|---|
 | `GET /health` | | `{judge, fake, scenarios}` |
 | `POST /judge/question` | `{scenario, question, history: [{text, answer}]}` | `{answer}` |
-| `POST /judge/guess` | `{scenario, guess}` | `{matched, total}` |
+| `POST /judge/guess` | `{scenario, guess}` | `{matched: [번호], total, bonus: [번호], bonusTotal}` |
 
 `scenario`는 시나리오 파일 이름(확장자 없이)이다. `http://localhost:8000/docs`에서 직접 호출해 볼 수 있다.
 
@@ -86,7 +86,9 @@ cd frontend && npm install && npm run dev
 
   도시의 일반 상식을 묻는 질문은 이 사건과 이어질 때만 진상과 세계관에 따라 답하고, 아니면 `IRRELEVANT_UNRELATED`다.
   판정 메모의 "예 / 아니오 / 상관없음 / 예로 볼 수 있다"는 `YES` / `NO` / `IRRELEVANT_*` / `PARTIAL_*`로 읽는다.
-- 정답 제출: 답안 하나가 핵심 포인트를 모두 충족하면 정답이다. 플레이어에게는 몇 개를 맞혔는지만 보여 준다.
+- 정답 제출: 답안 하나가 시나리오의 **핵심 키워드**를 모두 충족하면 정답이다(형식은 `scenarios/README.md`). 필수 용어가 있는 키워드는 그 세계관 용어를 써야 충족이다.
+  오답이면 "핵심 n/m"과 함께 빠진 키워드마다 시나리오의 "빠졌을 때" 문장을 보여 준다. AI는 키워드 번호만 판정하고 문장은 쓰지 않는다.
+- 보너스: 시나리오의 **보너스 키워드**(곁가지 1~2개)도 추리마다 판정해 모아 두고, 게임이 끝날 때 진상 공개에서만 보여 준다. 정답 여부와는 상관없다.
 - 판정은 JSON 스키마로 받으므로 자유 문장이 플레이어에게 새지 않는다. 판정 근거(`reason`)는 AI 서버 로그에만 남는다.
 
 ## 테스트

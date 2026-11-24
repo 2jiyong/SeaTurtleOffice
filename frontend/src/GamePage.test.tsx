@@ -126,3 +126,35 @@ it('ANSWER_TEXT가 9개 코드를 모두 담는다', () => {
     'INVALID_RULE',
   ])
 })
+
+describe('추리 결과와 진상 공개', () => {
+  it('오답 추리 아래에 빠졌을 때 문장을 보여 주고 보너스는 보여 주지 않는다', async () => {
+    await openGame({
+      guesses: [
+        { seq: 1, text: 't', matched: 2, total: 3, correct: false, missing: ['건물주가 무엇을 바랐는지가 빠져 있구나.'] },
+      ],
+    })
+    expect(screen.getByText('핵심 2/3')).toBeTruthy()
+    expect(screen.getByText('건물주가 무엇을 바랐는지가 빠져 있구나.')).toBeTruthy()
+    expect(screen.queryByText(/보너스/)).toBeNull()
+  })
+
+  it('진상 공개에서 핵심 키워드와 맞힌 보너스를 보여 준다', async () => {
+    vi.mocked(api.game).mockResolvedValue({
+      ...game,
+      status: 'SOLVED',
+      reveal: {
+        truth: '진상',
+        keywords: [{ name: '청소부', description: '청소부가 쓸어 갔다.' }],
+        bonuses: [
+          { name: '월세 체납', description: 'd1', found: true },
+          { name: '증거가 남지 않음', description: 'd2', found: false },
+        ],
+      },
+    })
+    render(<GamePage gameId="g1" onExit={() => {}} />)
+    expect(await screen.findByText('청소부')).toBeTruthy()
+    expect(screen.getByText('보너스 1/2')).toBeTruthy()
+    expect(screen.getByText('맞힘')).toBeTruthy()
+  })
+})

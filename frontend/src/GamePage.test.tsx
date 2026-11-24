@@ -134,6 +134,13 @@ it('ANSWER_TEXT가 9개 코드를 모두 담는다', () => {
   ])
 })
 
+it('기록이 없으면 응시자의 침묵과 질문 규칙만 짧게 보여 준다', async () => {
+  await openGame({})
+  expect(screen.getByText(/응시자는 아직 아무 말도 하지 않았다/)).toBeTruthy()
+  expect(screen.getByText(/예, 아니오로 답할 수 있는 것만 물어라/)).toBeTruthy()
+  expect(screen.queryByText(/건물주/)).toBeNull()
+})
+
 describe('추리 결과와 진상 공개', () => {
   it.each([
     ['ONE_SHORT', '거의 다 왔구나. 조금만 더 들여다보렴.'],

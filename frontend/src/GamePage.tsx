@@ -188,9 +188,11 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
           <ol ref={logRef} className="log" aria-live="polite" tabIndex={0} aria-label="수신 기록 목록">
             {entries.length === 0 && !pending && (
               <li className="empty">
-                아직 기록된 질문이 없습니다. 예나 아니오로 답할 수 있는 질문부터 시작하세요.
+                <span className="example">{'//'} 수신 기록 없음</span>
                 <br />
-                <span className="example">예: “건물주가 직접 무언가를 했나요?”</span>
+                응시자는 아직 아무 말도 하지 않았다.
+                <br />
+                예, 아니오로 답할 수 있는 것만 물어라.
               </li>
             )}
             {entries.map((e) => {

@@ -3,6 +3,7 @@ package com.seaturtle.office;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
@@ -42,9 +43,16 @@ class GameFlowTests {
 		@Override
 		public GuessVerdict guess(String scenario, String guess) {
 			if (guess.contains("개수 다름")) {
-				return new GuessVerdict(2, 5);
+				return new GuessVerdict(List.of(1), 5, List.of(), 2);
 			}
-			return guess.contains("정답") ? new GuessVerdict(3, 3) : new GuessVerdict(1, 3);
+			if (guess.contains("보너스 다름")) {
+				return new GuessVerdict(List.of(), 3, List.of(), 9);
+			}
+			if (guess.contains("정답")) {
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 2);
+			}
+			// 오답: 둘째 핵심 키워드가 빠졌고 둘째 보너스를 맞혔다.
+			return new GuessVerdict(List.of(1, 3), 3, List.of(2), 2);
 		}
 
 		@Override
@@ -73,7 +81,7 @@ class GameFlowTests {
 
 	@Test
 	void playThroughAndGiveUp() {
-		var game = games.start("last-rent");
+		var game = games.start("boys-order");
 
 		var q1 = games.ask(game.id(), "세입자들은 죽었나요?");
 		var q2 = games.ask(game.id(), "건물주가 했나요?");
@@ -97,7 +105,7 @@ class GameFlowTests {
 
 	@Test
 	void correctGuessSolves() {
-		var game = games.start("last-rent");
+		var game = games.start("boys-order");
 		games.guess(game.id(), "정답입니다");
 		assertThat(game.status()).isEqualTo(GameStatus.SOLVED);
 	}
@@ -105,18 +113,43 @@ class GameFlowTests {
 	@Test
 	void guessIsRejectedWhenAiServerKeyPointCountDiffers() {
 		// AI 서버가 다른 버전의 시나리오를 읽고 있으면(한쪽만 재시작 등) 판정을 믿을 수 없다.
-		var game = games.start("last-rent");
+		var game = games.start("boys-order");
 		assertThatThrownBy(() -> games.guess(game.id(), "개수 다름")).isInstanceOf(JudgeException.class);
+		assertThatThrownBy(() -> games.guess(game.id(), "보너스 다름")).isInstanceOf(JudgeException.class);
 		assertThat(game.guesses()).isEmpty();
 		assertThat(game.status()).isEqualTo(GameStatus.PLAYING);
 	}
 
 	@Test
 	void questionResponseHasNoKeyField() throws Exception {
-		var game = games.start("last-rent");
+		var game = games.start("boys-order");
 		// 응답 본문에 answer는 있고 key는 없다.
 		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON).content("{\"text\":\"q\"}"))
 				.andExpect(jsonPath("$.answer").value("IRRELEVANT_UNDECIDED"))
 				.andExpect(jsonPath("$.key").doesNotExist());
+	}
+
+	@Test
+	void wrongGuessShowsMissingSentences() {
+		var game = games.start("boys-order");
+		games.guess(game.id(), "모르겠어요");
+		assertThat(game.guesses().getFirst().missing())
+				.containsExactly("꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나.");
+	}
+
+	@Test
+	void bonusHiddenUntilEndThenMerged() throws Exception {
+		var game = games.start("boys-order");
+		String guessUrl = "/api/games/" + game.id() + "/guesses";
+		// 오답 추리(보너스 2를 맞힘): 게임 중에는 보너스 정보가 나가지 않는다.
+		mvc.perform(post(guessUrl).contentType(APPLICATION_JSON).content("{\"text\":\"모르겠어요\"}"));
+		mvc.perform(get("/api/games/" + game.id()))
+				.andExpect(jsonPath("$.reveal").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.guesses[0].bonus").doesNotExist());
+		// 정답 추리(보너스 1을 맞힘): 끝나면 두 추리의 보너스를 합쳐 보여 준다.
+		mvc.perform(post(guessUrl).contentType(APPLICATION_JSON).content("{\"text\":\"정답\"}"))
+				.andExpect(jsonPath("$.reveal.keywords[0].name").value("카포의 권위"))
+				.andExpect(jsonPath("$.reveal.bonuses[0].found").value(true))
+				.andExpect(jsonPath("$.reveal.bonuses[1].found").value(true));
 	}
 }

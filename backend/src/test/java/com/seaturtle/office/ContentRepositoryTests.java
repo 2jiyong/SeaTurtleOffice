@@ -23,8 +23,19 @@ class ContentRepositoryTests {
 			assertThat(s.title()).as(s.slug()).isNotBlank();
 			assertThat(s.problem()).as(s.slug()).isNotBlank();
 			assertThat(s.truth()).as(s.slug()).isNotBlank();
-			assertThat(s.keyPoints()).as(s.slug() + " 핵심 포인트").isNotEmpty();
+			assertThat(s.keywords()).as(s.slug() + " 핵심 키워드").isNotEmpty();
+			assertThat(s.bonuses()).as(s.slug() + " 보너스 키워드").hasSizeBetween(1, 2);
 			assertThat(s.hints()).as(s.slug() + " 힌트").isNotEmpty();
 		}
+	}
+
+	@Test
+	void readsKeywordsAndBonuses() {
+		Scenario s = content.scenario("boys-order").orElseThrow();
+		assertThat(s.keywords()).extracting(com.seaturtle.office.content.Keyword::name)
+				.containsExactly("카포의 권위", "해낼 수 없는 지시", "엄지의 규율");
+		assertThat(s.keywords().get(1).missing()).isEqualTo("꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나.");
+		assertThat(s.bonuses()).extracting(com.seaturtle.office.content.Bonus::name)
+				.containsExactly("부활은 금기", "손목 재생");
 	}
 }

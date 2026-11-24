@@ -710,6 +710,11 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* 빠졌을 때 문장은 한 줄에 하나 */
+.missing-line {
+  display: block;
+}
+
 /* 진상 보고서 */
 .reveal {
   position: relative;
@@ -845,4 +850,26 @@ h3 {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.bonus-count {
+  margin-left: 6px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.bonuses .found-mark {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1.5px solid var(--green);
+  border-radius: 3px;
+  color: var(--green);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.bonuses li:not(.found) {
+  color: var(--ink-muted);
 }

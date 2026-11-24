@@ -20,7 +20,8 @@ public interface Judge {
 	record Verdict(Answer answer) {
 	}
 
-	record GuessVerdict(int matched, int total) {
+	/** 번호는 1부터. 핵심 키워드와 보너스 키워드 중 충족한 것. */
+	record GuessVerdict(List<Integer> matched, int total, List<Integer> bonus, int bonusTotal) {
 	}
 
 	record Status(String judge, boolean fake, boolean online) {

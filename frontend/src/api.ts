@@ -34,6 +34,15 @@ export interface GuessRecord {
   matched: number
   total: number
   correct: boolean
+  /** 빠진 핵심 키워드마다 진행자가 하는 말 */
+  missing: string[]
+}
+
+export interface Reveal {
+  truth: string
+  keywords: { name: string; description: string }[]
+  /** found: 이번 게임에서 낸 추리 중 하나라도 이 보너스를 맞혔는가 */
+  bonuses: { name: string; description: string; found: boolean }[]
 }
 
 export interface GameView {
@@ -43,7 +52,7 @@ export interface GameView {
   questions: QuestionRecord[]
   hints: string[]
   guesses: GuessRecord[]
-  reveal: { truth: string; keyPoints: string[] } | null
+  reveal: Reveal | null
 }
 
 export class ApiError extends Error {

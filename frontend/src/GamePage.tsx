@@ -150,6 +150,15 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
                   <span className={`stamp ${e.item.correct ? 's-yes' : 's-guess'}`}>
                     {e.item.correct ? '정답' : `핵심 ${e.item.matched}/${e.item.total}`}
                   </span>
+                  {!e.item.correct && e.item.missing.length > 0 && (
+                    <span className="stamp-note">
+                      {e.item.missing.map((m, i) => (
+                        <span key={i} className="missing-line">
+                          {m}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </li>
               ),
             )}
@@ -207,12 +216,32 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               </span>
               <h2>{game.status === 'SOLVED' ? '사건 해결 보고서' : '사건의 진상'}</h2>
               <p className="truth">{game.reveal.truth}</p>
-              <h3>핵심 포인트</h3>
+              <h3>핵심 키워드</h3>
               <ul>
-                {game.reveal.keyPoints.map((p, i) => (
-                  <li key={i}>{p}</li>
+                {game.reveal.keywords.map((k, i) => (
+                  <li key={i}>
+                    <strong>{k.name}</strong>: {k.description}
+                  </li>
                 ))}
               </ul>
+              {game.reveal.bonuses.length > 0 && (
+                <>
+                  <h3>
+                    보너스 키워드{' '}
+                    <span className="bonus-count">
+                      보너스 {game.reveal.bonuses.filter((b) => b.found).length}/{game.reveal.bonuses.length}
+                    </span>
+                  </h3>
+                  <ul className="bonuses">
+                    {game.reveal.bonuses.map((b, i) => (
+                      <li key={i} className={b.found ? 'found' : ''}>
+                        <strong>{b.name}</strong>: {b.description}
+                        {b.found && <span className="found-mark">맞힘</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <p className="reveal-meta">
                 질문 {game.questions.length}개, 힌트 {game.hints.length}개를 써서 {game.status === 'SOLVED' ? '해결했습니다' : '종결했습니다'}.
               </p>

@@ -7,7 +7,7 @@ import com.seaturtle.office.content.Scenario;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** API 요청과 응답. 진상과 핵심 포인트는 게임이 끝났을 때만 내보낸다. */
+/** API 요청과 응답. 진상, 핵심 키워드, 맞힌 보너스는 게임이 끝났을 때만 내보낸다. */
 public final class GameDtos {
 
 	private GameDtos() {
@@ -29,7 +29,26 @@ public final class GameDtos {
 		}
 	}
 
-	public record Reveal(String truth, List<String> keyPoints) {
+	public record KeywordView(String name, String description) {
+	}
+
+	public record BonusView(String name, String description, boolean found) {
+	}
+
+	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses) {
+
+		static Reveal of(Game game) {
+			Scenario s = game.scenario();
+			var found = game.bonusFound();
+			List<BonusView> bonuses = new java.util.ArrayList<>();
+			for (int i = 0; i < s.bonuses().size(); i++) {
+				var b = s.bonuses().get(i);
+				bonuses.add(new BonusView(b.name(), b.description(), found.contains(i + 1)));
+			}
+			return new Reveal(s.truth(),
+					s.keywords().stream().map(k -> new KeywordView(k.name(), k.description())).toList(),
+					List.copyOf(bonuses));
+		}
 	}
 
 	public record GameView(
@@ -44,7 +63,7 @@ public final class GameDtos {
 		static GameView of(Game game) {
 			Scenario s = game.scenario();
 			GameStatus status = game.status();
-			Reveal reveal = status == GameStatus.PLAYING ? null : new Reveal(s.truth(), s.keyPoints());
+			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game);
 			return new GameView(game.id(), ScenarioSummary.of(s), status, game.questions(),
 					s.hints().subList(0, game.hintsUsed()), game.guesses(), reveal);
 		}

@@ -14,6 +14,9 @@ log = logging.getLogger(__name__)
 
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 BULLET = re.compile(r"^(?:[-*]|\d+\.)\s+(.*)$")
+KEYWORD_LINE = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*:\s*(.+)$")
+KEYWORD_FIELD = re.compile(r"^\s+-\s+(필수 용어|인정|불인정|빠졌을 때):\s*(.*)$")
+BONUS_LINE = re.compile(r"^-\s+\*\*(.+?)\*\*:\s*(.+)$")
 
 
 @dataclass(frozen=True)
@@ -26,13 +29,34 @@ class WorldDoc:
 
 
 @dataclass(frozen=True)
+class Keyword:
+    """정답 조건 하나. 필수 용어·인정·불인정은 판정 기준, missing은 빠졌을 때 진행자가 하는 말이다."""
+
+    name: str
+    description: str
+    required: list[str] = field(default_factory=list)
+    accept: list[str] = field(default_factory=list)
+    reject: list[str] = field(default_factory=list)
+    missing: str = ""
+
+
+@dataclass(frozen=True)
+class Bonus:
+    """정답과 상관없는 곁가지 사실. 맞히면 보너스다."""
+
+    name: str
+    description: str
+
+
+@dataclass(frozen=True)
 class Scenario:
     slug: str
     title: str
     uses: list[str]
     problem: str
     truth: str
-    key_points: list[str]
+    keywords: list[Keyword]
+    bonuses: list[Bonus]
     judge_notes: str
     hints: list[str] = field(default_factory=list)
 
@@ -122,6 +146,39 @@ def list_items(section: str | None) -> list[str]:
     return items
 
 
+def _split_list(value: str) -> list[str]:
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def parse_keywords(section: str | None) -> list[Keyword]:
+    """'## 핵심 키워드' 절을 읽는다. 하위 줄(필수 용어·인정·불인정·빠졌을 때)은 순서와 상관없다."""
+    keywords: list[dict] = []
+    for line in (section or "").split("\n"):
+        m = KEYWORD_LINE.match(line)
+        if m:
+            keywords.append({"name": m.group(1).strip(), "description": m.group(2).strip()})
+            continue
+        f = KEYWORD_FIELD.match(line)
+        if f and keywords:
+            label, value = f.group(1), f.group(2).strip()
+            if label == "빠졌을 때":
+                keywords[-1]["missing"] = value
+            else:
+                key = {"필수 용어": "required", "인정": "accept", "불인정": "reject"}[label]
+                keywords[-1][key] = _split_list(value)
+    return [Keyword(**k) for k in keywords]
+
+
+def parse_bonuses(section: str | None) -> list[Bonus]:
+    """'## 보너스 키워드' 절을 읽는다."""
+    bonuses = []
+    for line in (section or "").split("\n"):
+        m = BONUS_LINE.match(line)
+        if m:
+            bonuses.append(Bonus(m.group(1).strip(), m.group(2).strip()))
+    return bonuses
+
+
 def _markdown_files(directory: Path, recursive: bool) -> list[Path]:
     paths = directory.rglob("*.md") if recursive else directory.glob("*.md")
     return sorted(p for p in paths if p.is_file() and not p.name.startswith("_") and p.name != "README.md")
@@ -191,13 +248,15 @@ class ContentRepository:
                 log.warning("문제/진상 섹션이 없는 시나리오를 건너뜁니다: %s", path)
                 continue
             slug = path.stem
+            keywords = parse_keywords(sec.get("핵심 키워드"))
             result[slug] = Scenario(
                 slug=slug,
                 title=doc.string("title") or slug,
                 uses=doc.list("uses"),
                 problem=sec["문제"],
                 truth=sec["진상"],
-                key_points=list_items(sec.get("핵심 포인트")),
+                keywords=keywords,
+                bonuses=parse_bonuses(sec.get("보너스 키워드")),
                 judge_notes=sec.get("판정 메모", ""),
                 hints=list_items(sec.get("힌트")),
             )

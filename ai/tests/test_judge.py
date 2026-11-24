@@ -2,9 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
-from app.content import ContentRepository
+from app.content import ContentRepository, parse_keywords
 from app.main import app
-from app.prompts import ANSWERS, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
+from app.prompts import ANSWERS, GUESS_RULES, GUESS_SCHEMA, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
 
 CODES = ["YES", "NO", "PARTIAL_SOME", "PARTIAL_CONDITION", "IRRELEVANT_UNRELATED",
          "IRRELEVANT_UNDECIDED", "INVALID_FORM", "INVALID_TRUTH", "INVALID_RULE"]
@@ -39,7 +39,7 @@ def test_loads_base_and_scenarios(content):
 def test_every_scenario_is_complete(content):
     for s in content.scenarios.values():
         assert s.title and s.problem and s.truth, s.slug
-        assert s.key_points, f"{s.slug} 핵심 포인트"
+        assert s.keywords, f"{s.slug} 핵심 키워드"
         assert s.hints, f"{s.slug} 힌트"
 
 
@@ -48,10 +48,10 @@ def test_every_uses_id_exists_in_world(content):
 
 
 def test_prompt_carries_truth_and_used_details(content):
-    s = content.scenario("last-rent")
+    s = content.scenario("boys-order")
     prompt = JudgePrompts(content, 40).question(s, [], "질문")
     assert s.truth in prompt.system
-    assert "(syndicate.sweepers)" in prompt.system
+    assert "(syndicate.fingers.thumb)" in prompt.system
     assert "## 출처" not in prompt.system
     assert "<question>\n질문\n</question>" in prompt.user
 
@@ -59,14 +59,13 @@ def test_prompt_carries_truth_and_used_details(content):
 def test_fake_judge_flow(client):
     assert client.get("/health").json()["fake"] is True
 
-    r = client.post("/judge/question", json={"scenario": "last-rent", "question": "세입자들은 죽었나요?"})
+    r = client.post("/judge/question", json={"scenario": "boys-order", "question": "세입자들은 죽었나요?"})
     assert r.status_code == 200
     assert r.json() == {"answer": "IRRELEVANT_UNRELATED"}
 
-    r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "모르겠어요"})
+    r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "모르겠어요"})
     assert r.status_code == 200
-    assert r.json()["matched"] == 0
-    assert r.json()["total"] > 0
+    assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 2}
 
 
 def test_unknown_scenario_is_404(client):
@@ -86,7 +85,7 @@ def test_rules_explain_every_code():
 
 
 def test_history_uses_new_codes(content):
-    s = content.scenario("last-rent")
+    s = content.scenario("boys-order")
     prompt = JudgePrompts(content, 40).question(s, [HistoryItem("건물주는 몇 살?", "IRRELEVANT_UNDECIDED")], "q")
     assert "- 건물주는 몇 살? → IRRELEVANT_UNDECIDED" in prompt.user
 
@@ -102,7 +101,69 @@ def test_old_answer_code_is_rejected(client):
     saved = app.state.judge
     app.state.judge = OldJudge()
     try:
-        r = client.post("/judge/question", json={"scenario": "last-rent", "question": "q"})
+        r = client.post("/judge/question", json={"scenario": "boys-order", "question": "q"})
         assert r.status_code == 502
     finally:
         app.state.judge = saved
+
+
+def test_parses_keywords_and_bonuses(content):
+    s = content.scenario("boys-order")
+    assert [k.name for k in s.keywords] == ["카포의 권위", "해낼 수 없는 지시", "엄지의 규율"]
+    assert s.keywords[0].required == ["카포"]
+    assert s.keywords[1].required == []
+    assert "꼬마가 무서웠다" in s.keywords[0].reject
+    assert s.keywords[1].missing == "꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나."
+    assert [b.name for b in s.bonuses] == ["부활은 금기", "손목 재생"]
+
+
+def test_keyword_lines_in_any_order():
+    ks = parse_keywords("1. **가**: 설명\n   - 빠졌을 때: 문장.\n   - 인정: a, b\n")
+    assert ks[0].accept == ["a", "b"] and ks[0].required == [] and ks[0].missing == "문장."
+
+
+def test_materials_carry_keywords_not_missing_lines(content):
+    m = JudgePrompts(content, 40).materials("boys-order")
+    assert "## [핵심 키워드]" in m and "## [보너스 키워드]" in m
+    assert "필수 용어: 엄지" in m and "불인정:" in m
+    assert "빠졌을 때" not in m and "## [핵심 포인트]" not in m
+
+
+def test_guess_schema_has_bonus():
+    assert GUESS_SCHEMA["required"] == ["reason", "matched", "bonus"]
+
+
+def test_guess_rules_mention_required_terms():
+    for word in ["필수 용어", "인정", "불인정", "[보너스 키워드]"]:
+        assert word in GUESS_RULES
+
+
+def test_guess_numbers_are_cleaned(client):
+    class Messy:
+        name, fake = "messy", True
+
+        async def complete_json(self, prompt):
+            return {"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [2, 5]}
+
+    saved = app.state.judge
+    app.state.judge = Messy()
+    try:
+        r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "g"})
+        assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [2], "bonusTotal": 2}
+    finally:
+        app.state.judge = saved
+
+
+def test_every_scenario_uses_new_format(content):
+    for s in content.scenarios.values():
+        assert s.keywords and 1 <= len(s.bonuses) <= 2, s.slug
+        for k in s.keywords:
+            assert k.missing and k.missing != "아직 빠진 것이 있구나.", (s.slug, k.name)
+            assert k.name not in k.missing, (s.slug, k.name)
+            for term in k.required:
+                assert term not in k.missing, (s.slug, term)
+
+
+def test_required_terms_are_not_too_strict(content):
+    # 두 용어를 함께 요구하는 키워드(R사+부화장)는 팬에게도 깐깐하다.
+    assert content.scenario("one-week").keywords[0].required == ["R사"]

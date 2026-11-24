@@ -2308,10 +2308,6 @@ h3 {
   outline-offset: 2px;
 }
 
-.result #result-panel > .reveal {
-  margin-top: 18px;
-}
-
 .result #result-panel > .game {
   margin-top: 18px;
 }
@@ -2560,4 +2556,192 @@ h3 {
 .confirm-actions button:focus-visible {
   outline: 2px solid #e6e9e0;
   outline-offset: 2px;
+}
+
+/* ── 결과 진상 탭: 정답 조건 카드(핵심·보너스) → 사건의 전말 ── */
+.conditions {
+  margin-top: 18px;
+}
+
+.conditions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2c3337;
+}
+
+.conditions-head h2,
+.conditions-head h3 {
+  margin: 0;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  color: #e6e9e0;
+}
+
+.conditions-head span {
+  font: 0.75rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.08em;
+  color: #7d8682;
+}
+
+.key-cards,
+.bonus-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 핵심 카드: 판정 기준이 찍힌 단말 카드 */
+.key-card {
+  position: relative;
+  padding: 14px 14px 12px;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-top: 3px solid var(--verdict);
+  border-radius: 3px;
+  box-shadow: inset 0 0 30px rgb(0 0 0 / 0.6), 0 0 18px -10px var(--verdict-glow);
+  overflow: hidden;
+  animation: card-in 0.4s ease-out both;
+}
+
+.key-card:nth-child(2) { animation-delay: 0.08s; }
+.key-card:nth-child(3) { animation-delay: 0.16s; }
+.key-card:nth-child(4) { animation-delay: 0.24s; }
+.key-card:nth-child(5) { animation-delay: 0.32s; }
+
+.key-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.02) 0 1px, transparent 1px 3px);
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.key-no {
+  display: block;
+  font: 700 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.16em;
+  color: #7d8682;
+}
+
+.key-name {
+  display: block;
+  margin: 6px 0 8px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  color: var(--verdict);
+  text-shadow: 0 0 12px var(--verdict-glow);
+}
+
+.key-desc {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #c9cec6;
+}
+
+/* 보너스 카드: 맞힘은 노란 도장, 놓침은 흐리게 */
+.bonus-head {
+  margin-top: 18px;
+}
+
+.bonus-card {
+  position: relative;
+  padding: 10px 12px;
+  background: #0f1213;
+  border: 1px dashed #3a4245;
+  border-radius: 3px;
+}
+
+.bonus-card strong {
+  display: block;
+  padding-right: 4.5em;
+  font-family: 'Black Han Sans', var(--sans);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: #c9cec6;
+}
+
+.bonus-card p {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #9aa29d;
+}
+
+.bonus-mark {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  padding: 1px 7px;
+  font: 700 0.7rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  rotate: -4deg;
+}
+
+.bonus-card.found {
+  border-style: solid;
+  border-color: rgb(214 169 53 / 0.55);
+  box-shadow: 0 0 14px -8px rgb(214 169 53 / 0.7);
+}
+
+.bonus-card.found strong {
+  color: var(--hazard);
+}
+
+.bonus-card.found .bonus-mark {
+  color: var(--hazard);
+}
+
+.bonus-card.missed {
+  opacity: 0.6;
+}
+
+.bonus-card.missed .bonus-mark {
+  color: #7d8682;
+}
+
+/* 사건의 전말: 정답 조건 아래 종이 기록 */
+.truth-panel > .reveal {
+  margin-top: 24px;
+}
+
+.story-label {
+  display: block;
+  margin-bottom: 4px;
+  font: 700 0.72rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.16em;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key-card {
+    animation: none;
+  }
+}
+
+.truth-panel .reveal-meta {
+  margin-top: 16px;
 }

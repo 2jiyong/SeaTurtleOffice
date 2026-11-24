@@ -118,39 +118,55 @@ export default function ResultPage({
 
       <div id="result-panel" role="tabpanel" aria-labelledby={tab === 'truth' ? 'result-tab-truth' : 'result-tab-records'}>
         {tab === 'truth' ? (
-          <article className={`reveal ${solved ? 'solved' : 'closed'}`}>
-            <h2>{game.scenario.title}</h2>
-            <p className="truth">{reveal.truth}</p>
-            <h3>핵심 키워드</h3>
-            <ul>
-              {reveal.keywords.map((k, i) => (
-                <li key={i}>
-                  <strong>{k.name}</strong>: {k.description}
-                </li>
-              ))}
-            </ul>
-            {reveal.bonuses.length > 0 && (
-              <>
-                <h3>
-                  보너스 키워드{' '}
-                  <span className="bonus-count">
-                    보너스 {reveal.bonuses.filter((b) => b.found).length}/{reveal.bonuses.length}
-                  </span>
-                </h3>
-                <ul className="bonuses">
-                  {reveal.bonuses.map((b, i) => (
-                    <li key={i} className={b.found ? 'found' : ''}>
-                      <strong>{b.name}</strong>: {b.description}
-                      {b.found && <span className="found-mark">맞힘</span>}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <p className="reveal-meta">
-              사용 {game.used} / {game.limit}, 질문 {game.questions.length}개, 힌트 {game.hints.length}개.
-            </p>
-          </article>
+          <div className={`truth-panel ${solved ? 'solved' : 'closed'}`}>
+            {/* 정답 조건: 무엇을 맞혀야 했는지부터 */}
+            <section className="conditions" aria-labelledby="conditions-title">
+              <div className="conditions-head">
+                <h2 id="conditions-title">정답 조건</h2>
+                <span>핵심 {reveal.keywords.length}개를 모두 밝혀야 해결</span>
+              </div>
+              <ol className="key-cards">
+                {reveal.keywords.map((k, i) => (
+                  <li key={i} className="key-card">
+                    <span className="key-no">핵심 {String(i + 1).padStart(2, '0')}</span>
+                    <strong className="key-name">{k.name}</strong>
+                    <p className="key-desc">{k.description}</p>
+                  </li>
+                ))}
+              </ol>
+              {reveal.bonuses.length > 0 && (
+                <>
+                  <div className="conditions-head bonus-head">
+                    <h3>보너스</h3>
+                    <span className="bonus-count">
+                      보너스 {reveal.bonuses.filter((b) => b.found).length}/{reveal.bonuses.length}
+                    </span>
+                  </div>
+                  <ul className="bonus-cards">
+                    {reveal.bonuses.map((b, i) => (
+                      <li key={i} className={`bonus-card ${b.found ? 'found' : 'missed'}`}>
+                        <span className="bonus-mark">{b.found ? '맞힘' : '놓침'}</span>
+                        <strong>{b.name}</strong>
+                        <p>{b.description}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+
+            {/* 사건의 전말 */}
+            <section className={`reveal ${solved ? 'solved' : 'closed'}`} aria-label="사건의 전말">
+              <span className="story-label" aria-hidden>
+                사건의 전말
+              </span>
+              <h2>{game.scenario.title}</h2>
+              <p className="truth">{reveal.truth}</p>
+              <p className="reveal-meta">
+                사용 {game.used} / {game.limit}, 질문 {game.questions.length}개, 힌트 {game.hints.length}개.
+              </p>
+            </section>
+          </div>
         ) : (
           <div className="game">
             <CaseScreen game={game} label="사건 기록 // 봉인" />

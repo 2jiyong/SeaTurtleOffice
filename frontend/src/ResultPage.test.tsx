@@ -94,6 +94,17 @@ describe('결과 페이지 탭', () => {
     expect(screen.queryByRole('button', { name: '포기하고 진상 보기' })).toBeNull()
   })
 
+  it('진상 탭은 정답 조건(핵심·보너스)을 먼저, 사건의 전말을 그다음에 보여 준다', async () => {
+    await openResult()
+    const conditions = await screen.findByRole('region', { name: '정답 조건' })
+    const story = screen.getByRole('region', { name: '사건의 전말' })
+    expect(conditions.compareDocumentPosition(story) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(conditions.textContent).toContain('핵심 01')
+    expect(conditions.textContent).toContain('청소부')
+    expect(conditions.textContent).toContain('놓침')
+    expect(story.textContent).toContain('진상 문장')
+  })
+
   it('기록 탭은 사건 기록과 수신 기록을 함께, 읽기 전용으로', async () => {
     await openResult({ status: 'GAVE_UP', nextHintAt: 30, hints: [], reveal: { ...solved.reveal!, score: 0 } })
     await userEvent.click(await screen.findByRole('tab', { name: '기록' }))

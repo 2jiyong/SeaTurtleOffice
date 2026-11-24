@@ -41,7 +41,7 @@
 
 ---
 
-### 작업 1: 공용 기록 화면 떼어 내기 (동작 변화 없음)
+### Task 1: 공용 기록 화면 떼어 내기 (동작 변화 없음)
 
 **파일:**
 - 만들기: `frontend/src/GameRecords.tsx`
@@ -71,7 +71,7 @@
 - [ ] **2단계:** `cd frontend && npx vitest run && npx tsc -b && npm run lint`를 실행한다. 기존 42개 테스트가 그대로 통과해야 한다.
 - [ ] **3단계:** 커밋한다. `git commit -m "게임 화면의 사건 기록과 수신 기록을 공용 컴포넌트로 떼어 낸다"`
 
-### 작업 2: 결과 페이지와 주소
+### Task 2: 결과 페이지와 주소
 
 **파일:**
 - 만들기: `frontend/src/ResultPage.tsx`, `frontend/src/ResultPage.test.tsx`
@@ -146,7 +146,7 @@
 - [ ] **6단계:** `npx vitest run && npx tsc -b && npm run lint`를 실행한다. 모두 통과해야 한다.
 - [ ] **7단계:** 커밋한다. `git commit -m "결과 페이지: 판정과 점수, 진상 탭과 기록 탭"`
 
-### 작업 3: 신호 단절 연출과 넘어가기
+### Task 3: 신호 단절 연출과 넘어가기
 
 **파일:**
 - 만들기: `frontend/src/SignalCut.tsx`
@@ -193,7 +193,7 @@
 - [ ] **5단계:** `npx vitest run && npx tsc -b && npm run lint`를 실행한다. 모두 통과해야 한다.
 - [ ] **6단계:** 커밋한다. `git commit -m "게임이 끝나면 신호 단절 연출 뒤 결과 페이지로 넘어간다"`
 
-### 작업 4: 실제 화면 확인과 문서
+### Task 4: 실제 화면 확인과 문서
 
 - [ ] **1단계:** 실제 브라우저(기존 CDP 스크립트 방식)로 다음을 찍어서 겹침과 넘침을 확인한다.
   - 정답 결과의 진상 탭

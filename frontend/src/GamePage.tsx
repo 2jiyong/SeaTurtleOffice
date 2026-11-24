@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ANSWER_TEXT, api, ApiError, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
 import Risk from './Risk.tsx'
 
@@ -19,7 +19,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
   // 힌트·포기 요청 중. 질문 판정(pending)과 함께, 진행 중에는 게임 상태를 바꾸는 요청을 더 보내지 않는다.
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const logEnd = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     api.game(gameId).then(setGame, (e: Error) =>
@@ -27,8 +26,10 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     )
   }, [gameId])
 
+  // 기록이 늘면 페이지 맨 아래로 내린다. 그러면 입력칸이 제자리에 놓이고 새 기록이 바로 위에 보인다.
+  // (기록 끝을 화면 아래에 맞추면 화면 아래에 고정된 입력칸이 마지막 기록을 가린다.)
   useEffect(() => {
-    logEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
   }, [game?.questions.length, game?.guesses.length, pending])
 
   if (loadError) {
@@ -175,7 +176,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
               </li>
             )}
           </ol>
-          <div ref={logEnd} />
         </div>
 
         {error && <p className="error">{error}</p>}

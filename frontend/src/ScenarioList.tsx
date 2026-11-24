@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ScenarioSummary } from './api.ts'
 import Risk from './Risk.tsx'
+import WatcherEye from './WatcherEye.tsx'
 
 export default function ScenarioList({ onStarted }: { onStarted: (gameId: string) => void }) {
   const [scenarios, setScenarios] = useState<ScenarioSummary[] | null>(null)
@@ -28,28 +29,40 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
       <div className="list-head">
         <h1>미해결 사건</h1>
         <p>
-          사건 기록 하나를 꺼내세요. 질문하면 진행자가 <b>그렇단다</b>, <b>아니란다</b>, <b>중요하지 않단다</b> 같은 정해진 말로 답합니다.
-          전말을 알아냈다면 추리를 제출하세요.
+          사건 하나를 골라 열람하세요. 질문을 송신하면 주시자가 짧게 답합니다. 그 답들을 이어 붙여 전말을 알아냈다면,
+          추리를 송신하세요.
         </p>
       </div>
       {error && <p className="error">{error}</p>}
       {!scenarios && !error && <p className="muted">기록을 불러오는 중…</p>}
-      <ol className="files">
-        {scenarios?.map((s, i) => (
-          <li key={s.slug}>
-            <button className="file" onClick={() => start(s.slug)} disabled={starting !== null}>
-              <span className="file-tab">사건 {String(i + 1).padStart(3, '0')}</span>
-              {s.cover && <img className="file-cover" src={s.cover} alt="" />}
-              <span className="file-head">
-                <span className="file-title">{s.title}</span>
-                <Risk difficulty={s.difficulty} />
-              </span>
-              <span className="file-problem">{s.problem}</span>
-              <span className="file-cta">{starting === s.slug ? '기록을 여는 중…' : '이 사건 맡기'}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
+      {scenarios && (
+        <div className="archive-device">
+          <div className="archive-screen">
+            <div className="archive-head">
+              <WatcherEye size={18} />
+              <span className="archive-title">사건 기록 보관소 {'//'} 미해결 {scenarios.length}건</span>
+            </div>
+            <ol className="archive-list">
+              {scenarios.map((s, i) => (
+                <li key={s.slug}>
+                  <button className="archive-row" onClick={() => start(s.slug)} disabled={starting !== null}>
+                    <span className="archive-no">{String(i + 1).padStart(3, '0')}</span>
+                    {s.cover && <img className="archive-cover" src={s.cover} alt="" />}
+                    <span className="archive-body">
+                      <span className="archive-row-head">
+                        <span className="archive-name">{s.title}</span>
+                        <Risk difficulty={s.difficulty} />
+                      </span>
+                      <span className="archive-problem">{s.problem}</span>
+                    </span>
+                    <span className="archive-cta">{starting === s.slug ? '여는 중…' : '열람 ▶'}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

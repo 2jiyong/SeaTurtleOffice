@@ -1941,6 +1941,192 @@ h3 {
   border-color: #4a4f52;
 }
 
+/* ── 메인 화면: 사건 기록 보관소 단말 ── */
+.archive-device {
+  max-width: 880px;
+  padding: 10px;
+  background: linear-gradient(#2d3337, #1f2427);
+  border: 1px solid #3a4246;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+}
+
+.archive-screen {
+  position: relative;
+  overflow: hidden;
+  background: #121517;
+  border: 1px solid #2c3337;
+  border-radius: 4px;
+  box-shadow: inset 0 0 50px rgb(0 0 0 / 0.7);
+}
+
+.archive-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+}
+
+.archive-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #2c3337;
+}
+
+.archive-title {
+  font: 0.75rem 'Nanum Gothic Coding', monospace;
+  letter-spacing: 0.12em;
+  color: #7d8682;
+}
+
+.archive-head .signal {
+  margin-left: auto;
+}
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.archive-row {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 44px auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 0;
+  border-bottom: 1px solid #22282b;
+  background: transparent;
+  color: #dfe2d6;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+/* 대표 이미지가 없어도 칸이 밀리지 않게 자리를 정해 둔다 */
+.archive-no {
+  grid-column: 1;
+}
+
+.archive-cover {
+  grid-column: 2;
+}
+
+.archive-body {
+  grid-column: 3;
+}
+
+.archive-cta {
+  grid-column: 4;
+}
+
+.archive-row:hover:not(:disabled),
+.archive-row:focus-visible {
+  background: rgb(230 233 224 / 0.04);
+  box-shadow: inset 3px 0 0 #b3261e;
+}
+
+.archive-row:disabled {
+  cursor: default;
+}
+
+.archive-no {
+  align-self: start;
+  padding-top: 4px;
+  font: 700 0.78rem 'Nanum Gothic Coding', monospace;
+  color: #7d8682;
+}
+
+.archive-cover {
+  width: 96px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid #2c3337;
+}
+
+.archive-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.archive-row-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.archive-name {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #e6e9e0;
+  text-shadow: 0 0 10px rgb(230 233 224 / 0.22);
+}
+
+.archive-row .risk-label {
+  color: #7d8682;
+}
+
+.archive-row .risk-bars i {
+  background: #2c3337;
+}
+
+.archive-problem {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #a7b0ab;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.archive-cta {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  color: #f3e9e7;
+  padding: 6px 12px;
+  border-radius: 2px;
+  background: #7a1c16;
+  box-shadow: inset 0 0 0 1px #b3261e;
+  text-shadow: 0 0 8px rgb(255 170 160 / 0.45);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .archive-row {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .archive-cover {
+    grid-column: 2;
+    width: 100%;
+  }
+
+  .archive-body,
+  .archive-cta {
+    grid-column: 2;
+  }
+
+  .archive-cta {
+    justify-self: start;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

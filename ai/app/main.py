@@ -54,8 +54,12 @@ class GuessRequest(BaseModel):
 
 
 class GuessResult(BaseModel):
-    matched: int
+    """번호는 1부터. 빠졌을 때 문장은 백엔드가 시나리오에서 꺼낸다."""
+
+    matched: list[int]
     total: int
+    bonus: list[int]
+    bonusTotal: int
 
 
 class QuestionJudgement(BaseModel):
@@ -66,6 +70,7 @@ class QuestionJudgement(BaseModel):
 class GuessJudgement(BaseModel):
     reason: str
     matched: list[int]
+    bonus: list[int]
 
 
 class Health(BaseModel):
@@ -129,7 +134,14 @@ async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
     scenario = _scenario(request, body.scenario)
     prompt = request.app.state.prompts.guess(scenario, body.guess.strip())
     result = _validate(GuessJudgement, await request.app.state.judge.complete_json(prompt))
-    total = len(scenario.keywords)
-    matched = len({n for n in result.matched if 1 <= n <= total})
-    log.info("[%s] 답안 %d/%d : %s / %s", scenario.slug, matched, total, body.guess, result.reason)
-    return GuessResult(matched=matched, total=total)
+    total, bonus_total = len(scenario.keywords), len(scenario.bonuses)
+    matched = _clean(result.matched, total)
+    bonus = _clean(result.bonus, bonus_total)
+    log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d : %s / %s",
+             scenario.slug, matched, total, bonus, bonus_total, body.guess, result.reason)
+    return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total)
+
+
+def _clean(numbers: list[int], total: int) -> list[int]:
+    """AI가 준 번호에서 중복과 범위 밖 값을 버린다."""
+    return sorted({n for n in numbers if 1 <= n <= total})

@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.content import ContentRepository, parse_keywords
 from app.main import app
-from app.prompts import ANSWERS, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
+from app.prompts import ANSWERS, GUESS_RULES, GUESS_SCHEMA, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
 
 CODES = ["YES", "NO", "PARTIAL_SOME", "PARTIAL_CONDITION", "IRRELEVANT_UNRELATED",
          "IRRELEVANT_UNDECIDED", "INVALID_FORM", "INVALID_TRUTH", "INVALID_RULE"]
@@ -65,8 +65,7 @@ def test_fake_judge_flow(client):
 
     r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "모르겠어요"})
     assert r.status_code == 200
-    assert r.json()["matched"] == 0
-    assert r.json()["total"] > 0
+    assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 2}
 
 
 def test_unknown_scenario_is_404(client):
@@ -134,3 +133,28 @@ def test_materials_carry_keywords_not_missing_lines(content):
     assert "## [핵심 키워드]" in m and "## [보너스 키워드]" in m
     assert "필수 용어: 청소부" in m and "불인정:" in m
     assert "빠졌을 때" not in m and "## [핵심 포인트]" not in m
+
+
+def test_guess_schema_has_bonus():
+    assert GUESS_SCHEMA["required"] == ["reason", "matched", "bonus"]
+
+
+def test_guess_rules_mention_required_terms():
+    for word in ["필수 용어", "인정", "불인정", "[보너스 키워드]"]:
+        assert word in GUESS_RULES
+
+
+def test_guess_numbers_are_cleaned(client):
+    class Messy:
+        name, fake = "messy", True
+
+        async def complete_json(self, prompt):
+            return {"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [2, 5]}
+
+    saved = app.state.judge
+    app.state.judge = Messy()
+    try:
+        r = client.post("/judge/guess", json={"scenario": "last-rent", "guess": "g"})
+        assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [2], "bonusTotal": 2}
+    finally:
+        app.state.judge = saved

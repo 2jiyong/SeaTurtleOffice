@@ -153,26 +153,6 @@ describe('추리 결과와 진상 공개', () => {
     expect(screen.queryByText(/보너스/)).toBeNull()
   })
 
-  it('진상 공개에서 핵심 키워드와 맞힌 보너스를 보여 준다', async () => {
-    vi.mocked(api.game).mockResolvedValue({
-      ...game,
-      status: 'SOLVED',
-      reveal: {
-        truth: '진상',
-        keywords: [{ name: '청소부', description: '청소부가 쓸어 갔다.' }],
-        bonuses: [
-          { name: '월세 체납', description: 'd1', found: true },
-          { name: '증거가 남지 않음', description: 'd2', found: false },
-        ],
-        score: 87,
-        bonusPoints: 10,
-      },
-    })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
-    expect(await screen.findByText('청소부')).toBeTruthy()
-    expect(screen.getByText('보너스 1/2')).toBeTruthy()
-    expect(screen.getByText('맞힘')).toBeTruthy()
-  })
 })
 
 describe('사용 횟수와 점수', () => {
@@ -213,29 +193,7 @@ describe('사용 횟수와 점수', () => {
     expect(screen.getByText('사용 10 / 40')).toBeTruthy()
   })
 
-  it('진상 공개에서 점수와 계산을 보여 준다', async () => {
-    vi.mocked(api.game).mockResolvedValue({
-      ...game,
-      status: 'SOLVED',
-      used: 23,
-      reveal: { truth: 't', keywords: [], bonuses: [], score: 87, bonusPoints: 10 },
-    })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
-    expect(await screen.findByText('87점')).toBeTruthy()
-    expect(screen.getByText('100 − 사용 23 + 보너스 10 = 87')).toBeTruthy()
-  })
 
-  it('실패하면 실패 도장과 0점', async () => {
-    vi.mocked(api.game).mockResolvedValue({
-      ...game,
-      status: 'FAILED',
-      used: 40,
-      reveal: { truth: 't', keywords: [], bonuses: [], score: 0, bonusPoints: 0 },
-    })
-    render(<GamePage gameId="g1" onExit={() => {}} />)
-    expect(await screen.findByText('0점')).toBeTruthy()
-    expect(screen.getByText('실패')).toBeTruthy()
-  })
 })
 
 describe('기록이 늘어날 때 화면 위치', () => {

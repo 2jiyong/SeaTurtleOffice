@@ -211,56 +211,6 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
 
         {error && <p className="error">{error}</p>}
 
-        {!playing &&
-          game.reveal && (
-            <article className={`reveal ${game.status === 'SOLVED' ? 'solved' : 'closed'}`}>
-              <span className="verdict" aria-hidden>
-                {VERDICT[game.status]}
-              </span>
-              <h2>{game.status === 'SOLVED' ? '사건 해결 보고서' : '사건의 진상'}</h2>
-              <p className="score">{game.reveal.score}점</p>
-              {game.status === 'SOLVED' && (
-                <p className="score-line">
-                  {game.reveal.bonusPoints > 0
-                    ? `100 − 사용 ${game.used} + 보너스 ${game.reveal.bonusPoints} = ${game.reveal.score}`
-                    : `100 − 사용 ${game.used} = ${game.reveal.score}`}
-                </p>
-              )}
-              <p className="truth">{game.reveal.truth}</p>
-              <h3>핵심 키워드</h3>
-              <ul>
-                {game.reveal.keywords.map((k, i) => (
-                  <li key={i}>
-                    <strong>{k.name}</strong>: {k.description}
-                  </li>
-                ))}
-              </ul>
-              {game.reveal.bonuses.length > 0 && (
-                <>
-                  <h3>
-                    보너스 키워드{' '}
-                    <span className="bonus-count">
-                      보너스 {game.reveal.bonuses.filter((b) => b.found).length}/{game.reveal.bonuses.length}
-                    </span>
-                  </h3>
-                  <ul className="bonuses">
-                    {game.reveal.bonuses.map((b, i) => (
-                      <li key={i} className={b.found ? 'found' : ''}>
-                        <strong>{b.name}</strong>: {b.description}
-                        {b.found && <span className="found-mark">맞힘</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <p className="reveal-meta">
-                사용 {game.used} / {game.limit}, 질문 {game.questions.length}개, 힌트 {game.hints.length}개.
-              </p>
-              <button className="btn btn-primary" onClick={onExit}>
-                다른 사건 고르기
-              </button>
-            </article>
-          )}
       </div>
       {openHint !== null && (
         <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
@@ -268,6 +218,3 @@ export default function GamePage({ gameId, onExit }: { gameId: string; onExit: (
     </section>
   )
 }
-
-/** 게임 끝 도장 */
-const VERDICT: Record<string, string> = { SOLVED: '해결', FAILED: '실패', GAVE_UP: '미해결 종결' }

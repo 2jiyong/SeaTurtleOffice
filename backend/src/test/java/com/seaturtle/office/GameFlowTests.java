@@ -246,5 +246,7 @@ class GameFlowTests {
 	void hintStepsFollowHintCount() {
 		assertThat(Game.hintStepsFor(2)).containsExactly(10, 20);
 		assertThat(Game.hintStepsFor(3)).containsExactly(10, 20, 30);
+		// 힌트가 4개 이상이어도 40에는 힌트가 없다.
+		assertThat(Game.hintStepsFor(4)).containsExactly(10, 20, 30);
 	}
 }

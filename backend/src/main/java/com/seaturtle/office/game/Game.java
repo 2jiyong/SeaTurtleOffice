@@ -16,6 +16,8 @@ public class Game {
 	public static final int GUESS_COST = 5;
 	/** 사용 10, 20, 30에서 힌트가 하나씩 열린다. */
 	public static final int HINT_STEP = 10;
+	/** 힌트는 한도 전까지만(10, 20, 30). 40에는 힌트가 없다. */
+	public static final int MAX_HINTS = (LIMIT - 1) / HINT_STEP;
 
 	public record QuestionRecord(int no, int seq, String text, Answer answer) {
 	}
@@ -69,7 +71,7 @@ public class Game {
 	/** 힌트가 열리는 사용 횟수 목록. 힌트가 2개면 [10, 20]. */
 	public static List<Integer> hintStepsFor(int hintCount) {
 		List<Integer> steps = new ArrayList<>();
-		for (int i = 1; i <= hintCount; i++) {
+		for (int i = 1; i <= Math.min(hintCount, MAX_HINTS); i++) {
 			steps.add(i * HINT_STEP);
 		}
 		return List.copyOf(steps);
@@ -79,14 +81,19 @@ public class Game {
 		return hintStepsFor(scenario.hints().size());
 	}
 
+	/** 이 게임에서 쓸 수 있는 힌트 수(시나리오 힌트 수, 최대 MAX_HINTS) */
+	private int hintCount() {
+		return Math.min(scenario.hints().size(), MAX_HINTS);
+	}
+
 	public synchronized int hintsOpen() {
-		return Math.min(scenario.hints().size(), used / HINT_STEP);
+		return Math.min(hintCount(), used / HINT_STEP);
 	}
 
 	/** 힌트 받기를 누르면 올라갈 사용 횟수. 남은 힌트가 없으면 null. */
 	public synchronized Integer nextHintAt() {
 		int open = hintsOpen();
-		return open < scenario.hints().size() ? (open + 1) * HINT_STEP : null;
+		return open < hintCount() ? (open + 1) * HINT_STEP : null;
 	}
 
 	/** 사용 횟수를 다 써서 마지막 추리 한 번만 남은 상태. */

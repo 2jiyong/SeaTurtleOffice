@@ -48,15 +48,16 @@ public class EventRecorder {
 			jdbc.sql("""
 					insert into events (at, type, client_id, game_id, scenario, request_id, outcome, answer, used_after,
 					                    text_length, total_ms, backend_ms, ai_ms, llm_ms, model, input_tokens,
-					                    output_tokens, cached_tokens, app_version, detail)
-					values (?, ?, ?::uuid, ?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+					                    output_tokens, cached_tokens, app_version, detail, ip_hash)
+					values (?, ?, ?::uuid, ?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)
 					""")
 					.params(OffsetDateTime.now(), e.type(), e.clientId(), e.gameId(), e.scenario(),
 							MDC.get(RequestIdFilter.MDC_KEY), e.outcome(), e.answer(), e.usedAfter(), e.textLength(),
 							e.totalMs(), backendMs, aiMs, m == null ? null : m.llmMs(), m == null ? null : m.model(),
 							m == null ? null : m.inputTokens(), m == null ? null : m.outputTokens(),
 							m == null ? null : m.cachedTokens(), appVersion,
-							e.detail() == null ? null : json.writeValueAsString(e.detail()))
+							e.detail() == null ? null : json.writeValueAsString(e.detail()),
+							MDC.get(RequestIdFilter.MDC_IP))
 					.update();
 		} catch (RuntimeException ex) {
 			log.warn("이벤트 기록 실패: {}", e.type(), ex);

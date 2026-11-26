@@ -23,6 +23,8 @@ game:
   content-dir: ${GAME_CONTENT_DIR:..}
   # 기기 쿠키(sto_client)에 Secure를 붙인다. HTTPS 배포에서 true.
   cookie-secure: ${COOKIE_SECURE:false}
+  # events.ip_hash에 섞는 비밀 값. 배포에서는 반드시 바꾼다.
+  ip-hash-secret: ${IP_HASH_SECRET:dev-only}
 
 # 판정은 파이썬 AI 서버(ai/)가 한다. OpenAI 키도 거기에만 둔다.
 judge:

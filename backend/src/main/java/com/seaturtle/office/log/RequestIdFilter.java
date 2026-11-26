@@ -23,8 +23,16 @@ import jakarta.servlet.http.HttpServletResponse;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestIdFilter extends OncePerRequestFilter {
 
+	private final IpHasher ipHasher;
+
+	public RequestIdFilter(IpHasher ipHasher) {
+		this.ipHasher = ipHasher;
+	}
+
 	public static final String HEADER = "X-Request-Id";
 	public static final String MDC_KEY = "requestId";
+	/** 요청한 IP의 해시(IpHasher). 원문 IP는 MDC에도 넣지 않는다. */
+	public static final String MDC_IP = "clientIpHash";
 	private static final Pattern VALID = Pattern.compile("^[A-Za-z0-9-]{8,64}$");
 
 	@Override
@@ -38,11 +46,13 @@ public class RequestIdFilter extends OncePerRequestFilter {
 		String sent = request.getHeader(HEADER);
 		String id = sent != null && VALID.matcher(sent).matches() ? sent : UUID.randomUUID().toString();
 		MDC.put(MDC_KEY, id);
+		MDC.put(MDC_IP, ipHasher.hash(request.getRemoteAddr()));
 		response.setHeader(HEADER, id);
 		try {
 			chain.doFilter(request, response);
 		} finally {
 			MDC.remove(MDC_KEY);
+			MDC.remove(MDC_IP);
 		}
 	}
 }

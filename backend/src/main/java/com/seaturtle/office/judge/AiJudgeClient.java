@@ -5,10 +5,15 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import com.seaturtle.office.log.RequestIdFilter;
 
 /** 파이썬 AI 판정 서버(ai/)에 HTTP로 판정을 요청한다. */
 @Component
@@ -21,12 +26,34 @@ public class AiJudgeClient implements Judge {
 
 	private final RestClient http;
 
+	@Autowired
 	public AiJudgeClient(RestClient.Builder builder, JudgeProperties props) {
+		this(builder, props, timeouts(props));
+	}
+
+	/** factory가 null이면 builder의 것을 그대로 쓴다(테스트에서 MockRestServiceServer를 묶을 때). */
+	public AiJudgeClient(RestClient.Builder builder, JudgeProperties props, ClientHttpRequestFactory factory) {
+		if (factory != null) {
+			builder = builder.requestFactory(factory);
+		}
+		// 백엔드 요청 ID를 AI 서버로 넘겨 두 서버의 로그를 잇는다.
+		this.http = builder.baseUrl(props.baseUrl())
+				.requestInterceptor((request, body, execution) -> {
+					String requestId = MDC.get(RequestIdFilter.MDC_KEY);
+					if (requestId != null) {
+						request.getHeaders().set(RequestIdFilter.HEADER, requestId);
+					}
+					return execution.execute(request, body);
+				})
+				.build();
+		log.info("AI 판정 서버: {}", props.baseUrl());
+	}
+
+	private static ClientHttpRequestFactory timeouts(JudgeProperties props) {
 		var factory = new SimpleClientHttpRequestFactory();
 		factory.setConnectTimeout(3_000);
 		factory.setReadTimeout(props.timeout());
-		this.http = builder.baseUrl(props.baseUrl()).requestFactory(factory).build();
-		log.info("AI 판정 서버: {}", props.baseUrl());
+		return factory;
 	}
 
 	@Override

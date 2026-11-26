@@ -126,7 +126,8 @@ class EventTests {
 		assertThat(e.get("ai_ms")).isEqualTo(100);
 		assertThat(e.get("llm_ms")).isEqualTo(90);
 		assertThat((Integer) e.get("total_ms")).isGreaterThanOrEqualTo(0);
-		assertThat(e.get("backend_ms")).isEqualTo((Integer) e.get("total_ms") - 100);
+		// 스텁은 즉시 답하면서 aiMs=100을 보낸다. 반올림 차이 등으로 음수가 되지 않게 0에서 멈춘다.
+		assertThat(e.get("backend_ms")).isEqualTo(Math.max(0, (Integer) e.get("total_ms") - 100));
 		assertThat(e.get("text_length")).isEqualTo("세입자들은 죽었나요?".codePointCount(0, "세입자들은 죽었나요?".length()));
 		assertThat(e.get("app_version")).isEqualTo("dev");
 		assertThat(e.get("used_after")).isEqualTo(1);
@@ -191,6 +192,8 @@ class EventTests {
 		assertThat(asked.get("outcome")).isEqualTo("conflict");
 		assertThat(asked.get("input_tokens")).isEqualTo(1000);
 		assertThat(asked.get("answer")).isEqualTo("YES");
+		// 저장되지 않았으므로 사용 횟수는 판정 전 그대로다.
+		assertThat(asked.get("used_after")).isEqualTo(0);
 		// 포기 쪽의 game_ended 한 줄뿐이다.
 		var ended = events(id, "game_ended");
 		assertThat(ended).hasSize(1);
@@ -257,6 +260,36 @@ class EventTests {
 					.andExpect(status().isOk());
 		} finally {
 			jdbc.sql("alter table events_off rename to events").update();
+		}
+		assertThat(games.get(client, id).questions()).hasSize(1);
+	}
+
+	@Test
+	void nulCharacterRejectedBeforeJudging() throws Exception {
+		// PostgreSQL text에 저장할 수 없는 글자. 판정(토큰) 전에 막는다.
+		String id = start();
+		int before = events(id).size();
+		mvc.perform(post("/api/games/" + id + "/questions").cookie(new Cookie(ClientIdFilter.COOKIE, client))
+				.contentType(APPLICATION_JSON).content("{\"text\":\"널\\u0000문자\"}"))
+				.andExpect(status().isBadRequest());
+		assertThat(events(id)).hasSize(before);
+		assertThat(games.get(client, id).questions()).isEmpty();
+	}
+
+	@Autowired
+	javax.sql.DataSource dataSource;
+
+	@Test
+	void lockedEventsTableDoesNotHangGame() throws Exception {
+		String id = start();
+		try (var lock = dataSource.getConnection()) {
+			lock.setAutoCommit(false);
+			lock.createStatement().execute("lock table events in access exclusive mode");
+			long t0 = System.nanoTime();
+			games.ask(client, id, "잠긴 동안");
+			long ms = (System.nanoTime() - t0) / 1_000_000;
+			assertThat(ms).isLessThan(5_000);
+			lock.rollback();
 		}
 		assertThat(games.get(client, id).questions()).hasSize(1);
 	}

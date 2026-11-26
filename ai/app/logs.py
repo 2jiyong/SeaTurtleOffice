@@ -20,7 +20,7 @@ _STANDARD = set(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {"messa
 
 def valid_request_id(value: str | None) -> str:
     """들어온 값이 규칙(영숫자와 -, 8~64자)에 맞으면 그대로, 아니면 새 UUID."""
-    if value and _VALID.match(value):
+    if value and _VALID.fullmatch(value):
         return value
     return str(uuid.uuid4())
 

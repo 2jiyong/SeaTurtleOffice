@@ -93,4 +93,30 @@ class AiJudgeClientTests {
 		assertThat(e.timeout()).isTrue();
 		assertThat(e.metrics()).isNull();
 	}
+
+	@Test
+	void connectTimeoutIsNotTimeout() {
+		// 연결조차 못 했다(3초). "AI가 28초 안에 답하지 않음"과 섞지 않는다.
+		server.expect(requestTo("http://ai/judge/question"))
+				.andRespond(withException(new SocketTimeoutException("Connect timed out")));
+		assertThat(failure().timeout()).isFalse();
+	}
+
+	@Test
+	void missingAnswerKeepsMetrics() {
+		server.expect(requestTo("http://ai/judge/question"))
+				.andRespond(withSuccess("{\"metrics\":" + METRICS + "}", MediaType.APPLICATION_JSON));
+		JudgeException e = failure();
+		assertThat(e).isNotNull();
+		assertThat(e.metrics().inputTokens()).isEqualTo(5210);
+	}
+
+	@Test
+	void nullGuessListsKeepMetrics() {
+		server.expect(requestTo("http://ai/judge/guess")).andRespond(withSuccess(
+				"{\"total\":3,\"bonusTotal\":1,\"story\":true,\"metrics\":" + METRICS + "}", MediaType.APPLICATION_JSON));
+		JudgeException e = catchThrowableOfType(JudgeException.class, () -> client.guess("s", "g"));
+		assertThat(e).isNotNull();
+		assertThat(e.metrics().inputTokens()).isEqualTo(5210);
+	}
 }

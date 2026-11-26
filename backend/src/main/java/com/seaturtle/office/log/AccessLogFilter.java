@@ -38,21 +38,25 @@ public class AccessLogFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
 		long started = System.nanoTime();
+		boolean failed = true;
 		try {
 			chain.doFilter(request, response);
+			failed = false;
 		} finally {
 			long ms = (System.nanoTime() - started) / 1_000_000;
 			String path = normalize(request.getRequestURI());
+			// 처리되지 않은 예외가 밖으로 나가면 응답은 아직 200일 수 있다. 컨테이너가 500으로 답하므로 500으로 찍는다.
+			int status = failed && response.getStatus() < 400 ? 500 : response.getStatus();
 			var event = log.atInfo()
 					.addKeyValue("method", request.getMethod())
 					.addKeyValue("path", path)
-					.addKeyValue("status", response.getStatus())
+					.addKeyValue("status", status)
 					.addKeyValue("ms", ms);
 			Object clientId = request.getAttribute(ClientIdFilter.ATTRIBUTE);
 			if (clientId != null) {
 				event = event.addKeyValue("clientId", clientId);
 			}
-			event.log("{} {} {} {}ms", request.getMethod(), path, response.getStatus(), ms);
+			event.log("{} {} {} {}ms", request.getMethod(), path, status, ms);
 		}
 	}
 

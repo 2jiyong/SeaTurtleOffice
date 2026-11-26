@@ -64,13 +64,23 @@ public class AiJudgeClient implements Judge {
 
 	@Override
 	public Verdict question(String scenario, List<HistoryEntry> history, String question) {
-		return post("/judge/question",
+		Verdict verdict = post("/judge/question",
 				Map.of("scenario", scenario, "question", question, "history", history), Verdict.class);
+		if (verdict.answer() == null) {
+			// 토큰은 썼으므로 지표를 담아 실패로 돌린다.
+			throw new JudgeException("AI 판정 서버 응답에 answer가 없습니다", verdict.metrics());
+		}
+		return verdict;
 	}
 
 	@Override
 	public GuessVerdict guess(String scenario, String guess) {
-		return post("/judge/guess", Map.of("scenario", scenario, "guess", guess), GuessVerdict.class);
+		GuessVerdict verdict = post("/judge/guess", Map.of("scenario", scenario, "guess", guess), GuessVerdict.class);
+		if (verdict.matched() == null || verdict.bonus() == null
+				|| verdict.matched().contains(null) || verdict.bonus().contains(null)) {
+			throw new JudgeException("AI 판정 서버 응답의 matched·bonus가 비었습니다", verdict.metrics());
+		}
+		return verdict;
 	}
 
 	@Override
@@ -113,8 +123,10 @@ public class AiJudgeClient implements Judge {
 
 	private static boolean isTimeout(Throwable e) {
 		for (Throwable t = e; t != null; t = t.getCause()) {
-			if (t instanceof SocketTimeoutException) {
-				return true;
+			if (t instanceof SocketTimeoutException timeout) {
+				// 연결 단계(3초)의 시간 초과는 "AI가 28초 안에 답하지 않음"이 아니다. judge_error로 센다.
+				String message = timeout.getMessage();
+				return message == null || !message.toLowerCase(java.util.Locale.ROOT).contains("connect");
 			}
 		}
 		return false;

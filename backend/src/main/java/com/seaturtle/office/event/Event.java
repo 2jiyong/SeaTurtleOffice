@@ -25,12 +25,15 @@ public record Event(String type, String clientId, String gameId, String scenario
 				null, null, detail);
 	}
 
-	/** 판정 이벤트. text는 길이만 남긴다(앞뒤 공백 뺀 코드 포인트 수). */
+	/**
+	 * 판정 이벤트. text는 길이만 남긴다(앞뒤 공백 뺀 코드 포인트 수).
+	 * usedAfter: 이 일이 끝난 뒤 DB에 있는 사용 횟수(저장에 실패했으면 판정 전 값).
+	 */
 	public static Event judged(String type, Game game, String outcome, String answer, String text, long startedNanos,
-			Judge.Metrics metrics, Map<String, Object> detail) {
+			int usedAfter, Judge.Metrics metrics, Map<String, Object> detail) {
 		String stripped = text.strip();
 		int totalMs = (int) ((System.nanoTime() - startedNanos) / 1_000_000);
-		return new Event(type, game.clientId(), game.id(), game.scenario().slug(), outcome, answer, game.used(),
+		return new Event(type, game.clientId(), game.id(), game.scenario().slug(), outcome, answer, usedAfter,
 				stripped.codePointCount(0, stripped.length()), totalMs, metrics, detail);
 	}
 }

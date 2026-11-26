@@ -55,6 +55,9 @@ def test_judgement_log_has_request_id(client, caplog):
     assert records[-1].request_id == "abcd-1234-efgh"
     assert records[-1].ai_ms >= 0
     assert records[-1].model == "fake"
+    # 텍스트 로그에도 시간과 토큰이 보여야 한다(시간 초과 때 토큰을 찾을 유일한 곳).
+    message = records[-1].getMessage()
+    assert "ai_ms=" in message and "llm_ms=0" in message and "tokens=0/0/0" in message
 
 
 def test_json_formatter_one_line():
@@ -73,5 +76,7 @@ def test_json_formatter_one_line():
 
 def test_valid_request_id_rules():
     assert valid_request_id("abcd-1234") == "abcd-1234"
+    # 파이썬 re의 $는 끝의 줄바꿈 앞에서도 맞는다. 줄바꿈이 붙으면 새 ID로 바꾼다.
+    assert _is_uuid(valid_request_id("abcdefgh\n"))
     assert _is_uuid(valid_request_id(None))
     assert _is_uuid(valid_request_id("short"))

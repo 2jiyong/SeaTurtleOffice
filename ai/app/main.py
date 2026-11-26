@@ -126,7 +126,7 @@ async def carry_request_id(request: Request, call_next):
 @app.exception_handler(JudgeError)
 async def judge_failed(request: Request, exc: JudgeError):
     spent = _with_ai_ms(exc.metrics, request) if exc.metrics is not None else None
-    log.error("판정 실패: %s", exc, extra=_log_fields(spent))
+    log.error("판정 실패: %s [%s]", exc, _cost(spent), extra=_log_fields(spent))
     # 토큰을 쓴 뒤 실패해도 백엔드가 기록할 수 있게 지표를 함께 보낸다.
     return JSONResponse(status_code=502, content={"detail": "판정 중 문제가 생겼습니다.", "metrics": spent})
 
@@ -136,6 +136,14 @@ def _with_ai_ms(spent: dict, request: Request) -> dict:
     started = getattr(request.state, "started", None)
     ai_ms = round((time.perf_counter() - started) * 1000) if started is not None else 0
     return {**spent, "aiMs": ai_ms}
+
+
+def _cost(spent: dict | None) -> str:
+    """텍스트 로그에 붙일 비용 한 토막. JSON 로그에서는 extra 키로도 나간다."""
+    if not spent:
+        return "비용 모름"
+    return (f"ai_ms={spent.get('aiMs')} llm_ms={spent['llmMs']} model={spent['model']} "
+            f"tokens={spent['inputTokens']}/{spent['outputTokens']}/{spent['cachedTokens']}")
 
 
 def _log_fields(spent: dict | None) -> dict:
@@ -176,7 +184,7 @@ async def judge_question(body: QuestionRequest, request: Request) -> QuestionRes
     result = _validate(QuestionJudgement, completion)
     spent = _with_ai_ms(completion.metrics(), request)
     # 판정 근거는 로그에만 남긴다. 플레이어에게 새지 않게 응답에는 넣지 않는다.
-    log.info("[%s] Q: %s → %s / %s", scenario.slug, body.question, result.answer, result.reason,
+    log.info("[%s] Q: %s → %s / %s [%s]", scenario.slug, body.question, result.answer, result.reason, _cost(spent),
              extra={"scenario": scenario.slug, "answer": result.answer, **_log_fields(spent)})
     return QuestionResult(answer=result.answer, metrics=Metrics(**spent))
 
@@ -192,8 +200,8 @@ async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
     total, bonus_total = len(scenario.keywords), len(scenario.bonuses)
     matched = _clean(result.matched, total)
     bonus = _clean(result.bonus, bonus_total)
-    log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d 이야기 %s : %s / %s",
-             scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason,
+    log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d 이야기 %s : %s / %s [%s]",
+             scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason, _cost(spent),
              extra={"scenario": scenario.slug, **_log_fields(spent)})
     return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total, story=result.story,
                        metrics=Metrics(**spent))

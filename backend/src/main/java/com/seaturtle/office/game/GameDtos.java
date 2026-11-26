@@ -6,6 +6,7 @@ import com.seaturtle.office.content.Scenario;
 import com.seaturtle.office.content.ScenarioImages;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /** API 요청과 응답. 진상, 핵심 키워드, 맞힌 보너스는 게임이 끝났을 때만 내보낸다. */
@@ -14,13 +15,17 @@ public final class GameDtos {
 	private GameDtos() {
 	}
 
+	static final String NO_NUL = "(?s)[^\\x00]*";
+	static final String MSG_NUL = "보낼 수 없는 글자가 들어 있습니다";
+
 	public record StartRequest(@NotBlank String scenario) {
 	}
 
-	public record QuestionRequest(@NotBlank @Size(max = 200) String text) {
+	/** NUL(\\u0000)은 DB(text)에 저장할 수 없어 판정 전에 막는다. */
+	public record QuestionRequest(@NotBlank @Size(max = 200) @Pattern(regexp = NO_NUL, message = MSG_NUL) String text) {
 	}
 
-	public record GuessRequest(@NotBlank @Size(max = 1000) String text) {
+	public record GuessRequest(@NotBlank @Size(max = 1000) @Pattern(regexp = NO_NUL, message = MSG_NUL) String text) {
 	}
 
 	/** cover: 대표 이미지 주소. 그림이 없으면 null. */

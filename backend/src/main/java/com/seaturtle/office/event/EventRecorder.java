@@ -2,10 +2,13 @@ package com.seaturtle.office.event;
 
 import java.time.OffsetDateTime;
 
+import javax.sql.DataSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +30,11 @@ public class EventRecorder {
 	private final ObjectMapper json;
 	private final String appVersion;
 
-	public EventRecorder(JdbcClient jdbc, ObjectMapper json, @Value("${APP_VERSION:dev}") String appVersion) {
-		this.jdbc = jdbc;
+	public EventRecorder(DataSource dataSource, ObjectMapper json, @Value("${APP_VERSION:dev}") String appVersion) {
+		// events가 잠겨 있어도 게임 응답을 오래 붙잡지 않게 2초에서 포기한다(기록만 빠진다).
+		var template = new JdbcTemplate(dataSource);
+		template.setQueryTimeout(2);
+		this.jdbc = JdbcClient.create(template);
 		this.json = json;
 		this.appVersion = appVersion;
 	}
@@ -37,7 +43,8 @@ public class EventRecorder {
 		try {
 			Judge.Metrics m = e.metrics();
 			Integer aiMs = m == null ? null : m.aiMs();
-			Integer backendMs = e.totalMs() != null && aiMs != null ? e.totalMs() - aiMs : null;
+			// 두 서버의 ms 반올림 차이로 음수가 되지 않게 0에서 멈춘다.
+			Integer backendMs = e.totalMs() != null && aiMs != null ? Math.max(0, e.totalMs() - aiMs) : null;
 			jdbc.sql("""
 					insert into events (at, type, client_id, game_id, scenario, request_id, outcome, answer, used_after,
 					                    text_length, total_ms, backend_ms, ai_ms, llm_ms, model, input_tokens,

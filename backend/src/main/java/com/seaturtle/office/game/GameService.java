@@ -76,12 +76,14 @@ public class GameService {
 		try {
 			verdict = judge.question(game.scenario().slug(), history, question);
 		} catch (JudgeException e) {
-			events.record(Event.judged(Event.QUESTION_ASKED, game, failure(e), null, question, started, e.metrics(), null));
+			events.record(Event.judged(Event.QUESTION_ASKED, game, failure(e), null, question, started, game.used(),
+					e.metrics(), null));
 			throw e;
 		}
+		int usedBefore = game.used();
 		game.addQuestion(question, verdict.answer());
 		String answer = verdict.answer().name();
-		saveJudged(game, Event.QUESTION_ASKED, answer, question, started, verdict.metrics(), null);
+		saveJudged(game, Event.QUESTION_ASKED, answer, question, started, usedBefore, verdict.metrics(), null);
 		return game;
 	}
 
@@ -94,9 +96,11 @@ public class GameService {
 			verdict = judge.guess(game.scenario().slug(), answer);
 			check(game, verdict);
 		} catch (JudgeException e) {
-			events.record(Event.judged(Event.GUESS_SUBMITTED, game, failure(e), null, answer, started, e.metrics(), null));
+			events.record(Event.judged(Event.GUESS_SUBMITTED, game, failure(e), null, answer, started, game.used(),
+					e.metrics(), null));
 			throw e;
 		}
+		int usedBefore = game.used();
 		game.addGuess(answer, verdict.matched(), verdict.bonus(), verdict.story());
 		Map<String, Object> detail = new LinkedHashMap<>();
 		detail.put("matched", verdict.matched());
@@ -104,7 +108,7 @@ public class GameService {
 		detail.put("bonus", verdict.bonus());
 		detail.put("story", verdict.story());
 		String closeness = game.guesses().getLast().closeness().name();
-		saveJudged(game, Event.GUESS_SUBMITTED, closeness, answer, started, verdict.metrics(), detail);
+		saveJudged(game, Event.GUESS_SUBMITTED, closeness, answer, started, usedBefore, verdict.metrics(), detail);
 		return game;
 	}
 
@@ -125,15 +129,15 @@ public class GameService {
 	}
 
 	/** 판정 결과를 저장하고 기록한다. 저장이 409면 conflict로(토큰은 썼다), 끝난 판이면 game_ended도. */
-	private void saveJudged(Game game, String type, String answer, String text, long started, Judge.Metrics metrics,
-			Map<String, Object> detail) {
+	private void saveJudged(Game game, String type, String answer, String text, long started, int usedBefore,
+			Judge.Metrics metrics, Map<String, Object> detail) {
 		try {
 			store.save(game);
 		} catch (GameConflictException e) {
-			events.record(Event.judged(type, game, "conflict", answer, text, started, metrics, detail));
+			events.record(Event.judged(type, game, "conflict", answer, text, started, usedBefore, metrics, detail));
 			throw e;
 		}
-		events.record(Event.judged(type, game, "ok", answer, text, started, metrics, detail));
+		events.record(Event.judged(type, game, "ok", answer, text, started, game.used(), metrics, detail));
 		recordEnd(game);
 	}
 

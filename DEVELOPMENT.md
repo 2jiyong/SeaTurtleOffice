@@ -162,7 +162,7 @@ cd frontend && npm install && npm run dev
 | `game_ended` | 해결·실패·포기로 끝났을 때. `detail`에 등급과 그 원재료(사용 횟수, 보정 사용 횟수, 맞힌 핵심·보너스 수) |
 | `game_reset` | 초기화 |
 
-- `outcome`: `ok`, `judge_error`(AI 서버 오류나 믿을 수 없는 판정), `timeout`(28초 초과), `conflict`(판정은 됐는데 다른 창과 겹쳐 저장 실패).
+- `outcome`: `ok`, `judge_error`(AI 서버 오류나 믿을 수 없는 판정), `timeout`(AI 서버가 28초 안에 답하지 않음. 연결조차 못 한 경우는 `judge_error`), `conflict`(판정은 됐는데 다른 창과 겹쳐 저장 실패).
 - 시간 칸: `total_ms` = `backend_ms` + `ai_ms`, `ai_ms` 안에 `llm_ms`(OpenAI 호출, 재시도 포함)가 들어 있다.
 - 토큰은 실패한 판정에도 남는다(쓴 만큼). **시간 초과만은 AI 서버 응답이 없어 토큰을 모른다**(AI 서버 로그에는 남는다).
 - 질문·추리 원문은 이벤트에 넣지 않는다(`text_length`만). 원문은 판이 있는 동안 `game_entries`와 AI 서버 로그에 있다.

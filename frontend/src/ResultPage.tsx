@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ApiError, type GameStatus, type GameView, type Grade } from './api.ts'
+import { api, ApiError, type GameStatus, type GameView } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
 import { CaseScreen, ReceiveLog } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
@@ -119,7 +119,6 @@ export default function ResultPage({
           )}
         </div>
         <p className="result-sub">{gradeLine}</p>
-        <GradeLadder current={reveal.grade} />
         {resetError && <p className="error">{resetError}</p>}
         <div className="result-bar">
           <div className="result-tabs" role="tablist" aria-label="결과 보기">
@@ -278,28 +277,5 @@ export default function ResultPage({
         />
       )}
     </section>
-  )
-}
-
-/** 등급 기준표. 지금 등급에 불을 켠다. 기준 숫자는 백엔드 Grade와 같다. */
-const LADDER: { grade: Grade; rule: string }[] = [
-  { grade: 'S', rule: '10 이하' },
-  { grade: 'A', rule: '20 이하' },
-  { grade: 'B', rule: '30 이하' },
-  { grade: 'C', rule: '그 위' },
-  { grade: 'D', rule: '미해결' },
-  { grade: 'F', rule: '핵심 0' },
-]
-
-function GradeLadder({ current }: { current: Grade | null }) {
-  return (
-    <ol className="grade-ladder" aria-label="등급 기준(해결은 사용 − 보너스로 매긴다)">
-      {LADDER.map(({ grade, rule }) => (
-        <li key={grade} className={grade === current ? 'on' : ''} aria-current={grade === current ? 'true' : undefined}>
-          <b>{grade}</b>
-          <small>{rule}</small>
-        </li>
-      ))}
-    </ol>
   )
 }

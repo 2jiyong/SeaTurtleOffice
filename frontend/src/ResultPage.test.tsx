@@ -65,14 +65,13 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('결과 페이지 머리', () => {
-  it('정답이면 사건 해결, 등급, 계산 줄, 기준표의 지금 등급', async () => {
+  it('정답이면 사건 해결, 지금 등급, 계산 줄(등급 기준표는 없다)', async () => {
     await openResult()
     expect(await screen.findByText('교신 종료 // 사건 기록 봉인')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '사건 해결' })).toBeTruthy()
     expect(screen.getByLabelText('B등급')).toBeTruthy()
     expect(screen.getByText('사용 23 − 보너스 5 = 18')).toBeTruthy()
-    const ladder = screen.getByRole('list', { name: /등급 기준/ })
-    expect(ladder.querySelector('[aria-current]')?.textContent).toContain('B')
+    expect(screen.queryByRole('list', { name: /등급 기준/ })).toBeNull()
   })
 
   it('보너스가 없으면 사용 횟수만', async () => {

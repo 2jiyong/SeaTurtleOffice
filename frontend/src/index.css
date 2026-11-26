@@ -2441,41 +2441,6 @@ h3 {
   transform: rotate(-4deg);
 }
 
-/* 등급 기준표: 지금 등급만 판정 색으로 켠다 */
-.grade-ladder {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 0 0 14px;
-  padding: 0;
-  list-style: none;
-}
-
-.grade-ladder li {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 3px 8px;
-  border: 1px solid #343a37;
-  color: #6f7772;
-  font: 0.72rem 'Nanum Gothic Coding', monospace;
-}
-
-.grade-ladder b {
-  font: 400 0.95rem 'Black Han Sans', var(--sans);
-  color: #8b938e;
-}
-
-.grade-ladder li.on {
-  border-color: var(--verdict);
-  color: #e6e9e0;
-  box-shadow: 0 0 10px -3px var(--verdict-glow);
-}
-
-.grade-ladder li.on b {
-  color: var(--verdict);
-}
-
 .result-sub {
   margin: 4px 0 10px;
   font: 0.85rem 'Nanum Gothic Coding', monospace;

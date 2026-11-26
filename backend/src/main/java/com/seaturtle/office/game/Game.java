@@ -1,14 +1,17 @@
 package com.seaturtle.office.game;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
 
 import com.seaturtle.office.content.Scenario;
 
-/** 한 판의 진행 상태. 메모리에만 있다. */
+/**
+ * 한 판의 진행 상태와 규칙. 저장은 GameStore가 맡는다.
+ * 요청 하나 안에서만 쓰는 객체라 스레드 안전하지 않다. 두 요청이 같은 판을 바꾸면 저장할 때 version으로 막는다.
+ */
 public class Game {
 
 	/** 한 판에 쓸 수 있는 사용 횟수. 질문 1, 추리 5. */
@@ -31,6 +34,7 @@ public class Game {
 	}
 
 	private final String id;
+	private final String clientId;
 	private final Scenario scenario;
 	private final List<QuestionRecord> questions = new ArrayList<>();
 	private final List<GuessRecord> guesses = new ArrayList<>();
@@ -44,11 +48,35 @@ public class Game {
 	private int used;
 	/** 질문과 답안을 한 줄로 늘어놓기 위한 순번 */
 	private int seq;
-	private volatile Instant lastActive = Instant.now();
+	/** DB에서 읽었을 때의 버전. 새 판은 0. */
+	private final long version;
 
-	public Game(String id, Scenario scenario) {
+	/** 새 판 */
+	public Game(String id, String clientId, Scenario scenario) {
+		this(id, clientId, scenario, 0);
+	}
+
+	private Game(String id, String clientId, Scenario scenario, long version) {
 		this.id = id;
+		this.clientId = clientId;
 		this.scenario = scenario;
+		this.version = version;
+	}
+
+	/** DB에 저장된 판을 되살린다. 규칙 확인 없이 값을 그대로 넣는다. */
+	public static Game restore(String id, String clientId, Scenario scenario, GameStatus status, int used, int seq,
+			List<QuestionRecord> questions, List<GuessRecord> guesses, List<HintRecord> hints,
+			Collection<Integer> keywordFound, Collection<Integer> bonusFound, long version) {
+		Game game = new Game(id, clientId, scenario, version);
+		game.status = status;
+		game.used = used;
+		game.seq = seq;
+		game.questions.addAll(questions);
+		game.guesses.addAll(guesses);
+		game.hints.addAll(hints);
+		game.keywordFound.addAll(keywordFound);
+		game.bonusFound.addAll(bonusFound);
+		return game;
 	}
 
 	public String id() {
@@ -59,19 +87,24 @@ public class Game {
 		return scenario;
 	}
 
-	public Instant lastActive() {
-		return lastActive;
+	public String clientId() {
+		return clientId;
 	}
 
-	public void touch() {
-		lastActive = Instant.now();
+	/** 마지막으로 쓴 순번 */
+	public int seq() {
+		return seq;
 	}
 
-	public synchronized GameStatus status() {
+	public long version() {
+		return version;
+	}
+
+	public GameStatus status() {
 		return status;
 	}
 
-	public synchronized int used() {
+	public int used() {
 		return used;
 	}
 
@@ -93,11 +126,11 @@ public class Game {
 		return Math.min(scenario.hints().size(), MAX_HINTS);
 	}
 
-	public synchronized int hintsOpen() {
+	public int hintsOpen() {
 		return hints.size();
 	}
 
-	public synchronized List<HintRecord> hints() {
+	public List<HintRecord> hints() {
 		return List.copyOf(hints);
 	}
 
@@ -111,48 +144,48 @@ public class Game {
 	}
 
 	/** 힌트 받기를 누르면 올라갈 사용 횟수. 남은 힌트가 없으면 null. */
-	public synchronized Integer nextHintAt() {
+	public Integer nextHintAt() {
 		int open = hintsOpen();
 		return open < hintCount() ? (open + 1) * HINT_STEP : null;
 	}
 
 	/** 사용 횟수를 다 써서 마지막 추리 한 번만 남은 상태. */
-	public synchronized boolean finalChance() {
+	public boolean finalChance() {
 		return status == GameStatus.PLAYING && used >= LIMIT;
 	}
 
 	/** 해결하면 100 − 사용 + 맞힌 보너스 × 10. 실패·포기·진행 중은 0. */
-	public synchronized int score() {
+	public int score() {
 		return status == GameStatus.SOLVED ? 100 - used + bonusPoints() : 0;
 	}
 
-	public synchronized int bonusPoints() {
+	public int bonusPoints() {
 		return status == GameStatus.SOLVED ? 10 * bonusFound.size() : 0;
 	}
 
 	/** 질문할 수 있는지 판정 전에 확인한다(한도를 넘으면 판정 비용을 쓰지 않는다). */
-	public synchronized void requireQuestionAllowed() {
+	public void requireQuestionAllowed() {
 		requirePlaying();
 		if (used >= LIMIT) {
 			throw new IllegalStateException("질문을 모두 썼습니다. 마지막 추리만 남았습니다.");
 		}
 	}
 
-	public synchronized List<QuestionRecord> questions() {
+	public List<QuestionRecord> questions() {
 		return List.copyOf(questions);
 	}
 
-	public synchronized List<GuessRecord> guesses() {
+	public List<GuessRecord> guesses() {
 		return List.copyOf(guesses);
 	}
 
-	public synchronized void requirePlaying() {
+	public void requirePlaying() {
 		if (status != GameStatus.PLAYING) {
 			throw new GameEndedException();
 		}
 	}
 
-	public synchronized QuestionRecord addQuestion(String text, Answer answer) {
+	public QuestionRecord addQuestion(String text, Answer answer) {
 		requireQuestionAllowed();
 		used++;
 		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer);
@@ -161,7 +194,7 @@ public class Game {
 		return record;
 	}
 
-	public synchronized GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
+	public GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
 		requirePlaying();
 		boolean last = used >= LIMIT;
 		int total = scenario.keywords().size();
@@ -186,7 +219,7 @@ public class Game {
 		return record;
 	}
 
-	public synchronized void useHint() {
+	public void useHint() {
 		requirePlaying();
 		Integer next = nextHintAt();
 		if (next == null) {
@@ -196,16 +229,16 @@ public class Game {
 		openHints();
 	}
 
-	public synchronized void giveUp() {
+	public void giveUp() {
 		requirePlaying();
 		status = GameStatus.GAVE_UP;
 	}
 
-	public synchronized Set<Integer> keywordFound() {
+	public Set<Integer> keywordFound() {
 		return Set.copyOf(keywordFound);
 	}
 
-	public synchronized Set<Integer> bonusFound() {
+	public Set<Integer> bonusFound() {
 		return Set.copyOf(bonusFound);
 	}
 }

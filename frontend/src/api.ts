@@ -60,10 +60,30 @@ export interface Reveal {
   keywords: { name: string; description: string; found: boolean }[]
   /** found: 이번 게임에서 낸 추리 중 하나라도 이 보너스를 맞혔는가 */
   bonuses: { name: string; description: string; found: boolean }[]
-  /** 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0 */
-  score: number
-  bonusPoints: number
+  /** 끝난 판의 등급(백엔드 Grade). 진행 중이면 null */
+  grade: Grade | null
+  /** 맞힌 보너스가 덜어 준 사용 횟수(해결한 판만, 보너스 하나에 5) */
+  bonusSaved: number
+  /** 등급을 매긴 사용 횟수: 해결하면 사용 − bonusSaved(0 아래로는 안 감), 아니면 사용 그대로 */
+  adjustedUsed: number
+  /** 시나리오의 모든 계시. 끝난 판이라 게임 중에 열지 않은 것(opened: false)도 담는다 */
+  hints: RevealHint[]
 }
+
+export interface RevealHint {
+  no: number
+  text: string
+  /** 힌트 그림 주소. 없으면 null */
+  image: string | null
+  /** 게임 중에 열었는가 */
+  opened: boolean
+}
+
+/**
+ * 등급. 해결한 판은 보정 사용 10 이하 S, 20 이하 A, 30 이하 B, 그 위 C.
+ * 못 푼 판은 핵심을 하나라도 밝혔으면 D, 아니면 F.
+ */
+export type Grade = 'S' | 'A' | 'B' | 'C' | 'D' | 'F'
 
 export interface GameView {
   id: string
@@ -85,21 +105,22 @@ export interface GameView {
   reveal: Reveal | null
 }
 
-/** 이 기기의 판 하나(메인 페이지 진행 상태). score는 해결했을 때만 0이 아니다. */
+/** 이 기기의 판 하나(메인 페이지 진행 상태). grade는 끝난 판에만 있다. */
 export interface MyGame {
   id: string
   scenario: string
   status: GameStatus
   used: number
   limit: number
-  score: number
+  grade: Grade | null
 }
 
 /** 메인 페이지 사건 줄에 붙는 진행 상태 문구 */
 export function progressLabel(g: MyGame): string {
   if (g.status === 'PLAYING') return `진행 중 (${g.used}/${g.limit})`
-  if (g.status === 'SOLVED') return `해결 · ${g.score}점`
-  return '해결 못 함'
+  const grade = g.grade ? ` · ${g.grade}등급` : ''
+  if (g.status === 'SOLVED') return `해결${grade}`
+  return `해결 못 함${grade}`
 }
 
 export class ApiError extends Error {

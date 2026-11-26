@@ -54,12 +54,14 @@ class GuessRequest(BaseModel):
 
 
 class GuessResult(BaseModel):
-    """번호는 1부터. 백엔드는 이 번호로 얼마나 가까운지만 계산해 화면에 보낸다."""
+    """번호는 1부터. 백엔드는 이 번호로 얼마나 가까운지만 계산해 화면에 보낸다.
+    story: 답안 전체가 진상과 맞는 이야기인가. 핵심을 다 맞혀도 이것이 거짓이면 정답이 아니다."""
 
     matched: list[int]
     total: int
     bonus: list[int]
     bonusTotal: int
+    story: bool
 
 
 class QuestionJudgement(BaseModel):
@@ -71,6 +73,7 @@ class GuessJudgement(BaseModel):
     reason: str
     matched: list[int]
     bonus: list[int]
+    story: bool
 
 
 class Health(BaseModel):
@@ -137,9 +140,9 @@ async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
     total, bonus_total = len(scenario.keywords), len(scenario.bonuses)
     matched = _clean(result.matched, total)
     bonus = _clean(result.bonus, bonus_total)
-    log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d : %s / %s",
-             scenario.slug, matched, total, bonus, bonus_total, body.guess, result.reason)
-    return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total)
+    log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d 이야기 %s : %s / %s",
+             scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason)
+    return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total, story=result.story)
 
 
 def _clean(numbers: list[int], total: int) -> list[int]:

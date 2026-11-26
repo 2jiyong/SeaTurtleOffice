@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ApiError, type GameStatus, type GameView } from './api.ts'
+import { api, ApiError, type GameStatus, type GameView, type Grade } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
 import { CaseScreen, ReceiveLog } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
@@ -15,7 +15,7 @@ const VERDICT: Record<Exclude<GameStatus, 'PLAYING'>, { title: string; sub: stri
 
 const NO_FRESH = new Set<number>()
 
-/** 끝난 사건의 결과 페이지. 판정과 점수, [진상] [기록] 탭. 초기화하면 기록을 지우고 새 판으로 간다. */
+/** 끝난 사건의 결과 페이지. 판정과 등급, [진상] [기록] 탭. 초기화하면 기록을 지우고 새 판으로 간다. */
 export default function ResultPage({
   gameId,
   onExit,
@@ -54,7 +54,7 @@ export default function ResultPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
 
-  // 게임 화면에서 아래로 내려간 채 넘어와도 판정과 점수부터 보이게 맨 위로 올린다.
+  // 게임 화면에서 아래로 내려간 채 넘어와도 판정과 등급부터 보이게 맨 위로 올린다.
   const loaded = game !== null
   useEffect(() => {
     if (!loaded) return
@@ -96,10 +96,13 @@ export default function ResultPage({
   }
   const solved = game.status === 'SOLVED'
   const verdict = VERDICT[game.status]
-  const scoreLine =
-    reveal.bonusPoints > 0
-      ? `100 − 사용 ${game.used} + 보너스 ${reveal.bonusPoints} = ${reveal.score}`
-      : `100 − 사용 ${game.used} = ${reveal.score}`
+  const foundCount = reveal.keywords.filter((k) => k.found).length
+  // 등급을 어떻게 매겼는지 한 줄로: 해결은 보정 사용, 미해결은 밝힌 핵심 수
+  const gradeLine = solved
+    ? reveal.bonusSaved > 0
+      ? `사용 ${game.used} − 보너스 ${reveal.bonusSaved} = ${reveal.adjustedUsed}`
+      : `사용 ${game.used}`
+    : `${verdict.sub} // 핵심 ${foundCount}/${reveal.keywords.length} 밝힘`
 
   return (
     <section className="result">
@@ -109,9 +112,14 @@ export default function ResultPage({
           <h1 ref={verdictRef} tabIndex={-1}>
             {verdict.title}
           </h1>
-          <p className="result-score">{reveal.score}점</p>
+          {reveal.grade && (
+            <p className={`result-grade g-${reveal.grade}`} aria-label={`${reveal.grade}등급`}>
+              {reveal.grade}
+            </p>
+          )}
         </div>
-        <p className="result-sub">{solved ? scoreLine : verdict.sub}</p>
+        <p className="result-sub">{gradeLine}</p>
+        <GradeLadder current={reveal.grade} />
         {resetError && <p className="error">{resetError}</p>}
         <div className="result-bar">
           <div className="result-tabs" role="tablist" aria-label="결과 보기">
@@ -191,6 +199,37 @@ export default function ResultPage({
               )}
             </section>
 
+            {/* 계시: 끝난 사건이라 게임 중에 열지 않은 계시도 모두 볼 수 있다 */}
+            {reveal.hints.length > 0 && (
+              <section className="conditions hint-review" aria-labelledby="hint-review-title">
+                <div className="conditions-head">
+                  <h2 id="hint-review-title">계시</h2>
+                  <span>
+                    연 계시 {reveal.hints.filter((h) => h.opened).length}/{reveal.hints.length}
+                  </span>
+                </div>
+                <ol className="hint-cards">
+                  {reveal.hints.map((h, i) => (
+                    <li key={h.no}>
+                      <button
+                        type="button"
+                        className={`hint-card ${h.opened ? 'opened' : 'unopened'}`}
+                        aria-label={`계시 ${h.no} 보기${h.opened ? '' : ' (열지 않음)'}`}
+                        onClick={(e) => {
+                          returnFocus.current = e.currentTarget
+                          setOpenHint(i)
+                        }}
+                      >
+                        {h.image ? <img src={h.image} alt="" /> : <span className="hint-card-blank" aria-hidden />}
+                        <span className="hint-card-no">계시 {String(h.no).padStart(2, '0')}</span>
+                        <span className="hint-card-mark">{h.opened ? '열람' : '열지 않음'}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
             {/* 사건의 전말 */}
             <section className={`reveal ${solved ? 'solved' : 'closed'}`} aria-label="사건의 전말">
               <span className="story-label" aria-hidden>
@@ -216,13 +255,14 @@ export default function ResultPage({
                   returnFocus.current = el
                   setOpenHint(i)
                 }}
+                viewAllHints
               />
             </div>
           </div>
         )}
       </div>
       {openHint !== null && (
-        <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
+        <RevelationDialog hints={reveal.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
       )}
       {confirmingReset && (
         <ConfirmDialog
@@ -238,5 +278,28 @@ export default function ResultPage({
         />
       )}
     </section>
+  )
+}
+
+/** 등급 기준표. 지금 등급에 불을 켠다. 기준 숫자는 백엔드 Grade와 같다. */
+const LADDER: { grade: Grade; rule: string }[] = [
+  { grade: 'S', rule: '10 이하' },
+  { grade: 'A', rule: '20 이하' },
+  { grade: 'B', rule: '30 이하' },
+  { grade: 'C', rule: '그 위' },
+  { grade: 'D', rule: '미해결' },
+  { grade: 'F', rule: '핵심 0' },
+]
+
+function GradeLadder({ current }: { current: Grade | null }) {
+  return (
+    <ol className="grade-ladder" aria-label="등급 기준(해결은 사용 − 보너스로 매긴다)">
+      {LADDER.map(({ grade, rule }) => (
+        <li key={grade} className={grade === current ? 'on' : ''} aria-current={grade === current ? 'true' : undefined}>
+          <b>{grade}</b>
+          <small>{rule}</small>
+        </li>
+      ))}
+    </ol>
   )
 }

@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
-import type { HintRecord } from './api.ts'
+import type { HintRecord, RevealHint } from './api.ts'
+
+/** 계시창에 띄울 계시. opened가 false면 게임 중에 열지 않은 계시(결과 페이지)다. */
+type ShownHint = Pick<HintRecord, 'no' | 'text' | 'image'> & Partial<Pick<RevealHint, 'opened'>>
 
 /**
  * 계시창. 열린 계시 하나를 화면 가운데 띄운다(그림이 있으면 위에, 문장은 아래).
@@ -11,7 +14,7 @@ export default function RevelationDialog({
   onIndex,
   onClose,
 }: {
-  hints: HintRecord[]
+  hints: ShownHint[]
   index: number
   onIndex: (i: number) => void
   onClose: () => void
@@ -56,6 +59,7 @@ export default function RevelationDialog({
       <div ref={dialogRef} className="revelation" role="dialog" aria-modal="true" aria-labelledby="revelation-title">
         <div className="revelation-head">
           <h2 id="revelation-title">{title}</h2>
+          {hint.opened === false && <span className="revelation-unopened">게임 중 열지 않은 계시</span>}
         </div>
         <div className="revelation-stage">
           {hint.image && <img className="revelation-image" src={hint.image} alt={`${title} 이미지`} />}

@@ -437,7 +437,7 @@ describe('게임이 끝나면 결과 페이지로', () => {
     nextHintAt: null,
     hints: [{ no: 1, seq: 2, text: '계시', image: null }],
     guesses: [{ seq: 1, text: 't', correct: true, closeness: 'CORRECT' }],
-    reveal: { truth: 't', keywords: [], bonuses: [], score: 86, bonusPoints: 0 },
+    reveal: { truth: 't', keywords: [], bonuses: [], grade: 'A', bonusSaved: 0, adjustedUsed: 14, hints: [] },
   }
 
   async function openPlaying(onEnded: () => void) {

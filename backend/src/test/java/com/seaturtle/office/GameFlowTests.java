@@ -28,6 +28,7 @@ import com.seaturtle.office.game.GameEndedException;
 import com.seaturtle.office.game.GameService;
 import com.seaturtle.office.game.Closeness;
 import com.seaturtle.office.game.GameStatus;
+import com.seaturtle.office.game.Grade;
 import com.seaturtle.office.judge.Judge;
 import com.seaturtle.office.judge.JudgeException;
 
@@ -60,16 +61,23 @@ class GameFlowTests {
 		@Override
 		public GuessVerdict guess(String scenario, String guess) {
 			if (guess.contains("개수 다름")) {
-				return new GuessVerdict(List.of(1), 5, List.of(), 1);
+				return new GuessVerdict(List.of(1), 5, List.of(), 1, true);
 			}
 			if (guess.contains("보너스 다름")) {
-				return new GuessVerdict(List.of(), 3, List.of(), 9);
+				return new GuessVerdict(List.of(), 3, List.of(), 9, true);
+			}
+			if (guess.contains("예전 서버")) {
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, null);
+			}
+			if (guess.contains("어긋난 이야기")) {
+				// 핵심은 다 들었지만 이야기가 진상과 어긋난다.
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, false);
 			}
 			if (guess.contains("정답")) {
-				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1);
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1, true);
 			}
 			// 오답: 둘째 핵심 키워드가 빠졌고 보너스를 맞혔다.
-			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1);
+			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1, true);
 		}
 
 		@Override
@@ -139,6 +147,24 @@ class GameFlowTests {
 		games.giveUp(client, game.id());
 		assertThat(reload(game).status()).isEqualTo(GameStatus.GAVE_UP);
 		assertThatThrownBy(() -> games.ask(client, game.id(), "또 질문")).isInstanceOf(GameEndedException.class);
+	}
+
+	@Test
+	void allKeywordsButWrongStoryIsNotSolved() {
+		var game = games.start(client, "boys-order").game();
+		games.guess(client, game.id(), "어긋난 이야기");
+		var after = reload(game);
+		assertThat(after.status()).isEqualTo(GameStatus.PLAYING);
+		assertThat(after.guesses().getLast().correct()).isFalse();
+		assertThat(after.guesses().getLast().closeness()).isEqualTo(Closeness.ONE_SHORT);
+		assertThat(after.used()).isEqualTo(Game.GUESS_COST);
+	}
+
+	@Test
+	void verdictWithoutStoryIsRejected() {
+		var game = games.start(client, "boys-order").game();
+		assertThatThrownBy(() -> games.guess(client, game.id(), "예전 서버")).isInstanceOf(JudgeException.class);
+		assertThat(reload(game).used()).isZero();
 	}
 
 	@Test
@@ -224,7 +250,7 @@ class GameFlowTests {
 				.andExpect(jsonPath("$.guesses[0].bonus").doesNotExist());
 		// 정답 추리: 끝나면 여러 추리에서 맞힌 보너스를 합쳐 보여 준다.
 		mvc.perform(post(guessUrl).contentType(APPLICATION_JSON).content("{\"text\":\"정답\"}"))
-				.andExpect(jsonPath("$.reveal.keywords[0].name").value("카포의 권위"))
+				.andExpect(jsonPath("$.reveal.keywords[0].name").value("아버지의 권위"))
 				.andExpect(jsonPath("$.reveal.bonuses[0].found").value(true))
 				.andExpect(jsonPath("$.reveal.bonuses.length()").value(1));
 	}
@@ -280,6 +306,14 @@ class GameFlowTests {
 	}
 
 	@Test
+	void correctGuessCostsNothing() {
+		var game = playing(12);
+		games.guess(client, game.id(), "정답");
+		assertThat(reload(game).used()).isEqualTo(12);
+		assertThat(reload(game).status()).isEqualTo(GameStatus.SOLVED);
+	}
+
+	@Test
 	void questionAtLimitIsRejected() throws Exception {
 		var game = playing(40);
 		assertThatThrownBy(() -> games.ask(client, game.id(), "41번째")).isInstanceOf(IllegalStateException.class);
@@ -294,16 +328,57 @@ class GameFlowTests {
 		games.guess(client, game.id(), "모르겠어요");
 		assertThat(reload(game).used()).isEqualTo(40);
 		assertThat(reload(game).status()).isEqualTo(GameStatus.FAILED);
-		assertThat(reload(game).score()).isZero();
+		// 못 풀었지만 핵심 일부(1, 3번)를 밝혔다.
+		assertThat(reload(game).grade()).isEqualTo(Grade.D);
 	}
 
 	@Test
-	void scoreOnSolve() throws Exception {
+	void revealListsEveryHintAfterEnd() throws Exception {
+		var game = playing(10);
+		games.giveUp(client, game.id());
+		mvc.perform(get("/api/games/" + game.id()))
+				.andExpect(jsonPath("$.hints.length()").value(1))
+				.andExpect(jsonPath("$.reveal.hints.length()").value(3))
+				.andExpect(jsonPath("$.reveal.hints[0].opened").value(true))
+				.andExpect(jsonPath("$.reveal.hints[1].opened").value(false))
+				.andExpect(jsonPath("$.reveal.hints[2].no").value(3))
+				.andExpect(jsonPath("$.reveal.hints[2].image").value("/api/scenarios/boys-order/images/hint-3"));
+	}
+
+	@Test
+	void giveUpWithoutKeywordsIsF() {
+		var game = playing(5);
+		games.giveUp(client, game.id());
+		assertThat(reload(game).grade()).isEqualTo(Grade.F);
+	}
+
+	@Test
+	void playingHasNoGrade() {
+		assertThat(reload(playing(3)).grade()).isNull();
+	}
+
+	@Test
+	void solvedGradeFollowsAdjustedUse() {
+		// 보너스 하나(5)를 빼고 매긴다: 35 − 5 = 30 → B, 36 − 5 = 31 → C.
+		var b = playing(35);
+		games.guess(client, b.id(), "정답");
+		assertThat(reload(b).adjustedUsed()).isEqualTo(30);
+		assertThat(reload(b).grade()).isEqualTo(Grade.B);
+		games.reset(client, b.id());
+		var c = playing(36);
+		games.guess(client, c.id(), "정답");
+		assertThat(reload(c).grade()).isEqualTo(Grade.C);
+	}
+
+	@Test
+	void gradeOnSolve() throws Exception {
 		var game = playing(3);
 		mvc.perform(post("/api/games/" + game.id() + "/guesses").contentType(APPLICATION_JSON).content("{\"text\":\"정답\"}"))
-				.andExpect(jsonPath("$.used").value(8))
-				.andExpect(jsonPath("$.reveal.score").value(102))
-				.andExpect(jsonPath("$.reveal.bonusPoints").value(10));
+				.andExpect(jsonPath("$.used").value(3))
+				.andExpect(jsonPath("$.reveal.bonusSaved").value(5))
+				// 3 − 5는 0에서 멈춘다.
+				.andExpect(jsonPath("$.reveal.adjustedUsed").value(0))
+				.andExpect(jsonPath("$.reveal.grade").value("S"));
 		assertThat(reload(game).status()).isEqualTo(GameStatus.SOLVED);
 	}
 
@@ -431,7 +506,7 @@ class GameFlowTests {
 				.andExpect(jsonPath("$[?(@.scenario == 'boys-order')].limit").value(40))
 				.andExpect(jsonPath("$[?(@.scenario == 'boys-order')].id").value(playing.id()))
 				.andExpect(jsonPath("$[?(@.scenario == 'one-week')].status").value("GAVE_UP"))
-				.andExpect(jsonPath("$[?(@.scenario == 'one-week')].score").value(0));
+				.andExpect(jsonPath("$[?(@.scenario == 'one-week')].grade").value("F"));
 	}
 
 	@Test

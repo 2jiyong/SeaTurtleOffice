@@ -79,7 +79,10 @@ public class GameService {
 					+ ")와 백엔드(핵심 " + total + ", 보너스 " + bonusTotal + ")에서 다릅니다: "
 					+ game.scenario().slug() + ". 두 서버를 모두 다시 켜세요.");
 		}
-		game.addGuess(answer, verdict.matched(), verdict.bonus());
+		if (verdict.story() == null) {
+			throw new JudgeException("AI 서버가 이야기 판정(story)을 보내지 않았습니다. 예전 판의 AI 서버입니다. 두 서버를 모두 다시 켜세요.");
+		}
+		game.addGuess(answer, verdict.matched(), verdict.bonus(), verdict.story());
 		store.save(game);
 		return game;
 	}

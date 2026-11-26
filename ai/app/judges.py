@@ -33,7 +33,7 @@ class FakeJudge:
         if prompt.schema_name == "question_judgement":
             return {"reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}
         if prompt.schema_name == "guess_judgement":
-            return {"reason": "가짜 판정기", "matched": [], "bonus": []}
+            return {"reason": "가짜 판정기", "matched": [], "bonus": [], "story": False}
         raise JudgeError(f"알 수 없는 스키마: {prompt.schema_name}")
 
 

@@ -21,8 +21,8 @@ server:
 game:
   # scenarios/가 있는 저장소 루트. backend/에서 실행하면 ".."이다.
   content-dir: ${GAME_CONTENT_DIR:..}
-  # 진행 상태는 메모리에만 둔다. 마지막 활동 뒤 이 시간이 지나면 지운다.
-  idle-ttl: 6h
+  # 기기 쿠키(sto_client)에 Secure를 붙인다. HTTPS 배포에서 true.
+  cookie-secure: ${COOKIE_SECURE:false}
 
 # 판정은 파이썬 AI 서버(ai/)가 한다. OpenAI 키도 거기에만 둔다.
 judge:

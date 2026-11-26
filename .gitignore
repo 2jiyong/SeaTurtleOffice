@@ -16,3 +16,6 @@ __pycache__/
 
 # superpowers 작업 폴더(설계 시안, 진행 기록)
 .superpowers/
+
+# 작업 폴더(git worktree)
+.worktrees/

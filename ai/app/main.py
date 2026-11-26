@@ -16,9 +16,10 @@ from pydantic import BaseModel, Field, ValidationError
 from .config import get_settings
 from .content import ContentRepository, Scenario
 from .judges import Completion, Judge, JudgeError, make_judge
+from .logs import HEADER, request_id, setup_logging, valid_request_id
 from .prompts import HistoryItem, JudgePrompts
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+setup_logging(get_settings().log_format)
 log = logging.getLogger("judge")
 
 Answer = Literal[
@@ -107,6 +108,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="바다거북 사무소 AI 판정 서버", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def carry_request_id(request: Request, call_next):
+    """백엔드가 보낸 요청 ID를 이 요청의 모든 로그에 찍고, 응답 헤더로도 돌려준다."""
+    rid = valid_request_id(request.headers.get(HEADER))
+    token = request_id.set(rid)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id.reset(token)
+    response.headers[HEADER] = rid
+    return response
 
 
 @app.exception_handler(JudgeError)

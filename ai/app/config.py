@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     openai_timeout: float = 12.0
     openai_max_retries: int = 1
 
+    # text: 사람이 읽는 한 줄(개발), json: JSON 한 줄(배포)
+    log_format: str = "text"
+
     # 판정 프롬프트에 넣을 최근 질문 수
     history_limit: int = 40
 

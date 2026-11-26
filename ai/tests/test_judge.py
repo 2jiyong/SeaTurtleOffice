@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.content import ContentRepository, parse_keywords
+from app.judges import Completion
 from app.main import app
 from app.prompts import ANSWERS, GUESS_RULES, GUESS_SCHEMA, QUESTION_RULES, QUESTION_SCHEMA, HistoryItem, JudgePrompts
 
@@ -61,11 +62,12 @@ def test_fake_judge_flow(client):
 
     r = client.post("/judge/question", json={"scenario": "boys-order", "question": "세입자들은 죽었나요?"})
     assert r.status_code == 200
-    assert r.json() == {"answer": "IRRELEVANT_UNRELATED"}
+    assert r.json()["answer"] == "IRRELEVANT_UNRELATED"
 
     r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "모르겠어요"})
     assert r.status_code == 200
-    assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 1, "story": False}
+    assert {k: v for k, v in r.json().items() if k != "metrics"} == {
+        "matched": [], "total": 3, "bonus": [], "bonusTotal": 1, "story": False}
 
 
 def test_unknown_scenario_is_404(client):
@@ -94,9 +96,9 @@ def test_old_answer_code_is_rejected(client):
     class OldJudge:
         name, fake = "old", True
 
-        async def complete_json(self, prompt):
+        async def complete(self, prompt):
             # 예전 형식 그대로(key 포함). 코드만 목록에 없어야 거부된다.
-            return {"reason": "r", "answer": "PARTIAL", "key": False}
+            return Completion({"reason": "r", "answer": "PARTIAL", "key": False}, "old", 0)
 
     saved = app.state.judge
     app.state.judge = OldJudge()
@@ -142,14 +144,15 @@ def test_guess_numbers_are_cleaned(client):
     class Messy:
         name, fake = "messy", True
 
-        async def complete_json(self, prompt):
-            return {"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [1, 5], "story": True}
+        async def complete(self, prompt):
+            return Completion({"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [1, 5], "story": True}, "messy", 0)
 
     saved = app.state.judge
     app.state.judge = Messy()
     try:
         r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "g"})
-        assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1, "story": True}
+        assert {k: v for k, v in r.json().items() if k != "metrics"} == {
+            "matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1, "story": True}
     finally:
         app.state.judge = saved
 
@@ -204,6 +207,6 @@ def test_question_thinks_less_than_guess():
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
     judge.client.chat.completions.create = fake_create
-    asyncio.run(judge.complete_json(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
-    asyncio.run(judge.complete_json(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
+    asyncio.run(judge.complete(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
+    asyncio.run(judge.complete(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
     assert sent == ["minimal", "low"]

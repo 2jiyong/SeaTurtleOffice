@@ -5,6 +5,7 @@
 """
 
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import Literal
 
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from .config import get_settings
 from .content import ContentRepository, Scenario
-from .judges import Judge, JudgeError, make_judge
+from .judges import Completion, Judge, JudgeError, make_judge
 from .prompts import HistoryItem, JudgePrompts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -44,8 +45,20 @@ class QuestionRequest(BaseModel):
     history: list[HistoryEntry] = []
 
 
+class Metrics(BaseModel):
+    """판정 하나의 비용. 시간은 ms. aiMs ⊇ llmMs."""
+
+    model: str
+    aiMs: int
+    llmMs: int
+    inputTokens: int
+    outputTokens: int
+    cachedTokens: int
+
+
 class QuestionResult(BaseModel):
     answer: Answer
+    metrics: Metrics
 
 
 class GuessRequest(BaseModel):
@@ -62,6 +75,7 @@ class GuessResult(BaseModel):
     bonus: list[int]
     bonusTotal: int
     story: bool
+    metrics: Metrics
 
 
 class QuestionJudgement(BaseModel):
@@ -97,8 +111,25 @@ app = FastAPI(title="바다거북 사무소 AI 판정 서버", lifespan=lifespan
 
 @app.exception_handler(JudgeError)
 async def judge_failed(request: Request, exc: JudgeError):
-    log.error("판정 실패: %s", exc)
-    return JSONResponse(status_code=502, content={"detail": "판정 중 문제가 생겼습니다."})
+    spent = _with_ai_ms(exc.metrics, request) if exc.metrics is not None else None
+    log.error("판정 실패: %s", exc, extra=_log_fields(spent))
+    # 토큰을 쓴 뒤 실패해도 백엔드가 기록할 수 있게 지표를 함께 보낸다.
+    return JSONResponse(status_code=502, content={"detail": "판정 중 문제가 생겼습니다.", "metrics": spent})
+
+
+def _with_ai_ms(spent: dict, request: Request) -> dict:
+    """엔드포인트에 들어온 뒤 지금까지의 시간(aiMs)을 더한다."""
+    started = getattr(request.state, "started", None)
+    ai_ms = round((time.perf_counter() - started) * 1000) if started is not None else 0
+    return {**spent, "aiMs": ai_ms}
+
+
+def _log_fields(spent: dict | None) -> dict:
+    if not spent:
+        return {}
+    return {"model": spent["model"], "ai_ms": spent.get("aiMs"), "llm_ms": spent["llmMs"],
+            "input_tokens": spent["inputTokens"], "output_tokens": spent["outputTokens"],
+            "cached_tokens": spent["cachedTokens"]}
 
 
 def _scenario(request: Request, slug: str) -> Scenario:
@@ -108,11 +139,11 @@ def _scenario(request: Request, slug: str) -> Scenario:
     return scenario
 
 
-def _validate(model: type[BaseModel], raw: dict):
+def _validate(model: type[BaseModel], completion: Completion):
     try:
-        return model.model_validate(raw)
+        return model.model_validate(completion.data)
     except ValidationError as e:
-        raise JudgeError(f"판정 결과 형식이 맞지 않습니다: {raw}") from e
+        raise JudgeError(f"판정 결과 형식이 맞지 않습니다: {completion.data}", completion.metrics()) from e
 
 
 @app.get("/health")
@@ -123,26 +154,35 @@ async def health(request: Request) -> Health:
 
 @app.post("/judge/question")
 async def judge_question(body: QuestionRequest, request: Request) -> QuestionResult:
+    request.state.started = time.perf_counter()
     scenario = _scenario(request, body.scenario)
     history = [HistoryItem(h.text, h.answer) for h in body.history]
     prompt = request.app.state.prompts.question(scenario, history, body.question.strip())
-    result = _validate(QuestionJudgement, await request.app.state.judge.complete_json(prompt))
+    completion = await request.app.state.judge.complete(prompt)
+    result = _validate(QuestionJudgement, completion)
+    spent = _with_ai_ms(completion.metrics(), request)
     # 판정 근거는 로그에만 남긴다. 플레이어에게 새지 않게 응답에는 넣지 않는다.
-    log.info("[%s] Q: %s → %s / %s", scenario.slug, body.question, result.answer, result.reason)
-    return QuestionResult(answer=result.answer)
+    log.info("[%s] Q: %s → %s / %s", scenario.slug, body.question, result.answer, result.reason,
+             extra={"scenario": scenario.slug, "answer": result.answer, **_log_fields(spent)})
+    return QuestionResult(answer=result.answer, metrics=Metrics(**spent))
 
 
 @app.post("/judge/guess")
 async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
+    request.state.started = time.perf_counter()
     scenario = _scenario(request, body.scenario)
     prompt = request.app.state.prompts.guess(scenario, body.guess.strip())
-    result = _validate(GuessJudgement, await request.app.state.judge.complete_json(prompt))
+    completion = await request.app.state.judge.complete(prompt)
+    result = _validate(GuessJudgement, completion)
+    spent = _with_ai_ms(completion.metrics(), request)
     total, bonus_total = len(scenario.keywords), len(scenario.bonuses)
     matched = _clean(result.matched, total)
     bonus = _clean(result.bonus, bonus_total)
     log.info("[%s] 답안 핵심 %s/%d 보너스 %s/%d 이야기 %s : %s / %s",
-             scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason)
-    return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total, story=result.story)
+             scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason,
+             extra={"scenario": scenario.slug, **_log_fields(spent)})
+    return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total, story=result.story,
+                       metrics=Metrics(**spent))
 
 
 def _clean(numbers: list[int], total: int) -> list[int]:

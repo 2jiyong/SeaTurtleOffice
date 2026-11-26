@@ -2,6 +2,8 @@
 
 import json
 import logging
+import time
+from dataclasses import dataclass
 from typing import Protocol
 
 from openai import AsyncOpenAI, OpenAIError
@@ -12,15 +14,40 @@ from .prompts import Prompt
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class Completion:
+    """LLM 한 번의 결과와 그 비용. 시간은 ms, 토큰은 OpenAI usage 그대로(없으면 0)."""
+
+    data: dict
+    model: str
+    llm_ms: int
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
+
+    def metrics(self) -> dict:
+        return metrics(self.model, self.llm_ms, self.input_tokens, self.output_tokens, self.cached_tokens)
+
+
+def metrics(model: str, llm_ms: int, input_tokens: int = 0, output_tokens: int = 0, cached_tokens: int = 0) -> dict:
+    """응답의 metrics 모양(aiMs는 엔드포인트가 더한다)."""
+    return {"model": model, "llmMs": llm_ms, "inputTokens": input_tokens,
+            "outputTokens": output_tokens, "cachedTokens": cached_tokens}
+
+
 class JudgeError(Exception):
-    """판정을 받지 못했다(요청 실패, 거부, 형식 오류)."""
+    """판정을 받지 못했다(요청 실패, 거부, 형식 오류). 그때까지 쓴 시간·토큰을 metrics로 함께 넘긴다."""
+
+    def __init__(self, message: str, metrics: dict | None = None):
+        super().__init__(message)
+        self.metrics = metrics
 
 
 class Judge(Protocol):
     name: str
     fake: bool
 
-    async def complete_json(self, prompt: Prompt) -> dict: ...
+    async def complete(self, prompt: Prompt) -> Completion: ...
 
 
 class FakeJudge:
@@ -29,12 +56,12 @@ class FakeJudge:
     name = "가짜 판정기"
     fake = True
 
-    async def complete_json(self, prompt: Prompt) -> dict:
+    async def complete(self, prompt: Prompt) -> Completion:
         if prompt.schema_name == "question_judgement":
-            return {"reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}
+            return Completion({"reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}, "fake", 0)
         if prompt.schema_name == "guess_judgement":
-            return {"reason": "가짜 판정기", "matched": [], "bonus": [], "story": False}
-        raise JudgeError(f"알 수 없는 스키마: {prompt.schema_name}")
+            return Completion({"reason": "가짜 판정기", "matched": [], "bonus": [], "story": False}, "fake", 0)
+        raise JudgeError(f"알 수 없는 스키마: {prompt.schema_name}", metrics("fake", 0))
 
 
 class OpenAiJudge:
@@ -52,7 +79,8 @@ class OpenAiJudge:
             max_retries=settings.openai_max_retries,
         )
 
-    async def complete_json(self, prompt: Prompt) -> dict:
+    async def complete(self, prompt: Prompt) -> Completion:
+        model = self.settings.openai_model
         extra = {}
         effort = (
             self.settings.openai_question_reasoning_effort
@@ -61,9 +89,10 @@ class OpenAiJudge:
         )
         if effort:
             extra["reasoning_effort"] = effort
+        started = time.perf_counter()
         try:
             response = await self.client.chat.completions.create(
-                model=self.settings.openai_model,
+                model=model,
                 messages=[
                     {"role": "system", "content": prompt.system},
                     {"role": "user", "content": prompt.user},
@@ -75,19 +104,38 @@ class OpenAiJudge:
                 **extra,
             )
         except OpenAIError as e:
-            raise JudgeError(f"OpenAI 요청이 실패했습니다: {e}") from e
+            raise JudgeError(f"OpenAI 요청이 실패했습니다: {e}", metrics(model, _ms_since(started))) from e
+        llm_ms = _ms_since(started)
+        usage = _usage(response)
+        spent = metrics(model, llm_ms, *usage)
 
         message = response.choices[0].message if response.choices else None
         if message is None:
-            raise JudgeError("OpenAI 응답이 비어 있습니다")
+            raise JudgeError("OpenAI 응답이 비어 있습니다", spent)
         if message.refusal:
-            raise JudgeError(f"모델이 응답을 거부했습니다: {message.refusal}")
+            raise JudgeError(f"모델이 응답을 거부했습니다: {message.refusal}", spent)
         if not message.content:
-            raise JudgeError("OpenAI 응답에 내용이 없습니다")
+            raise JudgeError("OpenAI 응답에 내용이 없습니다", spent)
         try:
-            return json.loads(message.content)
+            data = json.loads(message.content)
         except json.JSONDecodeError as e:
-            raise JudgeError(f"판정 결과를 읽을 수 없습니다: {message.content}") from e
+            raise JudgeError(f"판정 결과를 읽을 수 없습니다: {message.content}", spent) from e
+        return Completion(data, model, llm_ms, *usage)
+
+
+def _ms_since(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
+
+
+def _usage(response) -> tuple[int, int, int]:
+    """(입력, 출력, 캐시된 입력) 토큰. usage나 하위 값이 없으면 0."""
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return 0, 0, 0
+    details = getattr(usage, "prompt_tokens_details", None)
+    return (getattr(usage, "prompt_tokens", None) or 0,
+            getattr(usage, "completion_tokens", None) or 0,
+            (getattr(details, "cached_tokens", None) or 0) if details is not None else 0)
 
 
 def make_judge(settings: Settings) -> Judge:

@@ -3,7 +3,7 @@ import type { HintRecord } from './api.ts'
 
 /**
  * 계시창. 열린 계시 하나를 화면 가운데 띄운다(그림이 있으면 위에, 문장은 아래).
- * 열린 계시끼리 넘겨 볼 수 있고, 닫기·Esc·바깥 누르기로 닫힌다. 열리면 닫기 버튼에 초점을 둔다.
+ * 열린 계시끼리 넘겨 볼 수 있다(아래 번호, 좌우 버튼, ←·→ 키). 닫기·Esc·바깥 누르기로 닫힌다. 열리면 닫기 버튼에 초점을 둔다.
  */
 export default function RevelationDialog({
   hints,
@@ -27,6 +27,8 @@ export default function RevelationDialog({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft' && index > 0) onIndex(index - 1)
+      if (e.key === 'ArrowRight' && index < hints.length - 1) onIndex(index + 1)
       // Tab 초점이 창 밖(가려진 화면)으로 나가지 않게 창 안에서 돈다.
       if (e.key === 'Tab' && dialogRef.current) {
         const items = [...dialogRef.current.querySelectorAll<HTMLElement>('button')]
@@ -45,7 +47,7 @@ export default function RevelationDialog({
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, onIndex, index, hints.length])
 
   if (!hint) return null
   const title = `계시 ${hint.no}`
@@ -55,8 +57,28 @@ export default function RevelationDialog({
         <div className="revelation-head">
           <h2 id="revelation-title">{title}</h2>
         </div>
-        {hint.image && <img className="revelation-image" src={hint.image} alt={`${title} 이미지`} />}
-        <p className="revelation-text">{hint.text}</p>
+        <div className="revelation-stage">
+          {hint.image && <img className="revelation-image" src={hint.image} alt={`${title} 이미지`} />}
+          <p className="revelation-text">{hint.text}</p>
+          {hints.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="revelation-step prev"
+                aria-label="이전 계시"
+                disabled={index === 0}
+                onClick={() => onIndex(index - 1)}
+              />
+              <button
+                type="button"
+                className="revelation-step next"
+                aria-label="다음 계시"
+                disabled={index === hints.length - 1}
+                onClick={() => onIndex(index + 1)}
+              />
+            </>
+          )}
+        </div>
         <div className="revelation-foot">
           <div className="revelation-nav">
             {hints.map((h, i) => (

@@ -269,7 +269,7 @@ describe('응시자 무전 수신 기록', () => {
 
   it('클립보드에는 힌트 요청 버튼이 없고, 송신 단말 문구가 보인다', async () => {
     await openGame()
-    expect(document.querySelector('.case-device')?.textContent).not.toContain('요청')
+    expect(document.querySelector('.case-file')?.textContent).not.toContain('요청')
     expect(screen.getByText('송신 단말 // CH-07')).toBeTruthy()
     expect(screen.getByRole('textbox', { name: '질문' }).getAttribute('placeholder')).toBe('예나 아니오로 답할 수 있는 질문을 입력하라')
     expect(screen.getByText(/모든 송신은 기록된다/)).toBeTruthy()
@@ -322,6 +322,45 @@ describe('무전기 조작판', () => {
   })
 })
 
+describe('계시창 넘기기', () => {
+  const three = [
+    { no: 1, seq: 101, text: '첫째', image: null },
+    { no: 2, seq: 102, text: '둘째', image: null },
+    { no: 3, seq: 103, text: '셋째', image: null },
+  ]
+
+  it('좌우 버튼으로 계시를 넘기고, 처음과 끝에서는 더 넘어가지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 30, nextHintAt: null, hints: three })
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    expect((screen.getByRole('button', { name: '이전 계시' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.click(screen.getByRole('button', { name: '다음 계시' }))
+    expect(screen.getByRole('dialog', { name: '계시 2' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '다음 계시' }))
+    expect(screen.getByRole('dialog', { name: '계시 3' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: '다음 계시' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.click(screen.getByRole('button', { name: '이전 계시' }))
+    expect(screen.getByRole('dialog', { name: '계시 2' })).toBeTruthy()
+  })
+
+  it('키보드 왼쪽·오른쪽 화살표로도 넘긴다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 30, nextHintAt: null, hints: three })
+    await user.click(screen.getByRole('button', { name: '계시 2' }))
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('dialog', { name: '계시 3' })).toBeTruthy()
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('dialog', { name: '계시 1' })).toBeTruthy()
+  })
+
+  it('계시가 하나뿐이면 좌우 버튼이 없다', async () => {
+    const user = userEvent.setup()
+    await openGame({ used: 10, nextHintAt: 20, hints: [three[0]] })
+    await user.click(screen.getByRole('button', { name: '계시 1' }))
+    expect(screen.queryByRole('button', { name: '다음 계시' })).toBeNull()
+  })
+})
+
 describe('계시창 초점', () => {
   it('Tab 초점이 계시창 밖으로 나가지 않는다', async () => {
     const user = userEvent.setup()
@@ -364,13 +403,20 @@ describe('사용 막대 표시', () => {
 })
 
 describe('사건 기록 화면', () => {
-  it('사건 기록은 종이 클립보드가 아니라 단말 화면에 뜬다', async () => {
+  it('사건 기록은 메인 화면과 같은 사건 파일 카드다: 표지 위에 제목, 아래에 문제', async () => {
     await openGame()
-    expect(document.querySelector('.clipboard')).toBeNull()
-    const screenEl = document.querySelector('.case-device .case-screen')
-    expect(screenEl).not.toBeNull()
-    expect(screenEl?.textContent).toContain('사건 기록')
-    expect(screenEl?.textContent).toContain('문제')
+    expect(document.querySelector('.case-device')).toBeNull()
+    const card = document.querySelector('.case-file')
+    expect(card?.querySelector('.case-file-frame h1')?.textContent).toBe('사건')
+    expect(card?.querySelector('.case-file-body')?.textContent).toContain('문제')
+    expect(card?.textContent).toContain('사건 기록')
+  })
+
+  it('포기 버튼은 문제 본문과 떨어진 카드 아래 칸에 있다', async () => {
+    await openGame()
+    const button = screen.getByRole('button', { name: '포기하고 진상 보기' })
+    expect(button.closest('.case-file-foot')).not.toBeNull()
+    expect(button.closest('.case-file-body')).toBeNull()
   })
 })
 

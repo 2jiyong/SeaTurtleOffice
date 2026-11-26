@@ -34,11 +34,12 @@ describe('메인 화면', () => {
     expect(screen.getByText('바다거북 사무소 // 안내')).toBeTruthy()
   })
 
-  it('사건 목록은 단말 화면에 뜨고, 사건마다 열람 버튼이 있다', async () => {
+  it('사건 목록은 상자에 갇히지 않은 사건 카드이고, 사건마다 열람 버튼과 다음 기록 자리가 있다', async () => {
     render(<ScenarioList onStarted={() => {}} />)
     await screen.findByText('열 개의 손목')
-    expect(document.querySelector('.archive-device .archive-screen')).not.toBeNull()
+    expect(document.querySelector('.archive-device')).toBeNull()
     expect(screen.getAllByRole('button', { name: /열람/ })).toHaveLength(2)
     expect(screen.getByText('미해결 2건', { exact: false })).toBeTruthy()
+    expect(screen.getByText('다음 기록 수신 대기 중')).toBeTruthy()
   })
 })

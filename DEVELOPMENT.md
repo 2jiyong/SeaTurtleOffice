@@ -56,8 +56,11 @@ cd frontend && npm install && npm run dev
 | 요청 | 본문 | 응답 |
 |---|---|---|
 | `GET /health` | | `{judge, fake, scenarios}` |
-| `POST /judge/question` | `{scenario, question, history: [{text, answer}]}` | `{answer}` |
-| `POST /judge/guess` | `{scenario, guess}` | `{matched: [번호], total, bonus: [번호], bonusTotal, story}` |
+| `POST /judge/question` | `{scenario, question, history: [{text, answer}]}` | `{answer, metrics}` |
+| `POST /judge/guess` | `{scenario, guess}` | `{matched: [번호], total, bonus: [번호], bonusTotal, story, metrics}` |
+
+`metrics`는 판정 하나의 비용이다: `{model, aiMs, llmMs, inputTokens, outputTokens, cachedTokens}`(시간은 ms, 가짜 판정기는 `model: "fake"`에 토큰 0).
+판정이 실패한 502 본문에도 그때까지 쓴 `metrics`가 실린다. 요청 헤더 `X-Request-Id`를 받으면 그 값을 로그에 찍고 응답 헤더로 돌려준다.
 
 `scenario`는 시나리오 파일 이름(확장자 없이)이다. `http://localhost:8000/docs`에서 직접 호출해 볼 수 있다.
 
@@ -146,6 +149,54 @@ cd frontend && npm install && npm run dev
 - 보너스: 시나리오의 **보너스 키워드**(곁가지 1~2개)도 추리마다 판정해 모아 두고, 게임이 끝날 때 진상 공개에서만 보여 준다. 정답 여부와는 상관없다.
 - 맞힌 핵심: 추리마다 맞힌 핵심 키워드 번호도 모아 두고(`Game.keywordFound`), 게임이 끝나면 진상 공개의 `keywords[].found`로 보낸다. 결과 페이지는 밝힌 핵심과 맞힌 보너스를 초록 카드로 보여 준다. 게임 중에는 보내지 않는다.
 - 판정은 JSON 스키마로 받으므로 자유 문장이 플레이어에게 새지 않는다. 판정 근거(`reason`)는 AI 서버 로그에만 남는다.
+
+## 로그와 이벤트
+판정 시간과 토큰, 게임의 주요 사건은 DB의 `events` 테이블에 영구로 남는다(게임 판과 따로, 초기화해도 남는다). 사람이 읽는 로그는 두 서버의 콘솔에 남는다.
+
+### 이벤트
+| 종류 | 언제 |
+|---|---|
+| `game_started` | 새 판을 만들었을 때(이어하기는 제외) |
+| `question_asked` / `guess_submitted` | 질문·추리 판정을 시도한 뒤(실패 포함) |
+| `hint_used` | 힌트 버튼 |
+| `game_ended` | 해결·실패·포기로 끝났을 때. `detail`에 등급과 그 원재료(사용 횟수, 보정 사용 횟수, 맞힌 핵심·보너스 수) |
+| `game_reset` | 초기화 |
+
+- `outcome`: `ok`, `judge_error`(AI 서버 오류나 믿을 수 없는 판정), `timeout`(28초 초과), `conflict`(판정은 됐는데 다른 창과 겹쳐 저장 실패).
+- 시간 칸: `total_ms` = `backend_ms` + `ai_ms`, `ai_ms` 안에 `llm_ms`(OpenAI 호출, 재시도 포함)가 들어 있다.
+- 토큰은 실패한 판정에도 남는다(쓴 만큼). **시간 초과만은 AI 서버 응답이 없어 토큰을 모른다**(AI 서버 로그에는 남는다).
+- 질문·추리 원문은 이벤트에 넣지 않는다(`text_length`만). 원문은 판이 있는 동안 `game_entries`와 AI 서버 로그에 있다.
+- 규칙 위반으로 판정 전에 막힌 요청(한도 초과, 끝난 판)은 남기지 않는다. 이벤트 기록이 실패해도 게임은 그대로 되고 경고 로그만 남는다.
+
+### 요청 ID로 두 서버 로그 잇기
+백엔드는 `/api` 요청마다 요청 ID를 정해(들어온 `X-Request-Id`가 영숫자와 `-` 8~64자면 그대로) 응답 헤더, 로그, AI 서버 요청, `events.request_id`에 싣는다.
+브라우저 개발자 도구에서 응답 헤더의 `X-Request-Id`를 보고 두 서버 로그에서 그 값을 찾으면 된다.
+백엔드는 요청마다 접근 로그 한 줄(`access`: 메서드, 경로(게임 id는 `{id}`), 상태, ms, 기기 ID)을 남긴다.
+
+### 환경 변수
+| 변수 | 어디 | 뜻 |
+|---|---|---|
+| `APP_VERSION` | 백엔드 | `events.app_version`에 남는 배포 버전(배포에서 git 커밋). 없으면 `dev` |
+| `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs` | 백엔드 | 로그를 JSON 한 줄로(배포). 없으면 사람이 읽는 형식 + `[요청 ID]` |
+| `LOG_FORMAT=json` | AI 서버 | 로그를 JSON 한 줄로(배포). 기본 `text` |
+
+### 자주 쓸 SQL
+로컬 DB: `docker exec -it sea-turtle-office-postgres-1 psql -U seaturtle`
+
+```sql
+-- 오늘 질문 판정 시간 p50/p95(ms)
+select percentile_cont(0.5) within group (order by total_ms) p50,
+       percentile_cont(0.95) within group (order by total_ms) p95
+from events where type = 'question_asked' and outcome = 'ok' and at >= current_date;
+
+-- 모델·버전별 평균 시간과 토큰(배포·모델 바꾸기 전후 비교)
+select model, app_version, count(*), avg(llm_ms)::int llm_ms, avg(input_tokens)::int input_tokens
+from events where type in ('question_asked', 'guess_submitted') group by 1, 2 order by 2;
+
+-- 날짜별 기기 수와 토큰 합
+select date(at) d, count(distinct client_id) devices, sum(input_tokens) input, sum(output_tokens) output
+from events group by 1 order by 1;
+```
 
 ## 테스트
 ```bash

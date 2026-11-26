@@ -6,7 +6,7 @@
                    게임 진행·시나리오 목록·힌트·진상     판정 프롬프트·세계관·LLM 호출
                       │
                       ▼
-                   PostgreSQL (5432) 게임 진행 저장
+                   PostgreSQL (5433) 게임 진행 저장
 ```
 
 - `frontend/` — React + Vite + TypeScript (5173). `/api` 요청은 개발 서버가 백엔드(8080)로 넘긴다.
@@ -37,7 +37,7 @@ cd backend && ./gradlew bootRun
 ```
 
 DB는 따로 켜지 않아도 된다. `bootRun`이 저장소 루트의 `compose.yaml`로 PostgreSQL 컨테이너를 켜고 연결한다(Docker 필요, 이 저장소는 OrbStack을 쓴다).
-백엔드를 꺼도 컨테이너는 멈추기만 하고 데이터는 `pgdata` 볼륨에 남는다. 직접 켜려면 루트에서 `docker compose up -d`.
+백엔드를 꺼도 컨테이너는 멈추기만 하고 데이터는 `pgdata` 볼륨에 남는다. 직접 켜려면 루트에서 `docker compose up -d`. 다른 프로젝트의 Postgres(5432)와 부딪히지 않게 호스트 포트는 5433이다.
 배포에서는 `DB_URL`, `DB_USER`, `DB_PASSWORD`로 넘긴다(기본값은 로컬 compose와 같다).
 
 AI 서버 주소가 다르면 `AI_BASE_URL`로 바꾼다(기본 `http://localhost:8000`). AI 서버가 꺼져 있으면 화면 상단에 안내가 뜬다.

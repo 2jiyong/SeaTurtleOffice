@@ -3,7 +3,7 @@ spring:
     name: sea-turtle-office
   # 배포에서는 환경 변수로 넘긴다. bootRun에서는 docker compose 연결 정보가 이 값을 덮어쓴다.
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/seaturtle}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/seaturtle}
     username: ${DB_USER:seaturtle}
     password: ${DB_PASSWORD:seaturtle}
   jpa:

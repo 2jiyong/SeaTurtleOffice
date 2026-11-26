@@ -61,6 +61,7 @@ export default function App() {
             gameId={route.gameId}
             onExit={goHome}
             onResume={() => replaceRoute(`#/game/${route.gameId}`)}
+            onRestarted={(id) => replaceRoute(`#/game/${id}`)}
           />
         ) : route.gameId ? (
           <GamePage

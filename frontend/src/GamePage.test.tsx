@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ANSWER_TEXT, type GameView } from './api.ts'
+import { ANSWER_TEXT, ApiError, type GameView } from './api.ts'
 import GamePage from './GamePage.tsx'
 
 // 네트워크(api)만 바꾼다. 응답 시점은 테스트가 정한다.
@@ -518,5 +518,42 @@ describe('포기 확인창', () => {
     await user.click(screen.getByRole('button', { name: '조사를 중단한다' }))
     expect(api.giveUp).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+})
+
+describe('기록을 다시 불러와야 할 때', () => {
+  it('없는 게임은 기록을 찾을 수 없다고 알린다', async () => {
+    vi.mocked(api.game).mockRejectedValue(new ApiError('없음', 404))
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
+    expect(await screen.findByText('기록을 찾을 수 없습니다.')).toBeTruthy()
+  })
+
+  it('다른 창에서 바뀌었으면(409) 안내하고 다시 불러오며, 보낸 글은 남긴다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    const message = '다른 창에서 진행이 바뀌었습니다. 새로고침해 주세요.'
+    vi.mocked(api.ask).mockRejectedValue(new ApiError(message, 409))
+    vi.mocked(api.game).mockResolvedValue({
+      ...game,
+      used: 1,
+      questions: [{ no: 1, seq: 1, text: '다른 창의 질문', answer: 'YES' }],
+    })
+    await user.type(screen.getByRole('textbox', { name: '질문' }), '내 질문{Enter}')
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(await screen.findByText('다른 창의 질문')).toBeTruthy()
+    expect(api.game).toHaveBeenCalledTimes(2)
+    expect((screen.getByRole('textbox', { name: '질문' }) as HTMLTextAreaElement).value).toBe('내 질문')
+  })
+
+  it('다시 불러온 판이 끝났으면 결과로 넘긴다', async () => {
+    const user = userEvent.setup()
+    const onEnded = vi.fn()
+    vi.mocked(api.game).mockResolvedValueOnce(game)
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={onEnded} />)
+    await screen.findByRole('button', { name: '송신 ▶' })
+    vi.mocked(api.ask).mockRejectedValue(new ApiError('바뀜', 409))
+    vi.mocked(api.game).mockResolvedValueOnce({ ...game, status: 'GAVE_UP' })
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
+    await vi.waitFor(() => expect(onEnded).toHaveBeenCalledTimes(1))
   })
 })

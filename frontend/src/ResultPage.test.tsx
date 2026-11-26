@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, type GameView } from './api.ts'
@@ -6,7 +6,7 @@ import ResultPage from './ResultPage.tsx'
 
 vi.mock('./api.ts', async (importActual) => {
   const actual = await importActual<typeof import('./api.ts')>()
-  return { ...actual, api: { game: vi.fn() } }
+  return { ...actual, api: { game: vi.fn(), reset: vi.fn(), start: vi.fn() } }
 })
 const { api } = await import('./api.ts')
 
@@ -37,9 +37,19 @@ const solved: GameView = {
   },
 }
 
-async function openResult(overrides: Partial<GameView> = {}, handlers: { onExit?: () => void; onResume?: () => void } = {}) {
+async function openResult(
+  overrides: Partial<GameView> = {},
+  handlers: { onExit?: () => void; onResume?: () => void; onRestarted?: (id: string) => void } = {},
+) {
   vi.mocked(api.game).mockResolvedValue({ ...solved, ...overrides })
-  render(<ResultPage gameId="g1" onExit={handlers.onExit ?? (() => {})} onResume={handlers.onResume ?? (() => {})} />)
+  render(
+    <ResultPage
+      gameId="g1"
+      onExit={handlers.onExit ?? (() => {})}
+      onResume={handlers.onResume ?? (() => {})}
+      onRestarted={handlers.onRestarted ?? (() => {})}
+    />,
+  )
 }
 
 beforeEach(() => {
@@ -147,8 +157,53 @@ describe('결과 페이지로 올 수 없는 게임', () => {
 
   it('만료된 게임은 오류와 목록으로', async () => {
     vi.mocked(api.game).mockRejectedValue(new ApiError('없음', 404))
-    render(<ResultPage gameId="g1" onExit={() => {}} onResume={() => {}} />)
-    expect(await screen.findByText('게임이 만료되었거나 서버가 다시 시작되었습니다.')).toBeTruthy()
+    render(<ResultPage gameId="g1" onExit={() => {}} onResume={() => {}} onRestarted={() => {}} />)
+    expect(await screen.findByText('기록을 찾을 수 없습니다.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '목록으로' })).toBeTruthy()
+  })
+})
+
+describe('초기화', () => {
+  async function openConfirm(onRestarted = vi.fn()) {
+    const user = userEvent.setup()
+    await openResult({}, { onRestarted })
+    await user.click(await screen.findByRole('button', { name: '초기화' }))
+    return { user, onRestarted }
+  }
+
+  it('초기화를 누르면 확인창이 뜬다', async () => {
+    await openConfirm()
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog.textContent).toContain('사건 기록 초기화')
+    expect(dialog.textContent).toContain('이 사건의 질문, 추리, 계시 기록이 모두 지워지고 처음부터 다시 시작합니다.')
+  })
+
+  it('확인하면 지우고 새 판을 시작해 onRestarted로 넘긴다', async () => {
+    vi.mocked(api.reset).mockResolvedValue(undefined)
+    vi.mocked(api.start).mockResolvedValue({ ...solved, id: 'g2', status: 'PLAYING', reveal: null })
+    const { user, onRestarted } = await openConfirm()
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: '초기화' }))
+    await vi.waitFor(() => expect(onRestarted).toHaveBeenCalledWith('g2'))
+    expect(api.reset).toHaveBeenCalledWith('g1')
+    expect(api.start).toHaveBeenCalledWith('s')
+    expect(vi.mocked(api.reset).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.start).mock.invocationCallOrder[0])
+  })
+
+  it('취소하면 아무 요청도 하지 않는다', async () => {
+    const { user } = await openConfirm()
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(api.reset).not.toHaveBeenCalled()
+  })
+
+  it('지우기에 실패하면 오류를 보이고 결과 페이지에 머문다', async () => {
+    vi.mocked(api.reset).mockRejectedValue(new ApiError('서버 오류', 500))
+    const { user, onRestarted } = await openConfirm()
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '초기화' }))
+    expect(await screen.findByText('서버 오류')).toBeTruthy()
+    expect(onRestarted).not.toHaveBeenCalled()
+    expect(api.start).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: '사건 해결' })).toBeTruthy()
   })
 })

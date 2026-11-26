@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError, type GameStatus, type GameView } from './api.ts'
+import ConfirmDialog from './ConfirmDialog.tsx'
 import { CaseScreen, ReceiveLog } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
 
@@ -14,21 +15,28 @@ const VERDICT: Record<Exclude<GameStatus, 'PLAYING'>, { title: string; sub: stri
 
 const NO_FRESH = new Set<number>()
 
-/** 끝난 사건의 결과 페이지. 판정과 점수, [진상] [기록] 탭. */
+/** 끝난 사건의 결과 페이지. 판정과 점수, [진상] [기록] 탭. 초기화하면 기록을 지우고 새 판으로 간다. */
 export default function ResultPage({
   gameId,
   onExit,
   onResume,
+  onRestarted,
 }: {
   gameId: string
   onExit: () => void
   onResume: () => void
+  /** 초기화 뒤 새로 시작한 판의 id */
+  onRestarted: (gameId: string) => void
 }) {
   const [game, setGame] = useState<GameView | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('truth')
   const [openHint, setOpenHint] = useState<number | null>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const resetButton = useRef<HTMLButtonElement>(null)
   // 판정 제목. 들어오면 여기에 초점을 둬서, 화면 읽기 프로그램이 판정부터 읽게 한다.
   const verdictRef = useRef<HTMLHeadingElement>(null)
   const closeHint = useCallback(() => {
@@ -40,7 +48,7 @@ export default function ResultPage({
     api.game(gameId).then(
       (g) => (g.status === 'PLAYING' ? onResume() : setGame(g)),
       (e: Error) =>
-        setLoadError(e instanceof ApiError && e.status === 404 ? '게임이 만료되었거나 서버가 다시 시작되었습니다.' : e.message),
+        setLoadError(e instanceof ApiError && e.status === 404 ? '기록을 찾을 수 없습니다.' : e.message),
     )
     // onResume은 주소를 바꾸는 함수라 다시 불러올 이유가 되지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,6 +75,20 @@ export default function ResultPage({
   if (!game || game.status === 'PLAYING' || !game.reveal) return <p className="muted center">기록을 불러오는 중…</p>
 
   const reveal = game.reveal
+  const reset = async () => {
+    setConfirmingReset(false)
+    setResetting(true)
+    setResetError(null)
+    try {
+      await api.reset(game.id)
+      const next = await api.start(game.scenario.slug)
+      onRestarted(next.id)
+    } catch (e) {
+      setResetError((e as Error).message)
+      setResetting(false)
+      resetButton.current?.focus()
+    }
+  }
   const solved = game.status === 'SOLVED'
   const verdict = VERDICT[game.status]
   const scoreLine =
@@ -85,6 +107,7 @@ export default function ResultPage({
           <p className="result-score">{reveal.score}점</p>
         </div>
         <p className="result-sub">{solved ? scoreLine : verdict.sub}</p>
+        {resetError && <p className="error">{resetError}</p>}
         <div className="result-bar">
           <div className="result-tabs" role="tablist" aria-label="결과 보기">
             <button
@@ -110,9 +133,14 @@ export default function ResultPage({
               기록
             </button>
           </div>
-          <button className="btn result-exit" onClick={onExit}>
-            목록으로
-          </button>
+          <div className="result-actions">
+            <button ref={resetButton} className="btn result-exit result-reset" disabled={resetting} onClick={() => setConfirmingReset(true)}>
+              {resetting ? '초기화 중…' : '초기화'}
+            </button>
+            <button className="btn result-exit" onClick={onExit}>
+              목록으로
+            </button>
+          </div>
         </div>
       </header>
 
@@ -190,6 +218,19 @@ export default function ResultPage({
       </div>
       {openHint !== null && (
         <RevelationDialog hints={game.hints} index={openHint} onIndex={setOpenHint} onClose={closeHint} />
+      )}
+      {confirmingReset && (
+        <ConfirmDialog
+          title="사건 기록 초기화"
+          message="이 사건의 질문, 추리, 계시 기록이 모두 지워지고 처음부터 다시 시작합니다."
+          confirmLabel="초기화"
+          cancelLabel="취소"
+          onConfirm={reset}
+          onCancel={() => {
+            setConfirmingReset(false)
+            resetButton.current?.focus()
+          }}
+        />
       )}
     </section>
   )

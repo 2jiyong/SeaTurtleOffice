@@ -47,7 +47,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
 
   useEffect(() => {
     api.game(gameId).then((g) => (g.status === 'PLAYING' ? setGame(g) : onEnded()), (e: Error) =>
-      setLoadError(e instanceof ApiError && e.status === 404 ? '게임이 만료되었거나 서버가 다시 시작되었습니다.' : e.message),
+      setLoadError(e instanceof ApiError && e.status === 404 ? '기록을 찾을 수 없습니다.' : e.message),
     )
     // onEnded는 주소를 바꾸는 함수라 다시 불러올 이유가 되지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,6 +90,15 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
     setGame(next)
   }
 
+  // 409: 다른 창에서 판이 바뀌었거나 이미 끝났다. 안내는 그대로 두고 최신 상태로 다시 불러온다.
+  const reloadIfStale = (err: unknown) => {
+    if (!(err instanceof ApiError) || err.status !== 409) return
+    api.game(game.id).then(
+      (g) => (g.status === 'PLAYING' ? setGame(g) : onEnded()),
+      () => {},
+    )
+  }
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const value = text.trim()
@@ -107,6 +116,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
     } catch (err) {
       setError((err as Error).message)
       setText(value)
+      reloadIfStale(err)
     } finally {
       setPending(null)
     }
@@ -120,6 +130,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
       receive(await fn())
     } catch (err) {
       setError((err as Error).message)
+      reloadIfStale(err)
     } finally {
       setActing(false)
     }

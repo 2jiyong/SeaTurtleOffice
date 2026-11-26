@@ -2482,9 +2482,20 @@ h3 {
   border: 1px solid #2c3337;
 }
 
+.result-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .result-exit:hover {
   color: #e6e9e0;
   border-color: #7d8682;
+}
+
+/* 초기화: 기록을 지우는 버튼이라 마우스를 올리면 경고색 */
+.result-reset:hover {
+  color: #e0857e;
+  border-color: #8a3b35;
 }
 
 .result-verdict h1:focus {

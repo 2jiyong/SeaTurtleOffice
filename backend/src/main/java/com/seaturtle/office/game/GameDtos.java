@@ -34,11 +34,11 @@ public final class GameDtos {
 		}
 	}
 
-	/** 이 기기의 판 하나. 메인 페이지의 진행 상태 표시에 쓴다. score는 해결했을 때만 0이 아니다. */
-	public record MyGame(String id, String scenario, GameStatus status, int used, int limit, int score) {
+	/** 이 기기의 판 하나. 메인 페이지의 진행 상태 표시에 쓴다. grade는 끝난 판에만 있다(진행 중이면 null). */
+	public record MyGame(String id, String scenario, GameStatus status, int used, int limit, Grade grade) {
 
 		static MyGame of(Game game) {
-			return new MyGame(game.id(), game.scenario().slug(), game.status(), game.used(), Game.LIMIT, game.score());
+			return new MyGame(game.id(), game.scenario().slug(), game.status(), game.used(), Game.LIMIT, game.grade());
 		}
 	}
 
@@ -53,9 +53,17 @@ public final class GameDtos {
 	public record BonusView(String name, String description, boolean found) {
 	}
 
-	/** score: 해결하면 100 − 사용 + bonusPoints, 실패·포기는 0. */
-	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses, int score,
-			int bonusPoints) {
+	/** 결과 페이지에서 보는 계시. 게임 중에 열지 않은 것도 담는다. opened: 게임 중에 열었는가 */
+	public record RevealHint(int no, String text, String image, boolean opened) {
+	}
+
+	/**
+	 * grade: 끝난 판의 등급(Grade 참고).
+	 * bonusSaved: 맞힌 보너스가 덜어 준 사용 횟수(해결한 판만), adjustedUsed: 등급을 매긴 사용 횟수.
+	 * hints: 시나리오의 모든 계시(끝난 판이라 열지 않은 것도 보여 준다).
+	 */
+	public record Reveal(String truth, List<KeywordView> keywords, List<BonusView> bonuses, Grade grade,
+			int bonusSaved, int adjustedUsed, List<RevealHint> hints) {
 
 		private static List<KeywordView> keywords(com.seaturtle.office.content.Scenario s, java.util.Set<Integer> found) {
 			List<KeywordView> result = new java.util.ArrayList<>();
@@ -66,7 +74,7 @@ public final class GameDtos {
 			return result;
 		}
 
-		static Reveal of(Game game) {
+		static Reveal of(Game game, ScenarioImages images) {
 			Scenario s = game.scenario();
 			var found = game.bonusFound();
 			List<BonusView> bonuses = new java.util.ArrayList<>();
@@ -76,7 +84,17 @@ public final class GameDtos {
 			}
 			return new Reveal(s.truth(),
 					keywords(s, game.keywordFound()),
-					List.copyOf(bonuses), game.score(), game.bonusPoints());
+					List.copyOf(bonuses), game.grade(), game.bonusSaved(), game.adjustedUsed(), hints(game, images));
+		}
+
+		private static List<RevealHint> hints(Game game, ScenarioImages images) {
+			Scenario s = game.scenario();
+			int opened = game.hints().size();
+			List<RevealHint> result = new java.util.ArrayList<>();
+			for (int no = 1; no <= s.hints().size(); no++) {
+				result.add(new RevealHint(no, s.hints().get(no - 1), images.url(s.slug(), "hint-" + no), no <= opened));
+			}
+			return result;
 		}
 	}
 
@@ -97,7 +115,7 @@ public final class GameDtos {
 		public static GameView of(Game game, ScenarioImages images) {
 			Scenario s = game.scenario();
 			GameStatus status = game.status();
-			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game);
+			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game, images);
 			List<HintView> hints = game.hints().stream()
 					.map(h -> new HintView(h.no(), h.seq(), h.text(), images.url(s.slug(), "hint-" + h.no())))
 					.toList();

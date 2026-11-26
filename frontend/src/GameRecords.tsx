@@ -12,7 +12,8 @@ export type Pending = { mode: 'question' | 'guess'; text: string } | null
 /** 추리에 대한 응시자의 한마디. 빠진 핵심 개수(0, 1, 2, 3 이상)로만 나뉜다. */
 const CLOSENESS_LINES: Record<Closeness, string> = {
   CORRECT: '모두 맞혔구나.',
-  ONE_SHORT: '거의 다 왔구나. 조금만 더 들여다보렴.',
+  // 두 문장은 두 줄로 보여 준다(수신 기록의 답 칸이 너무 길어지지 않게).
+  ONE_SHORT: '거의 다 왔구나.\n조금만 더 들여다보렴.',
   TWO_SHORT: '아직 부족하구나.',
   FAR: '아직 멀었단다.',
 }
@@ -60,6 +61,7 @@ export function CaseScreen({ game, label, footer }: { game: GameView; label: str
 /**
  * 수신 기록 무전기(머리, 사용 막대, 기록 목록). children은 수신 기록 아래(게임 화면의 송신 단말 자리)에 놓인다.
  * onRequestHint가 없으면 다음 계시 요청 눈금도 잠긴 모양으로 그린다(읽기 전용).
+ * viewAllHints면 열지 않은 계시 눈금도 눌러서 볼 수 있다(결과 페이지).
  */
 export function ReceiveLog({
   game,
@@ -69,6 +71,7 @@ export function ReceiveLog({
   logRef,
   onOpenHint,
   onRequestHint,
+  viewAllHints = false,
   children,
 }: {
   game: GameView
@@ -78,6 +81,7 @@ export function ReceiveLog({
   logRef?: RefObject<HTMLOListElement | null>
   onOpenHint: (index: number, el: HTMLElement) => void
   onRequestHint?: () => void
+  viewAllHints?: boolean
   children?: ReactNode
 }) {
   const entries: Entry[] = [
@@ -102,7 +106,7 @@ export function ReceiveLog({
               교신 종료
             </span>
           )}
-          <UsageBar game={game} busy={busy} onOpen={onOpenHint} onRequest={onRequestHint} />
+          <UsageBar game={game} busy={busy} onOpen={onOpenHint} onRequest={onRequestHint} viewAll={viewAllHints} />
         </div>
         <ol ref={logRef} className="log" aria-live="polite" tabIndex={0} aria-label="수신 기록 목록">
           {entries.length === 0 && !pending && (
@@ -159,11 +163,13 @@ function UsageBar({
   busy,
   onOpen,
   onRequest,
+  viewAll,
 }: {
   game: GameView
   busy: boolean
   onOpen: (index: number, el: HTMLElement) => void
   onRequest?: () => void
+  viewAll: boolean
 }) {
   const pct = (n: number) => `${(Math.min(n, game.limit) / game.limit) * 100}%`
   const canRequest = game.status === 'PLAYING' && onRequest !== undefined
@@ -197,15 +203,17 @@ function UsageBar({
           const no = i + 1
           const open = i < game.hints.length
           const next = !open && canRequest && game.nextHintAt === step
-          const label = open ? `계시 ${no}` : next ? `계시 ${no} 요청 (사용 ${step}으로)` : `계시 ${no}`
+          // 결과 페이지: 열지 않은 계시도 눌러 볼 수 있다(모양은 잠긴 채로 두어 열지 않았음을 남긴다).
+          const peek = !open && viewAll
+          const label = open ? `계시 ${no}` : next ? `계시 ${no} 요청 (사용 ${step}으로)` : peek ? `계시 ${no} (열지 않음)` : `계시 ${no}`
           return (
             <button
               key={step}
               type="button"
-              className={`usage-step ${open ? 'open' : next ? 'next' : 'locked'}`}
+              className={`usage-step ${open ? 'open' : next ? 'next' : peek ? 'locked peek' : 'locked'}`}
               style={{ left: pct(step) }}
-              disabled={(!open && !next) || (next && busy)}
-              onClick={(e) => (open ? onOpen(i, e.currentTarget) : onRequest?.())}
+              disabled={(!open && !next && !peek) || (next && busy)}
+              onClick={(e) => (open || peek ? onOpen(i, e.currentTarget) : onRequest?.())}
             >
               {label}
             </button>

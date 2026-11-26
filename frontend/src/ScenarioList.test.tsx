@@ -47,14 +47,14 @@ describe('메인 화면', () => {
 })
 
 describe('이 기기의 진행 상태', () => {
-  const mine = (status: MyGame['status'], extra = {}): MyGame => ({ id: 'g1', scenario: 'boys-order', status, used: 12, limit: 40, score: 0, ...extra })
+  const mine = (status: MyGame['status'], extra = {}): MyGame => ({ id: 'g1', scenario: 'boys-order', status, used: 12, limit: 40, grade: null, ...extra })
   const row = (title: string) => screen.getByText(title).closest('li') as HTMLElement
 
-  it('해결한 사건은 점수, 처음인 사건은 표시 없음', async () => {
-    vi.mocked(api.myGames).mockResolvedValueOnce([mine('SOLVED', { used: 13, score: 87 })])
+  it('해결한 사건은 등급, 처음인 사건은 표시 없음', async () => {
+    vi.mocked(api.myGames).mockResolvedValueOnce([mine('SOLVED', { used: 13, grade: 'A' })])
     render(<ScenarioList onOpen={() => {}} />)
-    expect(await screen.findByText('해결 · 87점')).toBeTruthy()
-    expect(within(row('열 개의 손목')).getByText('해결 · 87점')).toBeTruthy()
+    expect(await screen.findByText('해결 · A등급')).toBeTruthy()
+    expect(within(row('열 개의 손목')).getByText('해결 · A등급')).toBeTruthy()
     expect(row('일주일 연수').querySelector('.archive-progress')).toBeNull()
     expect(screen.getByText('미해결 1건', { exact: false })).toBeTruthy()
   })
@@ -62,11 +62,11 @@ describe('이 기기의 진행 상태', () => {
   it('진행 중은 사용 횟수, 포기는 해결 못 함', async () => {
     vi.mocked(api.myGames).mockResolvedValueOnce([
       mine('PLAYING'),
-      { ...mine('GAVE_UP'), id: 'g2', scenario: 'one-week' },
+      { ...mine('GAVE_UP', { grade: 'F' }), id: 'g2', scenario: 'one-week' },
     ])
     render(<ScenarioList onOpen={() => {}} />)
     expect(await screen.findByText('진행 중 (12/40)')).toBeTruthy()
-    expect(within(row('일주일 연수')).getByText('해결 못 함')).toBeTruthy()
+    expect(within(row('일주일 연수')).getByText('해결 못 함 · F등급')).toBeTruthy()
     expect(screen.getByText('미해결 2건', { exact: false })).toBeTruthy()
   })
 

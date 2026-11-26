@@ -32,8 +32,13 @@ const solved: GameView = {
       { name: '월세 체납', description: 'd1', found: true },
       { name: '증거가 남지 않음', description: 'd2', found: false },
     ],
-    score: 87,
-    bonusPoints: 10,
+    grade: 'B',
+    bonusSaved: 5,
+    adjustedUsed: 18,
+    hints: [
+      { no: 1, text: '첫 계시', image: null, opened: true },
+      { no: 2, text: '둘째 계시', image: null, opened: false },
+    ],
   },
 }
 
@@ -60,23 +65,30 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('결과 페이지 머리', () => {
-  it('정답이면 사건 해결, 점수, 계산 줄', async () => {
+  it('정답이면 사건 해결, 등급, 계산 줄, 기준표의 지금 등급', async () => {
     await openResult()
     expect(await screen.findByText('교신 종료 // 사건 기록 봉인')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '사건 해결' })).toBeTruthy()
-    expect(screen.getByText('87점')).toBeTruthy()
-    expect(screen.getByText('100 − 사용 23 + 보너스 10 = 87')).toBeTruthy()
+    expect(screen.getByLabelText('B등급')).toBeTruthy()
+    expect(screen.getByText('사용 23 − 보너스 5 = 18')).toBeTruthy()
+    const ladder = screen.getByRole('list', { name: /등급 기준/ })
+    expect(ladder.querySelector('[aria-current]')?.textContent).toContain('B')
+  })
+
+  it('보너스가 없으면 사용 횟수만', async () => {
+    await openResult({ reveal: { ...solved.reveal!, bonusSaved: 0, adjustedUsed: 23 } })
+    expect(await screen.findByText('사용 23')).toBeTruthy()
   })
 
   it('실패와 포기는 미해결 종결과 보조 문구', async () => {
-    const reveal = { ...solved.reveal!, score: 0, bonusPoints: 0 }
+    const reveal = { ...solved.reveal!, grade: 'D' as const, bonusSaved: 0, adjustedUsed: 23 }
     await openResult({ status: 'FAILED', reveal })
     expect(await screen.findByRole('heading', { name: '미해결 종결' })).toBeTruthy()
-    expect(screen.getByText('마지막 추리 실패')).toBeTruthy()
-    expect(screen.getByText('0점')).toBeTruthy()
+    expect(screen.getByText('마지막 추리 실패 // 핵심 1/2 밝힘')).toBeTruthy()
+    expect(screen.getByLabelText('D등급')).toBeTruthy()
     cleanup()
     await openResult({ status: 'GAVE_UP', reveal })
-    expect(await screen.findByText('조사 중단')).toBeTruthy()
+    expect(await screen.findByText('조사 중단 // 핵심 1/2 밝힘')).toBeTruthy()
   })
 
   it('들어오면 맨 위로 올리고 판정에 초점을 둔다', async () => {
@@ -119,7 +131,7 @@ describe('결과 페이지 탭', () => {
   })
 
   it('추리로 맞힌 핵심과 보너스는 맞힘으로 표시한다', async () => {
-    await openResult({ status: 'GAVE_UP', reveal: { ...solved.reveal!, score: 0 } })
+    await openResult({ status: 'GAVE_UP', reveal: { ...solved.reveal!, grade: 'D' } })
     const conditions = await screen.findByRole('region', { name: '정답 조건' })
     const cards = conditions.querySelectorAll('.key-card')
     expect(cards[0].className).toContain('found')
@@ -130,7 +142,7 @@ describe('결과 페이지 탭', () => {
   })
 
   it('기록 탭은 사건 기록과 수신 기록을 함께, 읽기 전용으로', async () => {
-    await openResult({ status: 'GAVE_UP', nextHintAt: 30, hints: [], reveal: { ...solved.reveal!, score: 0 } })
+    await openResult({ status: 'GAVE_UP', nextHintAt: 30, hints: [], reveal: { ...solved.reveal!, grade: 'D' } })
     await userEvent.click(await screen.findByRole('tab', { name: '기록' }))
     expect(screen.getByText('문제 문장')).toBeTruthy()
     expect(screen.getByText('첫 질문')).toBeTruthy()
@@ -145,6 +157,26 @@ describe('결과 페이지 탭', () => {
     await userEvent.click(await screen.findByRole('tab', { name: '기록' }))
     await userEvent.click(screen.getByRole('button', { name: '계시 1' }))
     expect(screen.getByRole('dialog', { name: '계시 1' })).toBeTruthy()
+  })
+
+  it('기록 탭에서 열지 않은 계시도 눌러 본다', async () => {
+    await openResult()
+    await userEvent.click(await screen.findByRole('tab', { name: '기록' }))
+    await userEvent.click(screen.getByRole('button', { name: '계시 2 (열지 않음)' }))
+    const dialog = screen.getByRole('dialog', { name: '계시 2' })
+    expect(dialog.textContent).toContain('둘째 계시')
+    expect(dialog.textContent).toContain('게임 중 열지 않은 계시')
+  })
+
+  it('진상 탭의 계시 칸에서 모든 계시를 보고, 계시창에서 넘겨 본다', async () => {
+    await openResult()
+    const section = await screen.findByRole('region', { name: '계시' })
+    expect(section.textContent).toContain('연 계시 1/2')
+    expect(section.textContent).toContain('열지 않음')
+    await userEvent.click(within(section).getByRole('button', { name: '계시 1 보기' }))
+    expect(screen.getByRole('dialog', { name: '계시 1' }).textContent).not.toContain('게임 중 열지 않은 계시')
+    await userEvent.click(screen.getByRole('button', { name: '다음 계시' }))
+    expect(screen.getByRole('dialog', { name: '계시 2' }).textContent).toContain('둘째 계시')
   })
 })
 

@@ -54,7 +54,7 @@ class GameStoreTests {
 		for (int i = 0; i < 10; i++) {
 			game.addQuestion("q" + i, Answer.YES);
 		}
-		game.addGuess("g", List.of(1, 3), List.of(1));
+		game.addGuess("g", List.of(1, 3), List.of(1), true);
 		store.save(game);
 
 		Game loaded = store.find(client, game.id()).orElseThrow();

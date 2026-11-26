@@ -6,7 +6,8 @@ const GLYPHS = '▓▒░█#%&*/|?ㅈㅊㅋㅌㅍㅎ'
 const DECODE_MS = 800
 const TICK_MS = 50
 
-const scramble = (s: string) => [...s].map((c) => (c === ' ' ? ' ' : GLYPHS[Math.floor(Math.random() * GLYPHS.length)])).join('')
+// 빈칸과 줄바꿈은 그대로 두어, 깨진 글자도 맞춰진 글자와 같은 모양으로 줄이 나뉜다.
+const scramble = (s: string) => [...s].map((c) => (c === ' ' || c === '\n' ? c : GLYPHS[Math.floor(Math.random() * GLYPHS.length)])).join('')
 
 
 /**

@@ -8,7 +8,7 @@ import SignalCut from './SignalCut.tsx'
 type Mode = 'question' | 'guess'
 
 const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
-/** 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다) */
+/** 틀린 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다). 맞힌 추리는 쓰지 않는다. */
 const GUESS_COST = 5
 
 /**
@@ -239,7 +239,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
                   ? '질문은 사용 1을 씁니다.'
                   : game.finalChance
                     ? '이 추리는 횟수를 쓰지 않습니다.'
-                    : `추리는 사용 ${GUESS_COST}를 씁니다.`}
+                    : `추리가 틀리면 사용 ${GUESS_COST}를 씁니다.`}
               </span>
             </span>
           </form>

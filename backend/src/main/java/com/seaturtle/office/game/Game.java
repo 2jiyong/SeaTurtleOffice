@@ -44,7 +44,7 @@ public class Game {
 	/** 여러 추리에 걸쳐 맞힌 핵심 키워드 번호(1부터). 게임이 끝나야 공개한다. */
 	private final Set<Integer> keywordFound = new TreeSet<>();
 	private GameStatus status = GameStatus.PLAYING;
-	/** 사용 횟수. 열린 힌트 수와 점수는 모두 이 값에서 계산한다. */
+	/** 사용 횟수. 열린 힌트 수와 등급은 모두 이 값에서 계산한다. */
 	private int used;
 	/** 질문과 답안을 한 줄로 늘어놓기 위한 순번 */
 	private int seq;
@@ -154,13 +154,26 @@ public class Game {
 		return status == GameStatus.PLAYING && used >= LIMIT;
 	}
 
-	/** 해결하면 100 − 사용 + 맞힌 보너스 × 10. 실패·포기·진행 중은 0. */
-	public int score() {
-		return status == GameStatus.SOLVED ? 100 - used + bonusPoints() : 0;
+	/** 맞힌 보너스 하나가 덜어 주는 사용 횟수(틀린 추리 한 번만큼) */
+	public static final int BONUS_SAVE = GUESS_COST;
+
+	/** 맞힌 보너스가 덜어 준 사용 횟수. 해결한 판에만 있다. */
+	public int bonusSaved() {
+		return status == GameStatus.SOLVED ? BONUS_SAVE * bonusFound.size() : 0;
 	}
 
-	public int bonusPoints() {
-		return status == GameStatus.SOLVED ? 10 * bonusFound.size() : 0;
+	/** 등급을 매기는 사용 횟수: 해결하면 사용 − 보너스(0 아래로는 안 내려간다), 아니면 사용 그대로 */
+	public int adjustedUsed() {
+		return Math.max(0, used - bonusSaved());
+	}
+
+	/** 끝난 판의 등급. 진행 중이면 null. */
+	public Grade grade() {
+		return switch (status) {
+			case PLAYING -> null;
+			case SOLVED -> Grade.solved(adjustedUsed());
+			case FAILED, GAVE_UP -> Grade.unsolved(keywordFound.size());
+		};
 	}
 
 	/** 질문할 수 있는지 판정 전에 확인한다(한도를 넘으면 판정 비용을 쓰지 않는다). */
@@ -194,7 +207,8 @@ public class Game {
 		return record;
 	}
 
-	public GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus) {
+	/** story: 답안 전체가 진상과 맞는 이야기인가. 정답은 핵심을 모두 맞히고 이야기도 맞아야 한다. */
+	public GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus, boolean story) {
 		requirePlaying();
 		boolean last = used >= LIMIT;
 		int total = scenario.keywords().size();
@@ -202,11 +216,14 @@ public class Game {
 		matched.stream().filter(n -> n >= 1 && n <= total).forEach(hit::add);
 		keywordFound.addAll(hit);
 		bonus.stream().filter(n -> n >= 1 && n <= scenario.bonuses().size()).forEach(bonusFound::add);
-		boolean correct = total > 0 && hit.size() == total;
+		boolean allHit = total > 0 && hit.size() == total;
+		boolean correct = allHit && story;
+		// 핵심은 다 맞혔는데 이야기가 어긋나면 "하나 모자람"과 같은 답을 준다(무엇이 틀렸는지는 알리지 않는다).
 		var closeness = correct ? Closeness.CORRECT : Closeness.of(Math.max(1, total - hit.size()));
 		var record = new GuessRecord(++seq, text, correct, closeness);
 		guesses.add(record);
-		if (!last) {
+		// 추리는 틀렸을 때만 사용 횟수를 쓴다. 맞히면 그대로 끝난다.
+		if (!last && !correct) {
 			used = Math.min(LIMIT, used + GUESS_COST);
 			openHints();
 		}

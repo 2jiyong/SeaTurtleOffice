@@ -65,7 +65,7 @@ def test_fake_judge_flow(client):
 
     r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "모르겠어요"})
     assert r.status_code == 200
-    assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 1}
+    assert r.json() == {"matched": [], "total": 3, "bonus": [], "bonusTotal": 1, "story": False}
 
 
 def test_unknown_scenario_is_404(client):
@@ -109,9 +109,9 @@ def test_old_answer_code_is_rejected(client):
 
 def test_parses_keywords_and_bonuses(content):
     s = content.scenario("boys-order")
-    assert [k.name for k in s.keywords] == ["카포의 권위", "해낼 수 없는 지시", "엄지의 규율"]
-    assert s.keywords[0].required == ["카포"]
-    assert s.keywords[1].required == []
+    assert [k.name for k in s.keywords] == ["아버지의 권위", "해낼 수 없는 지시", "엄지의 규율"]
+    assert s.keywords[0].required == []
+    assert s.keywords[2].required == ["엄지"]
     assert "꼬마가 무서웠다" in s.keywords[0].reject
     assert s.keywords[1].missing == "꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나."
     assert [b.name for b in s.bonuses] == ["검지의 습격"]
@@ -130,7 +130,7 @@ def test_materials_carry_keywords_not_missing_lines(content):
 
 
 def test_guess_schema_has_bonus():
-    assert GUESS_SCHEMA["required"] == ["reason", "matched", "bonus"]
+    assert GUESS_SCHEMA["required"] == ["reason", "matched", "bonus", "story"]
 
 
 def test_guess_rules_mention_required_terms():
@@ -143,13 +143,13 @@ def test_guess_numbers_are_cleaned(client):
         name, fake = "messy", True
 
         async def complete_json(self, prompt):
-            return {"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [1, 5]}
+            return {"reason": "r", "matched": [3, 3, 0, 99, 1], "bonus": [1, 5], "story": True}
 
     saved = app.state.judge
     app.state.judge = Messy()
     try:
         r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "g"})
-        assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1}
+        assert r.json() == {"matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1, "story": True}
     finally:
         app.state.judge = saved
 

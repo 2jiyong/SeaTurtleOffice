@@ -201,6 +201,19 @@ class GameFlowTests {
 	}
 
 	@Test
+	void scenarioShowsKeywordAndBonusCounts() throws Exception {
+		// 열 개의 손목: 핵심 3개, 보너스 1개. 목록과 게임 화면 모두에서 개수만 보인다.
+		mvc.perform(get("/api/scenarios"))
+				.andExpect(jsonPath("$[?(@.slug == 'boys-order')].keywordCount").value(3))
+				.andExpect(jsonPath("$[?(@.slug == 'boys-order')].bonusCount").value(1));
+		var game = games.start(client, "boys-order").game();
+		mvc.perform(get("/api/games/" + game.id()))
+				.andExpect(jsonPath("$.scenario.keywordCount").value(3))
+				.andExpect(jsonPath("$.scenario.bonusCount").value(1))
+				.andExpect(jsonPath("$.scenario.keywords").doesNotExist());
+	}
+
+	@Test
 	void bonusHiddenUntilEndThenMerged() throws Exception {
 		var game = games.start(client, "boys-order").game();
 		String guessUrl = "/api/games/" + game.id() + "/guesses";
@@ -337,13 +350,16 @@ class GameFlowTests {
 		mvc.perform(get("/api/games/" + game.id()))
 				.andExpect(jsonPath("$.hints[0].no").value(1))
 				.andExpect(jsonPath("$.hints[0].seq").value(11))
-				.andExpect(jsonPath("$.hints[0].image").value(org.hamcrest.Matchers.nullValue()))
-				.andExpect(jsonPath("$.scenario.cover").value(org.hamcrest.Matchers.nullValue()));
+				// scenarios/images/boys-order/에 그림이 있으면 주소가 붙는다.
+				.andExpect(jsonPath("$.hints[0].image").value("/api/scenarios/boys-order/images/hint-1"))
+				.andExpect(jsonPath("$.scenario.cover").value("/api/scenarios/boys-order/images/cover"));
 	}
 
 	@Test
 	void imageEndpointRejectsMissingAndUnknownNames() throws Exception {
 		mvc.perform(get("/api/scenarios/boys-order/images/cover"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		mvc.perform(get("/api/scenarios/boys-order/images/hint-9"))
 				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
 		mvc.perform(get("/api/scenarios/boys-order/images/secret"))
 				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());

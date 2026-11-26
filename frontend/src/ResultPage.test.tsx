@@ -12,7 +12,7 @@ const { api } = await import('./api.ts')
 
 const solved: GameView = {
   id: 'g1',
-  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제 문장', hintCount: 3, cover: null },
+  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제 문장', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
   status: 'SOLVED',
   questions: [{ no: 1, seq: 1, text: '첫 질문', answer: 'YES' }],
   hints: [{ no: 1, seq: 2, text: '첫 계시', image: null }],

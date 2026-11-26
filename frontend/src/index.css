@@ -1322,106 +1322,206 @@ h3 {
   font-size: 1.05rem;
 }
 
-/* ── 사건 기록 단말: 수신 기록과 같은 디지털 화면 ── */
-.case-device {
+/* ── 사건 기록: 메인 화면의 사건 카드와 같은 사건 파일. 표지 위에 제목, 아래에 문제 ── */
+.case-file {
   position: sticky;
   top: 20px;
-  padding: 10px;
-  background: linear-gradient(#2d3337, #1f2427);
-  border: 1px solid #3a4246;
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
-}
-
-.case-device .case-screen {
-  position: relative;
-  /* 예전 사건 기록의 sticky 위치(top: 20px)를 지운다 */
-  top: 0;
   overflow: hidden;
-  padding: 18px 22px 20px;
+  border: 1px solid #262d30;
+  border-radius: 3px;
   background: #121517;
   color: #dfe2d6;
-  border: 1px solid #2c3337;
-  border-top: 1px solid #2c3337;
-  border-radius: 4px;
-  box-shadow: inset 0 0 50px rgb(0 0 0 / 0.7);
+  box-shadow: 0 18px 30px -20px rgb(0 0 0 / 0.95);
 }
 
-/* 수신 기록과 같은 옅은 주사선 */
-.case-device .case-screen::before {
-  content: '';
+.case-file-frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #0d0f10;
+}
+
+.case-file-cover {
   position: absolute;
   inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.case-file-cover-empty {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 50% 40%, #1c2124, #0b0d0e 70%);
+}
+
+/* 표지 아래쪽을 카드 바탕색으로 눌러 제목을 얹는다 */
+.case-file-frame::after {
+  content: '';
+  position: absolute;
+  inset: 40% 0 0;
+  background: linear-gradient(180deg, rgb(18 21 23 / 0), rgb(18 21 23 / 0.96) 82%);
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
 }
 
-.case-device .case-head {
-  border-bottom-color: #2c3337;
+.case-file-title {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 16px;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
 }
 
-.case-device .case-label {
-  font: 0.72rem 'Nanum Gothic Coding', monospace;
-  letter-spacing: 0.12em;
-  color: #7d8682;
+.case-file-label {
+  font: 0.72rem var(--sans);
+  color: #a7b0ab;
 }
 
-.case-device .risk-label {
-  color: #7d8682;
-}
-
-.case-device .risk-bars i {
-  background: #2c3337;
-}
-
-.case-device .case h1 {
+.case-file-title h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 800;
   font-size: 1.9rem;
-  color: #e6e9e0;
-  text-shadow: 0 0 10px rgb(230 233 224 / 0.25);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: #f0efe8;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.8);
+}
+
+.case-file .risk-label {
+  color: #a7b0ab;
+}
+
+.case-file .risk-bars i {
+  background: #3a4245;
+}
+
+.case-file-body {
+  padding: 16px 22px 20px;
 }
 
 .case-field {
   display: block;
-  margin-bottom: 4px;
-  font: 0.68rem 'Nanum Gothic Coding', monospace;
-  letter-spacing: 0.12em;
-  color: #5f9e7a;
+  margin-bottom: 6px;
+  font: 0.72rem var(--sans);
+  color: #868e8a;
 }
 
-.case-device .problem {
+.case-file .problem {
   font-size: 1.05rem;
   color: #dfe2d6;
 }
 
-.case-device .case-cover {
-  border-color: #2c3337;
+/* 카드 맨 아래 칸: 문제와 떨어진 조사 중단 자리 */
+.case-file-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px 22px;
+  border-top: 1px solid #22282b;
+  background: #0f1213;
 }
 
-.case-device .btn-quiet {
-  color: #7d8682;
+.give-up-note {
+  flex: 1 1 200px;
+  font: 0.8rem/1.6 var(--sans);
+  color: #6f777a;
 }
 
-.case-device .btn-quiet:hover:not(:disabled) {
-  color: #f08a7e;
+/* 조사 중단 버튼: 평소에는 가라앉아 있다가, 다가가면 붉게 깨어난다 */
+.give-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px 8px 12px;
+  font: 500 0.85rem var(--sans);
+  letter-spacing: 0.04em;
+  color: #b98a85;
+  background: transparent;
+  border: 1px solid #3d2624;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.give-up-mark {
+  position: relative;
+  width: 10px;
+  height: 10px;
+}
+
+/* 봉인 표시(×) */
+.give-up-mark::before,
+.give-up-mark::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 1.5px;
+  background: currentColor;
+  translate: -50% -50%;
+  rotate: 45deg;
+}
+
+.give-up-mark::after {
+  rotate: -45deg;
+}
+
+.give-up:hover:not(:disabled),
+.give-up:focus-visible {
+  color: #ffd2cc;
+  border-color: #b3261e;
+  background: rgb(179 38 30 / 0.14);
+  box-shadow: 0 0 14px -4px rgb(179 38 30 / 0.7);
+}
+
+.give-up:focus-visible {
+  outline: 2px solid #c9cec6;
+  outline-offset: 2px;
+}
+
+.give-up:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 @media (max-width: 760px) {
-  .case-device {
+  .case-file {
     position: static;
   }
 }
 
-/* ── 무전기 몸체: 수신 기록 화면 + 조작판 ── */
+/* ── 교신 장비: 둥근 몸체 대신 각진 화면 두 장(수신 기록, 송신 단말)을 모서리 표식이 감싼다 ── */
 .radio-unit {
-  padding: 10px;
-  background: linear-gradient(#2d3337, #1f2427);
-  border: 1px solid #3a4246;
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
+  --bracket: #5c6467;
+  --bracket-hot: #b3261e;
+  padding: 9px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  /* 네 모서리의 ㄱ자 표식: 왼쪽 위만 붉게(교신 중) */
+  background:
+    linear-gradient(var(--bracket-hot), var(--bracket-hot)) top left / 22px 2px no-repeat,
+    linear-gradient(var(--bracket-hot), var(--bracket-hot)) top left / 2px 22px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) top right / 22px 2px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) top right / 2px 22px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) bottom left / 22px 2px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) bottom left / 2px 22px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) bottom right / 22px 2px no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) bottom right / 2px 22px no-repeat;
 }
 
 .radio-unit .transcript.radio {
-  border-radius: 4px;
+  border-radius: 0;
+  /* 위쪽 가장자리에 가는 붉은 선: 지금 수신 중인 채널 */
+  box-shadow: inset 0 2px 0 rgb(179 38 30 / 0.55), inset 0 0 50px rgb(0 0 0 / 0.7), 0 14px 30px -14px rgb(0 0 0 / 0.8);
 }
 
 /* 좁아진 수신 기록에서는 답을 질문 아래로 내린다(겹치지 않게). 안쪽 모양은 그대로. */
@@ -1718,7 +1818,7 @@ h3 {
   padding: 12px 12px 10px;
   background: #121517;
   border: 1px solid #2c3337;
-  border-radius: 4px;
+  border-radius: 0;
   clip-path: none;
   box-shadow: inset 0 0 40px rgb(0 0 0 / 0.7);
 }
@@ -1983,146 +2083,188 @@ h3 {
 }
 
 /* ── 메인 화면: 사건 기록 보관소 단말 ── */
-.archive-device {
-  max-width: 880px;
-  padding: 10px;
-  background: linear-gradient(#2d3337, #1f2427);
-  border: 1px solid #3a4246;
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 14px 30px -12px rgb(0 0 0 / 0.85);
-}
-
-.archive-screen {
-  position: relative;
-  overflow: hidden;
-  background: #121517;
-  border: 1px solid #2c3337;
-  border-radius: 4px;
-  box-shadow: inset 0 0 50px rgb(0 0 0 / 0.7);
-}
-
-.archive-screen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 3px);
+/* ── 사건 기록 보관소: 상자 없이 펼쳐진 사건 파일. 오른쪽으로 끝없이 이어지는 선 ── */
+.archive {
+  margin-top: 8px;
 }
 
 .archive-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  border-bottom: 1px solid #2c3337;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 .archive-title {
-  font: 0.75rem 'Nanum Gothic Coding', monospace;
-  letter-spacing: 0.12em;
-  color: #7d8682;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #c9cec6;
+  white-space: nowrap;
 }
 
-.archive-head .signal {
-  margin-left: auto;
+.archive-count {
+  font: 0.8rem var(--sans);
+  color: #868e8a;
+  white-space: nowrap;
+}
+
+/* 제목 뒤로 화면 끝까지 이어지는 가는 선 */
+.archive-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  align-self: center;
+  background: linear-gradient(90deg, #3a4245, rgb(58 66 69 / 0));
 }
 
 .archive-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 28px 22px;
 }
 
-.archive-row {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  grid-template-columns: 44px auto 1fr auto;
-  align-items: center;
-  gap: 14px;
+.archive-list > li {
+  display: flex;
+}
+
+/* 사건 카드: 그림과 문제, 열람이 한 장의 사건 파일로 묶인다 */
+.case-card {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  padding: 16px 18px;
-  border: 0;
-  border-bottom: 1px solid #22282b;
-  background: transparent;
-  color: #dfe2d6;
+  padding: 0;
+  border: 1px solid #262d30;
+  border-radius: 3px;
+  background: #121517;
+  color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s;
+  overflow: hidden;
+  box-shadow: 0 18px 30px -20px rgb(0 0 0 / 0.95);
+  transition: border-color 0.35s ease;
 }
 
-/* 대표 이미지가 없어도 칸이 밀리지 않게 자리를 정해 둔다 */
-.archive-no {
-  grid-column: 1;
+.case-card:hover:not(:disabled),
+.case-card:focus-visible {
+  border-color: #4a2a27;
 }
 
-.archive-cover {
-  grid-column: 2;
-}
-
-.archive-body {
-  grid-column: 3;
-}
-
-.archive-cta {
-  grid-column: 4;
-}
-
-.archive-row:hover:not(:disabled),
-.archive-row:focus-visible {
-  background: rgb(230 233 224 / 0.04);
-  box-shadow: inset 3px 0 0 #b3261e;
-}
-
-.archive-row:disabled {
+.case-card:disabled {
   cursor: default;
 }
 
-.archive-no {
-  align-self: start;
-  padding-top: 4px;
-  font: 700 0.78rem 'Nanum Gothic Coding', monospace;
-  color: #7d8682;
+.case-card-frame {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #0d0f10;
 }
 
-.archive-cover {
-  width: 96px;
-  aspect-ratio: 4 / 3;
+.case-card-cover {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border: 1px solid #2c3337;
+  filter: brightness(0.78) saturate(0.85);
+  transition: filter 0.35s ease;
 }
 
-.archive-body {
+.case-card-cover-empty {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 50% 40%, #1c2124, #0b0d0e 70%);
+}
+
+/* 그림 아래쪽을 어둡게 눌러 제목을 얹는다 */
+.case-card-frame::after {
+  content: '';
+  position: absolute;
+  inset: 45% 0 0;
+  background: linear-gradient(180deg, rgb(18 21 23 / 0), rgb(18 21 23 / 0.95) 80%);
+  pointer-events: none;
+}
+
+/* 눌러 볼 수 있다는 유일한 움직임: 그림이 밝아지고 아래에 붉은 선 */
+.case-card-frame::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 2px;
+  background: #b3261e;
+  box-shadow: 0 0 12px #b3261e;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.case-card:hover:not(:disabled) .case-card-cover,
+.case-card:focus-visible .case-card-cover {
+  filter: brightness(1) saturate(1);
+}
+
+.case-card:hover:not(:disabled) .case-card-frame::before,
+.case-card:focus-visible .case-card-frame::before {
+  transform: scaleX(1);
+}
+
+.case-card:focus-visible {
+  outline: 2px solid #c9cec6;
+  outline-offset: 3px;
+}
+
+.case-card-title {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  z-index: 1;
   display: grid;
-  gap: 6px;
-  min-width: 0;
+  gap: 4px;
 }
 
-.archive-row-head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+.case-card-no {
+  font: 0.72rem var(--sans);
+  color: #a7b0ab;
 }
 
-.archive-name {
+.case-card-name {
   font-family: var(--serif);
   font-weight: 800;
-  font-size: 1.35rem;
-  color: #e6e9e0;
-  text-shadow: 0 0 10px rgb(230 233 224 / 0.22);
+  font-size: 1.45rem;
+  line-height: 1.25;
+  color: #f0efe8;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.8);
 }
 
-/* 이 기기의 진행 상태: 단말 화면 위의 작은 표식 */
+/* 제목 아래 한 줄: 위험 등급과 이 기기의 진행 상태 */
+.case-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+/* 이 기기의 진행 상태: 표지 위의 작은 표식 */
 .archive-progress {
   font-family: var(--sans);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 1px 8px;
   border: 1px solid currentColor;
   border-radius: 2px;
+  background: rgb(13 15 16 / 0.6);
 }
 
 .archive-progress.playing {
@@ -2137,18 +2279,19 @@ h3 {
   color: #d46a62;
 }
 
-.archive-row .risk-label {
-  color: #7d8682;
+.case-card .risk-label {
+  color: #a7b0ab;
 }
 
-.archive-row .risk-bars i {
-  background: #2c3337;
+.case-card .risk-bars i {
+  background: #3a4245;
 }
 
-.archive-problem {
+.case-card-problem {
+  padding: 12px 16px 0;
   font-family: var(--serif);
-  font-size: 0.95rem;
-  line-height: 1.75;
+  font-size: 0.9rem;
+  line-height: 1.7;
   color: #a7b0ab;
   white-space: pre-line;
   display: -webkit-box;
@@ -2157,38 +2300,42 @@ h3 {
   overflow: hidden;
 }
 
-.archive-cta {
-  font-family: var(--sans);
-  font-weight: 500;
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
-  color: #f3e9e7;
-  padding: 6px 12px;
-  border-radius: 2px;
-  background: #7a1c16;
-  box-shadow: inset 0 0 0 1px #b3261e;
-  text-shadow: 0 0 8px rgb(255 170 160 / 0.45);
-  white-space: nowrap;
+.case-card-cta {
+  align-self: flex-start;
+  margin: 10px 16px 14px;
+  font: 500 0.85rem var(--sans);
+  color: #e2463c;
 }
 
-@media (max-width: 760px) {
-  .archive-row {
-    grid-template-columns: 36px 1fr;
-  }
+.case-card:hover:not(:disabled) .case-card-cta {
+  color: #ff6a60;
+}
 
-  .archive-cover {
-    grid-column: 2;
-    width: 100%;
+/* 좁은 화면에서는 세로로 긴 표지가 화면을 다 차지하지 않게 가로로 눕힌다 */
+@media (max-width: 560px) {
+  .case-card-frame {
+    aspect-ratio: 16 / 10;
   }
+}
 
-  .archive-body,
-  .archive-cta {
-    grid-column: 2;
-  }
+/* 다음 기록 자리: 아직 아무것도 들어오지 않은 빈 프레임 */
+.case-card-waiting {
+  align-self: stretch;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 200px;
+  border: 1px dashed #2c3337;
+  border-radius: 2px;
+  color: #5c6467;
+  font: 0.85rem var(--sans);
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.015) 0 1px, transparent 1px 3px);
+}
 
-  .archive-cta {
-    justify-self: start;
-  }
+.case-card-waiting svg {
+  opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2830,4 +2977,99 @@ h3 {
 .bonus-card.found strong,
 .bonus-card.found .bonus-mark {
   color: #8fd6a6;
+}
+
+/* ── 계시창 좌우 넘기기: 그림 양옆의 각진 화살표, ←·→ 키로도 넘긴다 ── */
+.revelation-stage {
+  position: relative;
+}
+
+.revelation-step {
+  position: absolute;
+  top: 16px;
+  z-index: 2;
+  width: 40px;
+  height: calc(100% - 32px);
+  max-height: 320px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d6a935;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.revelation-step.prev {
+  left: 16px;
+  background: linear-gradient(90deg, rgb(8 10 11 / 0.55), rgb(8 10 11 / 0));
+}
+
+.revelation-step.next {
+  right: 16px;
+  background: linear-gradient(270deg, rgb(8 10 11 / 0.55), rgb(8 10 11 / 0));
+}
+
+/* 각진 화살표(꺾쇠) */
+.revelation-step::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  filter: drop-shadow(0 0 4px rgb(214 169 53 / 0.6));
+}
+
+.revelation-step.prev::before {
+  translate: -30% -50%;
+  rotate: -45deg;
+}
+
+.revelation-step.next::before {
+  translate: -70% -50%;
+  rotate: 135deg;
+}
+
+.revelation-step:hover:not(:disabled),
+.revelation-step:focus-visible {
+  opacity: 1;
+}
+
+.revelation-step:focus-visible {
+  outline: 1px solid #d6a935;
+  outline-offset: -1px;
+}
+
+.revelation-step:disabled {
+  opacity: 0;
+  cursor: default;
+}
+
+/* 사건 파일의 정답 조건: 핵심 개수 */
+.case-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.case-count {
+  display: grid;
+  gap: 2px;
+  padding: 8px 14px 8px 12px;
+  border-left: 2px solid #b3261e;
+  background: rgb(179 38 30 / 0.08);
+}
+
+.case-count b {
+  font: 700 0.95rem var(--sans);
+  color: #e6e9e0;
+}
+
+.case-count small {
+  font: 0.72rem var(--sans);
+  color: #868e8a;
 }

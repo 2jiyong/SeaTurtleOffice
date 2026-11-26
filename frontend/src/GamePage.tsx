@@ -147,15 +147,21 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
 
   return (
     <section className="game">
-      <CaseScreen game={game} label="사건 기록 // 열람 중">
-        {playing && (
-          <div className="case-actions">
-            <button ref={giveUpButton} className="btn btn-quiet" disabled={busy} onClick={() => setConfirmingGiveUp(true)}>
-              포기하고 진상 보기
-            </button>
-          </div>
-        )}
-      </CaseScreen>
+      <CaseScreen
+        game={game}
+        label="사건 기록 // 열람 중"
+        footer={
+          playing && (
+            <>
+              <span className="give-up-note">더 나아갈 수 없다면, 조사를 멈추고 진상을 열람할 수 있다.</span>
+              <button ref={giveUpButton} className="give-up" disabled={busy} onClick={() => setConfirmingGiveUp(true)}>
+                <span className="give-up-mark" aria-hidden />
+                포기하고 진상 보기
+              </button>
+            </>
+          )
+        }
+      />
 
       <div className="board">
         <ReceiveLog

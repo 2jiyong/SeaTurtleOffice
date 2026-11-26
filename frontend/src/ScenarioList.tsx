@@ -66,21 +66,25 @@ export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => v
       {error && <p className="error">{error}</p>}
       {!scenarios && !error && <p className="muted">기록을 불러오는 중…</p>}
       {scenarios && (
-        <div className="archive-device">
-          <div className="archive-screen">
-            <div className="archive-head">
-              <WatcherEye size={18} />
-              <span className="archive-title">사건 기록 보관소 {'//'} 미해결 {scenarios.filter((s) => mine.get(s.slug)?.status !== 'SOLVED').length}건</span>
-            </div>
-            <ol className="archive-list">
-              {scenarios.map((s, i) => (
-                <li key={s.slug}>
-                  <button className="archive-row" onClick={() => start(s.slug)} disabled={starting !== null}>
-                    <span className="archive-no">{String(i + 1).padStart(3, '0')}</span>
-                    {s.cover && <img className="archive-cover" src={s.cover} alt="" />}
-                    <span className="archive-body">
-                      <span className="archive-row-head">
-                        <span className="archive-name">{s.title}</span>
+        <div className="archive">
+          <div className="archive-head">
+            <h2 className="archive-title">사건 기록 보관소</h2>
+            <span className="archive-count">미해결 {scenarios.filter((s) => mine.get(s.slug)?.status !== 'SOLVED').length}건</span>
+          </div>
+          <ol className="archive-list">
+            {scenarios.map((s, i) => (
+              <li key={s.slug}>
+                <button className="case-card" onClick={() => start(s.slug)} disabled={starting !== null}>
+                  <span className="case-card-frame">
+                    {s.cover ? (
+                      <img className="case-card-cover" src={s.cover} alt="" />
+                    ) : (
+                      <span className="case-card-cover case-card-cover-empty" aria-hidden />
+                    )}
+                    <span className="case-card-title">
+                      <span className="case-card-no">사건 {String(i + 1).padStart(3, '0')}</span>
+                      <span className="case-card-name">{s.title}</span>
+                      <span className="case-card-meta">
                         <Risk difficulty={s.difficulty} />
                         {mine.has(s.slug) && (
                           <span className={`archive-progress ${PROGRESS_KIND[mine.get(s.slug)!.status]}`}>
@@ -88,14 +92,19 @@ export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => v
                           </span>
                         )}
                       </span>
-                      <span className="archive-problem">{s.problem}</span>
                     </span>
-                    <span className="archive-cta">{starting === s.slug ? '여는 중…' : '열람 ▶'}</span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </div>
+                  </span>
+                  <span className="case-card-problem">{s.problem}</span>
+                  <span className="case-card-cta">{starting === s.slug ? '여는 중…' : '열람'}</span>
+                </button>
+              </li>
+            ))}
+            {/* 사건은 계속 들어온다: 다음 기록이 놓일 자리 */}
+            <li className="case-card-waiting">
+              <WatcherEye size={22} />
+              <span>다음 기록 수신 대기 중</span>
+            </li>
+          </ol>
         </div>
       )}
     </section>

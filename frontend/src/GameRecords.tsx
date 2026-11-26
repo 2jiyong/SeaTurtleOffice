@@ -17,31 +17,42 @@ const CLOSENESS_LINES: Record<Closeness, string> = {
   FAR: '아직 멀었단다.',
 }
 
-/** 사건 기록 단말 화면. children은 문제 아래(게임 화면의 포기 버튼 자리)에 놓인다. */
-export function CaseScreen({ game, label, children }: { game: GameView; label: string; children?: ReactNode }) {
+/** 사건 파일 카드. footer는 문제 본문과 떨어진 카드 맨 아래 칸(게임 화면의 포기 버튼 자리)에 놓인다. */
+export function CaseScreen({ game, label, footer }: { game: GameView; label: string; footer?: ReactNode }) {
   // 기본 사건 표지 파일이 없으면 표지 자리를 숨긴다.
   const [coverFailed, setCoverFailed] = useState(false)
   const cover = game.scenario.cover ?? (coverFailed ? null : '/covers/default.webp')
   return (
-    <aside className="case-device">
-      <div className="case case-screen">
-        <div className="case-head">
-          <span className="case-label">{label}</span>
-          <Risk difficulty={game.scenario.difficulty} />
-        </div>
-        {cover && (
+    <aside className="case-file">
+      <div className="case-file-frame">
+        {cover ? (
           <img
-            className="case-cover"
+            className="case-file-cover"
             src={cover}
             alt="사건 표지"
             onError={() => (game.scenario.cover ? undefined : setCoverFailed(true))}
           />
+        ) : (
+          <span className="case-file-cover case-file-cover-empty" aria-hidden />
         )}
-        <h1>{game.scenario.title}</h1>
+        <div className="case-file-title">
+          <span className="case-file-label">{label}</span>
+          <h1>{game.scenario.title}</h1>
+          <Risk difficulty={game.scenario.difficulty} />
+        </div>
+      </div>
+      <div className="case-file-body">
         <span className="case-field">문제</span>
         <p className="problem">{game.scenario.problem}</p>
-        {children}
+        {/* 정답 조건: 핵심을 몇 개 밝혀야 하는지만 알린다 */}
+        <div className="case-counts">
+          <span className="case-count">
+            <b>핵심 {game.scenario.keywordCount}개</b>
+            <small>모두 밝히면 해결</small>
+          </span>
+        </div>
       </div>
+      {footer && <div className="case-file-foot">{footer}</div>}
     </aside>
   )
 }

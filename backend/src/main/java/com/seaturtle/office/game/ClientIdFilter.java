@@ -17,7 +17,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * 로그인 대신 브라우저마다 기기 ID(UUID)를 쿠키로 준다. /api 요청에만 동작한다.
+ * 로그인 대신 브라우저마다 기기 ID(UUID)를 쿠키로 준다. 기기가 필요한 /api/games 요청에만 동작한다.
+ * 첫 화면에서 /api/info 같은 요청이 함께 쿠키를 주면, 늦게 온 응답이 판을 만든 뒤의 쿠키를 덮어쓸 수 있다.
  * 쿠키가 없거나 UUID 표준형이 아니면 새로 만들고, 있으면 만료를 1년으로 다시 늘린다.
  * 컨트롤러는 @RequestAttribute(ClientIdFilter.ATTRIBUTE)로 받는다.
  */
@@ -36,7 +37,8 @@ public class ClientIdFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return !request.getRequestURI().startsWith("/api/");
+		String uri = request.getRequestURI();
+		return !(uri.equals("/api/games") || uri.startsWith("/api/games/"));
 	}
 
 	@Override

@@ -194,4 +194,71 @@ class GameStoreTests {
 			}
 		}
 	}
+
+	// ── 시나리오가 바뀐 뒤 ──
+
+	@Test
+	void hintButtonNeverLowersUsedWhenScenarioGainedHints() {
+		// 힌트가 하나뿐일 때 35까지 쓴 판. 시나리오에 힌트가 늘어 지금은 셋이다.
+		Scenario s = scenario();
+		var hint1 = new Game.HintRecord(1, 11, s.hints().getFirst());
+		Game game = Game.restore(UUID.randomUUID().toString(), client, s, GameStatus.PLAYING, 35, 40,
+				List.of(), List.of(), List.of(hint1), Set.of(), Set.of(), 0);
+		game.useHint();
+		assertThat(game.used()).isEqualTo(35);
+		assertThat(game.hintsOpen()).isEqualTo(3);
+
+		Game atLimit = Game.restore(UUID.randomUUID().toString(), client, s, GameStatus.PLAYING, 40, 45,
+				List.of(), List.of(), List.of(hint1), Set.of(), Set.of(), 0);
+		atLimit.useHint();
+		assertThat(atLimit.used()).isEqualTo(40);
+		assertThat(atLimit.finalChance()).isTrue();
+	}
+
+	@Test
+	void deleteKeepsGameWhoseScenarioIsGone() {
+		String id = UUID.randomUUID().toString();
+		OffsetDateTime now = OffsetDateTime.now();
+		jdbc.sql("""
+				insert into games (id, client_id, scenario_slug, status, used, seq, keyword_found, bonus_found,
+				                   version, created_at, updated_at)
+				values (?::uuid, ?::uuid, 'gone', 'SOLVED', 0, 0, '{}', '{}', 0, ?, ?)
+				""").params(id, client, now, now).update();
+		assertThat(store.delete(client, id)).isFalse();
+		long rows = jdbc.sql("select count(*) from games where id = ?::uuid").param(id).query(Long.class).single();
+		assertThat(rows).isOne();
+	}
+
+	@Test
+	void deleteRacingWithSaveNeverFailsUnexpectedly() throws Exception {
+		// 초기화와 다른 창의 저장이 겹친다. 초기화는 성공하고, 저장은 저장되거나 충돌(409)로만 끝나야 한다.
+		for (int round = 0; round < 20; round++) {
+			Game game = store.create(UUID.randomUUID().toString(), scenario());
+			Game other = store.find(game.clientId(), game.id()).orElseThrow();
+			other.addQuestion("다른 창", Answer.YES);
+			var start = new java.util.concurrent.CountDownLatch(1);
+			var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+			try {
+				var deleted = pool.submit(() -> {
+					start.await();
+					return store.delete(game.clientId(), game.id());
+				});
+				var saved = pool.submit(() -> {
+					start.await();
+					store.save(other);
+					return null;
+				});
+				start.countDown();
+				assertThat(deleted.get()).isTrue();
+				try {
+					saved.get();
+				} catch (java.util.concurrent.ExecutionException e) {
+					assertThat(e.getCause()).isInstanceOf(GameConflictException.class);
+				}
+				assertThat(store.find(game.clientId(), game.id())).isEmpty();
+			} finally {
+				pool.shutdownNow();
+			}
+		}
+	}
 }

@@ -2,6 +2,7 @@ package com.seaturtle.office;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ import jakarta.servlet.http.Cookie;
 /** 기기 ID 쿠키(sto_client) */
 class ClientIdFilterTests {
 
-	MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/scenarios");
+	MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/games");
 	MockHttpServletResponse response = new MockHttpServletResponse();
 
 	void run(boolean secure) throws Exception {
@@ -76,5 +77,26 @@ class ClientIdFilterTests {
 		run(false);
 		assertThat(response.getHeader("Set-Cookie")).isNull();
 		assertThat(attribute()).isNull();
+	}
+
+	@Test
+	void skipsApiThatDoesNotNeedDevice() throws Exception {
+		// 첫 화면의 /info, /scenarios가 늦게 와서 쿠키를 덮어쓰지 않게 /api/games에서만 준다.
+		for (String uri : List.of("/api/info", "/api/scenarios", "/api/scenarios/boys-order/images/cover", "/api/gamesx")) {
+			request = new MockHttpServletRequest("GET", uri);
+			response = new MockHttpServletResponse();
+			run(false);
+			assertThat(response.getHeader("Set-Cookie")).as(uri).isNull();
+		}
+	}
+
+	@Test
+	void coversGamePaths() throws Exception {
+		for (String uri : List.of("/api/games", "/api/games/abc/questions")) {
+			request = new MockHttpServletRequest("POST", uri);
+			response = new MockHttpServletResponse();
+			run(false);
+			assertThat(response.getHeader("Set-Cookie")).as(uri).startsWith("sto_client=");
+		}
 	}
 }

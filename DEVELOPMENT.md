@@ -99,7 +99,8 @@ cd frontend && npm install && npm run dev
 - **결과 페이지**: 게임이 끝나면(정답, 마지막 추리 실패, 포기) 신호 단절 연출(3.2초: 교신 종료와 결과 한 줄 "사건 해결 // 진상이 밝혀졌다", "마지막 추리 실패 // 사건은 미해결로 남는다", "조사 중단 // 사건은 미해결로 남는다". 움직임 줄이기 설정이면 생략) 뒤 `#/game/<id>/result`로 넘어간다. 판정·점수 아래 [진상] 탭과 [기록] 탭(사건 기록과 수신 기록을 함께, 읽기 전용)이 있다. 끝난 게임의 게임 주소로 오면 결과 페이지로, 진행 중인 게임의 결과 주소로 오면 게임 화면으로 보낸다.
 - 판정 요청(AI 서버)이 실패하면 사용 횟수는 늘지 않는다.
 - 질문·추리·힌트·포기 API(`/api/games/{id}/...`)는 모두 게임 상태 전체(`GameView`: `used`, `limit`, `hintSteps`, `finalChance`, `nextHintAt`, `reveal.score` 등)를 돌려준다.
-- 기기 구분: 로그인 대신 `/api` 요청마다 쿠키 `sto_client`(UUID, HttpOnly, 1년)를 준다. 기기 하나에 시나리오 하나당 한 판이다.
+- 기기 구분: 로그인 대신 `/api/games` 요청에 쿠키 `sto_client`(UUID, HttpOnly, 1년)를 준다. 기기 하나에 시나리오 하나당 한 판이다.
+  `/api/info`, `/api/scenarios`, 그림 요청은 쿠키를 주지 않는다. 첫 화면에서 함께 나간 요청이 늦게 와서 판을 만든 뒤의 쿠키를 덮어쓰지 않게 하려는 것이다. 같은 이유로 메인 페이지는 내 진행 상태(`GET /api/games`) 응답을 받은 뒤에 시작 요청을 보낸다.
   `/api/games/**`는 그 기기의 판만 다룬다. 남의 판 id는 404다. 배포(HTTPS)에서는 `COOKIE_SECURE=true`로 쿠키에 Secure를 붙인다.
 - `POST /api/games`는 이 기기에 그 시나리오의 판이 있으면 새로 만들지 않고 그 판을 돌려준다(200, 새 판은 201).
   `GET /api/games`는 이 기기의 판 목록(`id`, `scenario`, `status`, `used`, `limit`, `score`), `DELETE /api/games/{id}`는 초기화(판과 기록 삭제, 204).

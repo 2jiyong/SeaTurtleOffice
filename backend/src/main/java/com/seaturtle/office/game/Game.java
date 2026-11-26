@@ -225,7 +225,8 @@ public class Game {
 		if (next == null) {
 			throw new IllegalStateException("남은 힌트가 없습니다");
 		}
-		used = next;
+		// 시나리오에 힌트가 늘어 이미 지난 자리의 힌트가 남았으면, 사용 횟수는 줄이지 않고 그 힌트만 연다.
+		used = Math.max(used, next);
 		openHints();
 	}
 

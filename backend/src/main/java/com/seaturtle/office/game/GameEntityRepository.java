@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 import jakarta.persistence.LockModeType;
 
@@ -28,5 +30,11 @@ interface GameEntityRepository extends JpaRepository<GameEntity, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<GameEntity> findLockedByIdAndClientId(UUID id, UUID clientId);
 
-	long deleteByIdAndClientId(UUID id, UUID clientId);
+	/**
+	 * 한 번의 DELETE로 지운다(항목은 DB의 on delete cascade). 엔티티를 읽어 지우면 version 조건이 붙어
+	 * 다른 창의 저장과 겹칠 때 낙관적 잠금 오류가 난다. 겹친 저장은 판을 못 찾아 충돌(409)로 끝난다.
+	 */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("delete from GameEntity g where g.id = :id and g.clientId = :clientId")
+	int deleteOwned(UUID id, UUID clientId);
 }

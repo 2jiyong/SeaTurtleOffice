@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, progressLabel, type GameView, type MyGame, type ScenarioSummary } from './api.ts'
 import Risk from './Risk.tsx'
 import WatcherEye from './WatcherEye.tsx'
@@ -19,12 +19,15 @@ export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => v
   const [scenarios, setScenarios] = useState<ScenarioSummary[] | null>(null)
   // 이 기기의 판. 불러오지 못하면 상태 표시 없이 목록만 보인다.
   const [mine, setMine] = useState<Map<string, MyGame>>(() => new Map())
+  // 진행 상태 요청이 끝났다는 약속. 첫 방문에는 이 응답이 기기 쿠키를 심으므로, 시작은 이것을 기다린다.
+  // 먼저 시작하면 두 요청이 서로 다른 기기 ID를 받아, 늦게 온 쪽이 방금 만든 판의 주인을 덮어쓴다.
+  const mineLoaded = useRef<Promise<unknown>>(Promise.resolve())
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
 
   useEffect(() => {
     api.scenarios().then(setScenarios, (e: Error) => setError(e.message))
-    api.myGames().then(
+    mineLoaded.current = api.myGames().then(
       (games) => setMine(new Map(games.map((g) => [g.scenario, g]))),
       () => {},
     )
@@ -34,6 +37,7 @@ export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => v
     setStarting(slug)
     setError(null)
     try {
+      await mineLoaded.current
       onOpen(await api.start(slug))
     } catch (e) {
       setError((e as Error).message)

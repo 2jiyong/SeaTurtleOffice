@@ -92,7 +92,7 @@ public class GameStore {
 		}
 	}
 
-	/** 판과 항목을 지운다. 이 기기의 판이 아니면 false. */
+	/** 판과 항목을 지운다. 이 기기의 판이 아니거나 시나리오가 사라진 판이면 false. */
 	@Transactional
 	public boolean delete(String clientId, String gameId) {
 		Optional<UUID> client = uuid(clientId);
@@ -100,7 +100,11 @@ public class GameStore {
 		if (client.isEmpty() || id.isEmpty()) {
 			return false;
 		}
-		return repo.deleteByIdAndClientId(id.get(), client.get()) > 0;
+		// 시나리오 파일이 사라진 판은 없는 판으로 본다(목록·조회와 같다). 지우지 않고 남겨 둔다.
+		boolean visible = repo.findByIdAndClientId(id.get(), client.get())
+				.filter(e -> content.scenario(e.scenarioSlug).isPresent())
+				.isPresent();
+		return visible && repo.deleteOwned(id.get(), client.get()) > 0;
 	}
 
 	private static void copy(Game game, GameEntity entity) {

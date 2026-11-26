@@ -86,4 +86,17 @@ describe('이 기기의 진행 상태', () => {
     expect(screen.getByText('일주일 연수')).toBeTruthy()
     expect(document.querySelector('.error')).toBeNull()
   })
+
+  it('첫 방문에는 기기 쿠키를 주는 진행 상태 응답을 기다린 뒤 시작한다', async () => {
+    let finish: (games: MyGame[]) => void = () => {}
+    vi.mocked(api.myGames).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+    vi.mocked(api.start).mockResolvedValueOnce({ id: 'g1', status: 'PLAYING' } as never)
+    const onOpen = vi.fn()
+    render(<ScenarioList onOpen={onOpen} />)
+    fireEvent.click(await screen.findByText('열 개의 손목'))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(api.start).not.toHaveBeenCalled()
+    finish([])
+    await vi.waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1))
+  })
 })

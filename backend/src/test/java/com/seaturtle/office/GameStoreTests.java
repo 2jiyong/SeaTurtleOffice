@@ -154,4 +154,44 @@ class GameStoreTests {
 				.query(Long.class).single();
 		assertThat(rows).isZero();
 	}
+
+	@Test
+	void concurrentSavesGiveOneWinnerAndConflict() throws Exception {
+		// 두 창의 판정이 거의 동시에 끝나 같은 판을 함께 저장한다. 하나만 저장되고 나머지는 충돌(409)이어야 한다.
+		for (int round = 0; round < 20; round++) {
+			Game game = store.create(UUID.randomUUID().toString(), scenario());
+			Game a = store.find(game.clientId(), game.id()).orElseThrow();
+			Game b = store.find(game.clientId(), game.id()).orElseThrow();
+			a.addQuestion("가", Answer.YES);
+			b.addQuestion("나", Answer.NO);
+			var start = new java.util.concurrent.CountDownLatch(1);
+			var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+			try {
+				var fa = pool.submit(() -> {
+					start.await();
+					store.save(a);
+					return null;
+				});
+				var fb = pool.submit(() -> {
+					start.await();
+					store.save(b);
+					return null;
+				});
+				start.countDown();
+				int conflicts = 0;
+				for (var f : List.of(fa, fb)) {
+					try {
+						f.get();
+					} catch (java.util.concurrent.ExecutionException e) {
+						assertThat(e.getCause()).isInstanceOf(GameConflictException.class);
+						conflicts++;
+					}
+				}
+				assertThat(conflicts).isEqualTo(1);
+				assertThat(store.find(game.clientId(), game.id()).orElseThrow().questions()).hasSize(1);
+			} finally {
+				pool.shutdownNow();
+			}
+		}
+	}
 }

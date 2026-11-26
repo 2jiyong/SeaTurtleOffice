@@ -80,7 +80,12 @@ export default function ResultPage({
     setResetting(true)
     setResetError(null)
     try {
-      await api.reset(game.id)
+      try {
+        await api.reset(game.id)
+      } catch (e) {
+        // 404: 지난번에 지우기는 됐고 새 판 시작만 실패했다. 이미 지워졌으니 시작으로 넘어간다.
+        if (!(e instanceof ApiError && e.status === 404)) throw e
+      }
       const next = await api.start(game.scenario.slug)
       onRestarted(next.id)
     } catch (e) {

@@ -206,4 +206,19 @@ describe('초기화', () => {
     expect(api.start).not.toHaveBeenCalled()
     expect(screen.getByRole('heading', { name: '사건 해결' })).toBeTruthy()
   })
+
+  it('지운 뒤 새 판 시작만 실패했으면, 다시 누를 때 이미 지워진 판(404)을 넘기고 새로 시작한다', async () => {
+    vi.mocked(api.reset).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new ApiError('게임을(를) 찾을 수 없습니다', 404))
+    vi.mocked(api.start)
+      .mockRejectedValueOnce(new ApiError('응답이 너무 늦습니다. 다시 시도해 주세요.', 0))
+      .mockResolvedValueOnce({ ...solved, id: 'g2', status: 'PLAYING', reveal: null })
+    const { user, onRestarted } = await openConfirm()
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '초기화' }))
+    expect(await screen.findByText('응답이 너무 늦습니다. 다시 시도해 주세요.')).toBeTruthy()
+    expect(onRestarted).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: '초기화' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '초기화' }))
+    await vi.waitFor(() => expect(onRestarted).toHaveBeenCalledWith('g2'))
+  })
 })

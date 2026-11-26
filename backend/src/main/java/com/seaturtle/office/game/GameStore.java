@@ -69,7 +69,7 @@ public class GameStore {
 	/** 읽었을 때의 버전과 DB 버전이 다르면(그사이 다른 요청이 바꿨거나 지웠으면) GameConflictException. */
 	@Transactional
 	public void save(Game game) {
-		GameEntity entity = repo.findByIdAndClientId(UUID.fromString(game.id()), UUID.fromString(game.clientId()))
+		GameEntity entity = repo.findLockedByIdAndClientId(UUID.fromString(game.id()), UUID.fromString(game.clientId()))
 				.orElseThrow(GameConflictException::new);
 		if (entity.version != game.version()) {
 			throw new GameConflictException();

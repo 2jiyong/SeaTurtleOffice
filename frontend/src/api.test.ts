@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, REQUEST_TIMEOUT_MS } from './api.ts'
+import { api, progressLabel, REQUEST_TIMEOUT_MS } from './api.ts'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -27,5 +27,25 @@ describe('요청 타임아웃', () => {
     await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS)
     const error = await result
     expect((error as Error).message).toBe('응답이 너무 늦습니다. 다시 시도해 주세요.')
+  })
+})
+
+describe('초기화 요청', () => {
+  it('DELETE로 보내고 204면 본문 없이 끝난다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(api.reset('g1')).resolves.toBeUndefined()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/games/g1')
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE')
+  })
+})
+
+describe('진행 상태 문구', () => {
+  const base = { id: 'g1', scenario: 's', used: 12, limit: 40, score: 0 }
+  it('진행 중은 사용 횟수, 해결은 점수, 실패·포기는 해결 못 함', () => {
+    expect(progressLabel({ ...base, status: 'PLAYING' })).toBe('진행 중 (12/40)')
+    expect(progressLabel({ ...base, status: 'SOLVED', score: 87 })).toBe('해결 · 87점')
+    expect(progressLabel({ ...base, status: 'FAILED' })).toBe('해결 못 함')
+    expect(progressLabel({ ...base, status: 'GAVE_UP' })).toBe('해결 못 함')
   })
 })

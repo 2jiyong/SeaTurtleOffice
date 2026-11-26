@@ -81,6 +81,23 @@ export interface GameView {
   reveal: Reveal | null
 }
 
+/** 이 기기의 판 하나(메인 페이지 진행 상태). score는 해결했을 때만 0이 아니다. */
+export interface MyGame {
+  id: string
+  scenario: string
+  status: GameStatus
+  used: number
+  limit: number
+  score: number
+}
+
+/** 메인 페이지 사건 줄에 붙는 진행 상태 문구 */
+export function progressLabel(g: MyGame): string {
+  if (g.status === 'PLAYING') return `진행 중 (${g.used}/${g.limit})`
+  if (g.status === 'SOLVED') return `해결 · ${g.score}점`
+  return '해결 못 함'
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -96,13 +113,13 @@ export class ApiError extends Error {
  */
 export const REQUEST_TIMEOUT_MS = 30_000
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+async function request<T>(path: string, body?: unknown, method?: 'DELETE'): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   let res: Response
   try {
     res = await fetch(`/api${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
+      method: method ?? (body === undefined ? 'GET' : 'POST'),
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
@@ -125,6 +142,8 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
     }
     throw new ApiError(message, res.status)
   }
+  // 초기화(DELETE)는 본문 없이 204로 답한다.
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
 
@@ -137,7 +156,11 @@ export interface ServerInfo {
 export const api = {
   info: () => request<ServerInfo>('/info'),
   scenarios: () => request<ScenarioSummary[]>('/scenarios'),
+  /** 이 기기에 그 사건의 판이 있으면 그 판, 없으면 새 판 */
   start: (scenario: string) => request<GameView>('/games', { scenario }),
+  myGames: () => request<MyGame[]>('/games'),
+  /** 초기화: 판과 기록을 지운다 */
+  reset: (id: string) => request<void>(`/games/${id}`, undefined, 'DELETE'),
   game: (id: string) => request<GameView>(`/games/${id}`),
   ask: (id: string, text: string) => request<GameView>(`/games/${id}/questions`, { text }),
   guess: (id: string, text: string) => request<GameView>(`/games/${id}/guesses`, { text }),

@@ -1,23 +1,40 @@
 import { useEffect, useState } from 'react'
-import { api, type ScenarioSummary } from './api.ts'
+import { api, progressLabel, type GameView, type MyGame, type ScenarioSummary } from './api.ts'
 import Risk from './Risk.tsx'
 import WatcherEye from './WatcherEye.tsx'
 
-export default function ScenarioList({ onStarted }: { onStarted: (gameId: string) => void }) {
+/** 진행 상태 표시의 색 갈래 */
+const PROGRESS_KIND: Record<MyGame['status'], string> = {
+  PLAYING: 'playing',
+  SOLVED: 'solved',
+  FAILED: 'unsolved',
+  GAVE_UP: 'unsolved',
+}
+
+/**
+ * 사건 목록. 이 기기에서 열어 본 사건에는 진행 상태를 붙인다.
+ * 사건을 누르면 그 사건의 판(있으면 이어서, 없으면 새로)을 onOpen으로 넘긴다.
+ */
+export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => void }) {
   const [scenarios, setScenarios] = useState<ScenarioSummary[] | null>(null)
+  // 이 기기의 판. 불러오지 못하면 상태 표시 없이 목록만 보인다.
+  const [mine, setMine] = useState<Map<string, MyGame>>(() => new Map())
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
 
   useEffect(() => {
     api.scenarios().then(setScenarios, (e: Error) => setError(e.message))
+    api.myGames().then(
+      (games) => setMine(new Map(games.map((g) => [g.scenario, g]))),
+      () => {},
+    )
   }, [])
 
   const start = async (slug: string) => {
     setStarting(slug)
     setError(null)
     try {
-      const game = await api.start(slug)
-      onStarted(game.id)
+      onOpen(await api.start(slug))
     } catch (e) {
       setError((e as Error).message)
       setStarting(null)
@@ -49,7 +66,7 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
           <div className="archive-screen">
             <div className="archive-head">
               <WatcherEye size={18} />
-              <span className="archive-title">사건 기록 보관소 {'//'} 미해결 {scenarios.length}건</span>
+              <span className="archive-title">사건 기록 보관소 {'//'} 미해결 {scenarios.filter((s) => mine.get(s.slug)?.status !== 'SOLVED').length}건</span>
             </div>
             <ol className="archive-list">
               {scenarios.map((s, i) => (
@@ -61,6 +78,11 @@ export default function ScenarioList({ onStarted }: { onStarted: (gameId: string
                       <span className="archive-row-head">
                         <span className="archive-name">{s.title}</span>
                         <Risk difficulty={s.difficulty} />
+                        {mine.has(s.slug) && (
+                          <span className={`archive-progress ${PROGRESS_KIND[mine.get(s.slug)!.status]}`}>
+                            {progressLabel(mine.get(s.slug)!)}
+                          </span>
+                        )}
                       </span>
                       <span className="archive-problem">{s.problem}</span>
                     </span>

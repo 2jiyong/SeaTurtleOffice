@@ -70,7 +70,11 @@ export default function App() {
             onEnded={() => replaceRoute(`#/game/${route.gameId}/result`)}
           />
         ) : (
-          <ScenarioList onStarted={(id) => (window.location.hash = `#/game/${id}`)} />
+          <ScenarioList
+            onOpen={(game) =>
+              (window.location.hash = game.status === 'PLAYING' ? `#/game/${game.id}` : `#/game/${game.id}/result`)
+            }
+          />
         )}
       </main>
       <footer className="fine-print">

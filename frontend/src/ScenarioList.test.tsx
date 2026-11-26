@@ -1,5 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { api, type MyGame } from './api.ts'
 import App from './App.tsx'
 import ScenarioList from './ScenarioList.tsx'
 
@@ -14,6 +15,7 @@ vi.mock('./api.ts', async (importActual) => {
         { slug: 'one-week', title: '일주일 연수', difficulty: 'normal', problem: '문제 둘', hintCount: 3, cover: null },
       ]),
       start: vi.fn(),
+      myGames: vi.fn().mockResolvedValue([]),
     },
   }
 })
@@ -35,10 +37,53 @@ describe('메인 화면', () => {
   })
 
   it('사건 목록은 단말 화면에 뜨고, 사건마다 열람 버튼이 있다', async () => {
-    render(<ScenarioList onStarted={() => {}} />)
+    render(<ScenarioList onOpen={() => {}} />)
     await screen.findByText('열 개의 손목')
     expect(document.querySelector('.archive-device .archive-screen')).not.toBeNull()
     expect(screen.getAllByRole('button', { name: /열람/ })).toHaveLength(2)
     expect(screen.getByText('미해결 2건', { exact: false })).toBeTruthy()
+  })
+})
+
+describe('이 기기의 진행 상태', () => {
+  const mine = (status: MyGame['status'], extra = {}): MyGame => ({ id: 'g1', scenario: 'boys-order', status, used: 12, limit: 40, score: 0, ...extra })
+  const row = (title: string) => screen.getByText(title).closest('li') as HTMLElement
+
+  it('해결한 사건은 점수, 처음인 사건은 표시 없음', async () => {
+    vi.mocked(api.myGames).mockResolvedValueOnce([mine('SOLVED', { used: 13, score: 87 })])
+    render(<ScenarioList onOpen={() => {}} />)
+    expect(await screen.findByText('해결 · 87점')).toBeTruthy()
+    expect(within(row('열 개의 손목')).getByText('해결 · 87점')).toBeTruthy()
+    expect(row('일주일 연수').querySelector('.archive-progress')).toBeNull()
+    expect(screen.getByText('미해결 1건', { exact: false })).toBeTruthy()
+  })
+
+  it('진행 중은 사용 횟수, 포기는 해결 못 함', async () => {
+    vi.mocked(api.myGames).mockResolvedValueOnce([
+      mine('PLAYING'),
+      { ...mine('GAVE_UP'), id: 'g2', scenario: 'one-week' },
+    ])
+    render(<ScenarioList onOpen={() => {}} />)
+    expect(await screen.findByText('진행 중 (12/40)')).toBeTruthy()
+    expect(within(row('일주일 연수')).getByText('해결 못 함')).toBeTruthy()
+    expect(screen.getByText('미해결 2건', { exact: false })).toBeTruthy()
+  })
+
+  it('사건을 누르면 시작 응답(이미 있던 판이면 그 판)을 onOpen으로 넘긴다', async () => {
+    const game = { id: 'g1', status: 'SOLVED' }
+    vi.mocked(api.start).mockResolvedValueOnce(game as never)
+    const onOpen = vi.fn()
+    render(<ScenarioList onOpen={onOpen} />)
+    fireEvent.click(await screen.findByText('열 개의 손목'))
+    await vi.waitFor(() => expect(onOpen).toHaveBeenCalledWith(game))
+    expect(api.start).toHaveBeenCalledWith('boys-order')
+  })
+
+  it('진행 상태를 못 불러와도 사건 목록은 보인다', async () => {
+    vi.mocked(api.myGames).mockRejectedValueOnce(new Error('실패'))
+    render(<ScenarioList onOpen={() => {}} />)
+    expect(await screen.findByText('열 개의 손목')).toBeTruthy()
+    expect(screen.getByText('일주일 연수')).toBeTruthy()
+    expect(document.querySelector('.error')).toBeNull()
   })
 })

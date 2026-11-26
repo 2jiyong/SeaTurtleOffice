@@ -2114,6 +2114,29 @@ h3 {
   text-shadow: 0 0 10px rgb(230 233 224 / 0.22);
 }
 
+/* 이 기기의 진행 상태: 단말 화면 위의 작은 표식 */
+.archive-progress {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+
+.archive-progress.playing {
+  color: var(--hazard);
+}
+
+.archive-progress.solved {
+  color: #6fbf8e;
+}
+
+.archive-progress.unsolved {
+  color: #d46a62;
+}
+
 .archive-row .risk-label {
   color: #7d8682;
 }

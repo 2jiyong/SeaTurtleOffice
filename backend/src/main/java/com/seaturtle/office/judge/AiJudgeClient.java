@@ -1,5 +1,6 @@
 package com.seaturtle.office.judge;
 
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +13,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.seaturtle.office.log.RequestIdFilter;
 
@@ -22,6 +24,10 @@ public class AiJudgeClient implements Judge {
 	private static final Logger log = LoggerFactory.getLogger(AiJudgeClient.class);
 
 	record Health(String judge, boolean fake, int scenarios) {
+	}
+
+	/** AI 서버의 502 본문 */
+	record ErrorBody(String detail, Metrics metrics) {
 	}
 
 	private final RestClient http;
@@ -84,12 +90,33 @@ public class AiJudgeClient implements Judge {
 		T result;
 		try {
 			result = http.post().uri(path).body(body).retrieve().body(type);
+		} catch (RestClientResponseException e) {
+			// AI 서버가 오류로 답했다. 토큰을 쓴 뒤의 실패면 본문에 metrics가 있다.
+			throw new JudgeException("AI 판정 서버 요청이 실패했습니다: " + e.getMessage(), e, errorMetrics(e), false);
 		} catch (RestClientException e) {
-			throw new JudgeException("AI 판정 서버 요청이 실패했습니다: " + e.getMessage(), e);
+			throw new JudgeException("AI 판정 서버 요청이 실패했습니다: " + e.getMessage(), e, null, isTimeout(e));
 		}
 		if (result == null) {
 			throw new JudgeException("AI 판정 서버 응답이 비어 있습니다");
 		}
 		return result;
+	}
+
+	private static Metrics errorMetrics(RestClientResponseException e) {
+		try {
+			ErrorBody body = e.getResponseBodyAs(ErrorBody.class);
+			return body == null ? null : body.metrics();
+		} catch (RuntimeException notJson) {
+			return null;
+		}
+	}
+
+	private static boolean isTimeout(Throwable e) {
+		for (Throwable t = e; t != null; t = t.getCause()) {
+			if (t instanceof SocketTimeoutException) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

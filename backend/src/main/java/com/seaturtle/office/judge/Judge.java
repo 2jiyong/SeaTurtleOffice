@@ -17,7 +17,14 @@ public interface Judge {
 	record HistoryEntry(String text, Answer answer) {
 	}
 
-	record Verdict(Answer answer) {
+	/**
+	 * 판정 하나의 비용(AI 서버가 잰 값). 시간은 ms, aiMs ⊇ llmMs. 예전 AI 서버는 보내지 않는다(null).
+	 */
+	record Metrics(String model, Integer aiMs, Integer llmMs, Integer inputTokens, Integer outputTokens,
+			Integer cachedTokens) {
+	}
+
+	record Verdict(Answer answer, Metrics metrics) {
 	}
 
 	/**
@@ -25,7 +32,8 @@ public interface Judge {
 	 * story: 답안 전체가 진상과 맞는 이야기인가. 핵심을 다 맞혀도 이것이 거짓이면 정답이 아니다.
 	 * 이 값을 모르는 예전 AI 서버는 보내지 않는다(null).
 	 */
-	record GuessVerdict(List<Integer> matched, int total, List<Integer> bonus, int bonusTotal, Boolean story) {
+	record GuessVerdict(List<Integer> matched, int total, List<Integer> bonus, int bonusTotal, Boolean story,
+			Metrics metrics) {
 	}
 
 	record Status(String judge, boolean fake, boolean online) {

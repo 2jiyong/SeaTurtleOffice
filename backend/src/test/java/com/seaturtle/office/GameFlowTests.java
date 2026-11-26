@@ -55,29 +55,29 @@ class GameFlowTests {
 				duringSlowQuestion.run();
 			}
 			histories.add(history);
-			return new Verdict(Answer.IRRELEVANT_UNDECIDED);
+			return new Verdict(Answer.IRRELEVANT_UNDECIDED, null);
 		}
 
 		@Override
 		public GuessVerdict guess(String scenario, String guess) {
 			if (guess.contains("개수 다름")) {
-				return new GuessVerdict(List.of(1), 5, List.of(), 1, true);
+				return new GuessVerdict(List.of(1), 5, List.of(), 1, true, null);
 			}
 			if (guess.contains("보너스 다름")) {
-				return new GuessVerdict(List.of(), 3, List.of(), 9, true);
+				return new GuessVerdict(List.of(), 3, List.of(), 9, true, null);
 			}
 			if (guess.contains("예전 서버")) {
-				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, null);
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, null, null);
 			}
 			if (guess.contains("어긋난 이야기")) {
 				// 핵심은 다 들었지만 이야기가 진상과 어긋난다.
-				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, false);
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(), 1, false, null);
 			}
 			if (guess.contains("정답")) {
-				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1, true);
+				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1, true, null);
 			}
 			// 오답: 둘째 핵심 키워드가 빠졌고 보너스를 맞혔다.
-			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1, true);
+			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1, true, null);
 		}
 
 		@Override

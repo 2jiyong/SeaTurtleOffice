@@ -44,6 +44,13 @@ export function CaseScreen({ game, label, footer }: { game: GameView; label: str
       <div className="case-file-body">
         <span className="case-field">문제</span>
         <p className="problem">{game.scenario.problem}</p>
+        {/* 정답 조건: 핵심을 몇 개 밝혀야 하는지만 알린다 */}
+        <div className="case-counts">
+          <span className="case-count">
+            <b>핵심 {game.scenario.keywordCount}개</b>
+            <small>모두 밝히면 해결</small>
+          </span>
+        </div>
       </div>
       {footer && <div className="case-file-foot">{footer}</div>}
     </aside>

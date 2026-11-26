@@ -24,12 +24,13 @@ public final class GameDtos {
 	}
 
 	/** cover: 대표 이미지 주소. 그림이 없으면 null. */
+	/** keywordCount·bonusCount: 핵심·보너스 키워드의 개수만 알린다(내용은 게임이 끝나야 공개). */
 	public record ScenarioSummary(String slug, String title, String difficulty, String problem, int hintCount,
-			String cover) {
+			String cover, int keywordCount, int bonusCount) {
 
 		static ScenarioSummary of(Scenario s, ScenarioImages images) {
 			return new ScenarioSummary(s.slug(), s.title(), s.difficulty(), s.problem(), s.hints().size(),
-					images.url(s.slug(), "cover"));
+					images.url(s.slug(), "cover"), s.keywords().size(), s.bonuses().size());
 		}
 	}
 

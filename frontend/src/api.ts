@@ -22,6 +22,10 @@ export interface ScenarioSummary {
   hintCount: number
   /** 대표 이미지 주소. 그림이 없으면 null */
   cover: string | null
+  /** 밝혀야 할 핵심 키워드 개수(내용은 게임이 끝나야 공개) */
+  keywordCount: number
+  /** 보너스 키워드 개수 */
+  bonusCount: number
 }
 
 export interface QuestionRecord {

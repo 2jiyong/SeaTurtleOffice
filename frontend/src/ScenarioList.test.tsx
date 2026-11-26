@@ -10,8 +10,8 @@ vi.mock('./api.ts', async (importActual) => {
     api: {
       info: vi.fn().mockResolvedValue({ judge: 'x', fakeJudge: false, judgeOnline: true }),
       scenarios: vi.fn().mockResolvedValue([
-        { slug: 'boys-order', title: '열 개의 손목', difficulty: 'hard', problem: '문제 본문', hintCount: 3, cover: null },
-        { slug: 'one-week', title: '일주일 연수', difficulty: 'normal', problem: '문제 둘', hintCount: 3, cover: null },
+        { slug: 'boys-order', title: '열 개의 손목', difficulty: 'hard', problem: '문제 본문', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
+        { slug: 'one-week', title: '일주일 연수', difficulty: 'normal', problem: '문제 둘', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
       ]),
       start: vi.fn(),
     },

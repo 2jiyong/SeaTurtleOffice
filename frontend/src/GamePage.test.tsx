@@ -16,7 +16,7 @@ const { api } = await import('./api.ts')
 
 const game: GameView = {
   id: 'g1',
-  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제', hintCount: 3, cover: null },
+  scenario: { slug: 's', title: '사건', difficulty: 'normal', problem: '문제', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
   status: 'PLAYING',
   questions: [],
   hints: [],
@@ -149,8 +149,10 @@ describe('추리 결과와 진상 공개', () => {
   ] as const)('오답 추리(%s)에는 응시자의 한마디만 보여 주고 개수와 보너스는 보여 주지 않는다', async (closeness, line) => {
     await openGame({ guesses: [{ seq: 1, text: 't', correct: false, closeness }] })
     expect(screen.getAllByText(line).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/핵심 \d/)).toBeNull()
-    expect(screen.queryByText(/보너스/)).toBeNull()
+    // 수신 기록(추리 결과)에는 맞힌 개수나 보너스가 나오지 않는다. 사건 파일의 전체 개수 안내와는 별개다.
+    const log = screen.getByRole('list', { name: '수신 기록 목록' })
+    expect(log.textContent).not.toMatch(/핵심 \d/)
+    expect(log.textContent).not.toContain('보너스')
   })
 
 })
@@ -410,6 +412,13 @@ describe('사건 기록 화면', () => {
     expect(card?.querySelector('.case-file-frame h1')?.textContent).toBe('사건')
     expect(card?.querySelector('.case-file-body')?.textContent).toContain('문제')
     expect(card?.textContent).toContain('사건 기록')
+  })
+
+  it('사건 파일에 밝혀야 할 핵심 개수만 보여 주고, 보너스 개수는 보여 주지 않는다', async () => {
+    await openGame()
+    const counts = document.querySelector('.case-file .case-counts')
+    expect(counts?.textContent).toContain('핵심 3개')
+    expect(counts?.textContent).not.toContain('보너스')
   })
 
   it('포기 버튼은 문제 본문과 떨어진 카드 아래 칸에 있다', async () => {

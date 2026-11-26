@@ -1,0 +1,16 @@
+# 로컬 개발용 DB. backend에서 ./gradlew bootRun 하면 Spring이 이 파일로 컨테이너를 켠다.
+# 직접 켜려면 저장소 루트에서 docker compose up -d. 데이터는 pgdata 볼륨에 남는다.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: seaturtle
+      POSTGRES_USER: seaturtle
+      POSTGRES_PASSWORD: seaturtle
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

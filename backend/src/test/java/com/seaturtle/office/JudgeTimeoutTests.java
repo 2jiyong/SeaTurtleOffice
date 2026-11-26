@@ -7,6 +7,7 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 import com.seaturtle.office.judge.JudgeProperties;
 
@@ -15,6 +16,7 @@ import com.seaturtle.office.judge.JudgeProperties;
  * 백엔드가 AI 서버보다 먼저 포기하면 AI 서버가 받은 결과가 버려지고 비용만 나간다.
  */
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 class JudgeTimeoutTests {
 
 	@Autowired

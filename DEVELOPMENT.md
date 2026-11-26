@@ -4,6 +4,9 @@
 ```
 브라우저 ──/api──▶ backend (Java, 8080) ──HTTP──▶ ai (Python, 8000) ──▶ OpenAI
                    게임 진행·시나리오 목록·힌트·진상     판정 프롬프트·세계관·LLM 호출
+                      │
+                      ▼
+                   PostgreSQL (5432) 게임 진행 저장
 ```
 
 - `frontend/` — React + Vite + TypeScript (5173). `/api` 요청은 개발 서버가 백엔드(8080)로 넘긴다.
@@ -11,7 +14,7 @@
   판정은 직접 하지 않고 AI 서버에 요청한다. OpenAI 키를 모른다.
 - `ai/` — FastAPI (Python, uv). 판정을 통째로 맡는다. 시작할 때 `world/`와 `scenarios/`를 읽어
   프롬프트를 만들고 OpenAI에 묻는다. 게임 상태는 갖지 않고, 지금까지의 질문 기록은 요청마다 받는다.
-- 게임 진행 상태는 백엔드 메모리에만 있다(DB 없음). 백엔드를 다시 켜면 진행 중인 게임은 사라진다.
+- 게임 진행은 PostgreSQL에 저장된다. 백엔드를 다시 켜도 남는다. 테이블은 Flyway가 만든다(`backend/src/main/resources/db/migration/`).
 
 ## 실행
 세 개를 각각 켠다.
@@ -32,6 +35,10 @@ uv run uvicorn app.main:app --port 8000 --reload
 ```bash
 cd backend && ./gradlew bootRun
 ```
+
+DB는 따로 켜지 않아도 된다. `bootRun`이 저장소 루트의 `compose.yaml`로 PostgreSQL 컨테이너를 켜고 연결한다(Docker 필요, 이 저장소는 OrbStack을 쓴다).
+백엔드를 꺼도 컨테이너는 멈추기만 하고 데이터는 `pgdata` 볼륨에 남는다. 직접 켜려면 루트에서 `docker compose up -d`.
+배포에서는 `DB_URL`, `DB_USER`, `DB_PASSWORD`로 넘긴다(기본값은 로컬 compose와 같다).
 
 AI 서버 주소가 다르면 `AI_BASE_URL`로 바꾼다(기본 `http://localhost:8000`). AI 서버가 꺼져 있으면 화면 상단에 안내가 뜬다.
 
@@ -132,6 +139,6 @@ cd frontend && npm install && npm run dev
 ## 테스트
 ```bash
 cd ai && uv run pytest        # 세계관·시나리오 읽기, uses ID 검사, 프롬프트, API
-cd backend && ./gradlew test  # 시나리오 읽기, 게임 흐름(가짜 판정기), AI 서버와 핵심 포인트 수 대조
+cd backend && ./gradlew test  # Docker 필요(Testcontainers로 PostgreSQL을 띄운다). 시나리오 읽기, 게임 흐름(가짜 판정기), AI 서버와 핵심 포인트 수 대조
 cd frontend && npm test       # 요청 진행 중 버튼 잠금
 ```

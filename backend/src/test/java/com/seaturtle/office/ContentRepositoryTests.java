@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 import com.seaturtle.office.content.ContentRepository;
 import com.seaturtle.office.content.Scenario;
 
 /** 세계관 문서와 uses 검사는 AI 서버 테스트(ai/tests)에서 한다. */
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 class ContentRepositoryTests {
 
 	@Autowired

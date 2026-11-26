@@ -8,9 +8,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -20,6 +22,7 @@ import com.seaturtle.office.content.ContentRepository;
 import com.seaturtle.office.content.ScenarioImages;
 import com.seaturtle.office.game.GameDtos.GameView;
 import com.seaturtle.office.game.GameDtos.GuessRequest;
+import com.seaturtle.office.game.GameDtos.MyGame;
 import com.seaturtle.office.game.GameDtos.QuestionRequest;
 import com.seaturtle.office.game.GameDtos.ScenarioSummary;
 import com.seaturtle.office.game.GameDtos.StartRequest;
@@ -72,36 +75,53 @@ public class GameController {
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
+	/** 이 기기에 그 시나리오의 판이 있으면 그 판(200), 없으면 새 판(201). */
 	@PostMapping("/games")
-	@ResponseStatus(HttpStatus.CREATED)
-	public GameView start(@Valid @RequestBody StartRequest request) {
-		return GameView.of(games.start(request.scenario()), images);
+	public ResponseEntity<GameView> start(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId,
+			@Valid @RequestBody StartRequest request) {
+		var started = games.start(clientId, request.scenario());
+		return ResponseEntity.status(started.created() ? HttpStatus.CREATED : HttpStatus.OK)
+				.body(GameView.of(started.game(), images));
+	}
+
+	/** 이 기기의 판 목록. 메인 페이지의 진행 상태에 쓴다. */
+	@GetMapping("/games")
+	public List<MyGame> myGames(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId) {
+		return games.list(clientId).stream().map(MyGame::of).toList();
 	}
 
 	@GetMapping("/games/{id}")
-	public GameView get(@PathVariable String id) {
-		return GameView.of(games.get(id), images);
+	public GameView get(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id) {
+		return GameView.of(games.get(clientId, id), images);
 	}
 
 	@PostMapping("/games/{id}/questions")
-	public GameView ask(@PathVariable String id, @Valid @RequestBody QuestionRequest request) {
+	public GameView ask(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id,
+			@Valid @RequestBody QuestionRequest request) {
 		// 질문 하나로 힌트가 열리거나 마지막 기회가 될 수 있어서 게임 전체를 돌려준다.
-		games.ask(id, request.text().strip());
-		return GameView.of(games.get(id), images);
+		return GameView.of(games.ask(clientId, id, request.text().strip()), images);
 	}
 
 	@PostMapping("/games/{id}/guesses")
-	public GameView guess(@PathVariable String id, @Valid @RequestBody GuessRequest request) {
-		return GameView.of(games.guess(id, request.text().strip()), images);
+	public GameView guess(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id,
+			@Valid @RequestBody GuessRequest request) {
+		return GameView.of(games.guess(clientId, id, request.text().strip()), images);
 	}
 
 	@PostMapping("/games/{id}/hints")
-	public GameView hint(@PathVariable String id) {
-		return GameView.of(games.hint(id), images);
+	public GameView hint(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id) {
+		return GameView.of(games.hint(clientId, id), images);
 	}
 
 	@PostMapping("/games/{id}/give-up")
-	public GameView giveUp(@PathVariable String id) {
-		return GameView.of(games.giveUp(id), images);
+	public GameView giveUp(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id) {
+		return GameView.of(games.giveUp(clientId, id), images);
+	}
+
+	/** 초기화: 이 판과 기록을 지운다. 다시 하려면 POST /games. */
+	@DeleteMapping("/games/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void reset(@RequestAttribute(ClientIdFilter.ATTRIBUTE) String clientId, @PathVariable String id) {
+		games.reset(clientId, id);
 	}
 }

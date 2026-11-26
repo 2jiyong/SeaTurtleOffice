@@ -33,6 +33,14 @@ public final class GameDtos {
 		}
 	}
 
+	/** 이 기기의 판 하나. 메인 페이지의 진행 상태 표시에 쓴다. score는 해결했을 때만 0이 아니다. */
+	public record MyGame(String id, String scenario, GameStatus status, int used, int limit, int score) {
+
+		static MyGame of(Game game) {
+			return new MyGame(game.id(), game.scenario().slug(), game.status(), game.used(), Game.LIMIT, game.score());
+		}
+	}
+
 	/** 열린 힌트(계시). seq는 열린 순간의 순번, image는 힌트 그림 주소(없으면 null). */
 	public record HintView(int no, int seq, String text, String image) {
 	}
@@ -85,7 +93,7 @@ public final class GameDtos {
 			Integer nextHintAt,
 			Reveal reveal) {
 
-		static GameView of(Game game, ScenarioImages images) {
+		public static GameView of(Game game, ScenarioImages images) {
 			Scenario s = game.scenario();
 			GameStatus status = game.status();
 			Reveal reveal = status == GameStatus.PLAYING ? null : Reveal.of(game);

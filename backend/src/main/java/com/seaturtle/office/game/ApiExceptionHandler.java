@@ -19,6 +19,11 @@ public class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
 	}
 
+	@ExceptionHandler(GameConflictException.class)
+	ProblemDetail stale(GameConflictException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+	}
+
 	@ExceptionHandler({ GameEndedException.class, IllegalStateException.class })
 	ProblemDetail conflict(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());

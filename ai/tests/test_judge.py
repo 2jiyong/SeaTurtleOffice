@@ -167,6 +167,20 @@ def test_parses_keywords_and_bonuses(content):
     assert [b.name for b in s.bonuses] == ["검지의 습격"]
 
 
+def test_parses_must_items_one_per_line(content):
+    ks = parse_keywords("1. **가**: 설명\n   - 들어가야 할 것: 아빠가 상관이었다, 카포였다\n   - 들어가야 할 것: 권위를 넘겼다\n")
+    assert ks[0].must == ["아빠가 상관이었다, 카포였다", "권위를 넘겼다"]
+    s = content.scenario("boys-order")
+    assert s.keywords[1].must == ["꼬마가 죽은 아빠를 살려 달라고 했다"]
+    for scenario in (content.scenario(x) for x in ("boys-order", "one-week", "what-the-master-burned")):
+        assert all(k.must for k in scenario.keywords), scenario.slug
+
+
+def test_materials_carry_must_items(content):
+    m = JudgePrompts(content, 40).materials("one-week")
+    assert "   - 들어가야 할 것: 자기와 같은 사람(클론)들과 서로 죽였다\n" in m
+
+
 def test_keyword_lines_in_any_order():
     ks = parse_keywords("1. **가**: 설명\n   - 빠졌을 때: 문장.\n   - 인정: a, b\n")
     assert ks[0].accept == ["a", "b"] and ks[0].required == [] and ks[0].missing == "문장."

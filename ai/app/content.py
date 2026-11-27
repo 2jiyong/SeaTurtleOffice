@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 BULLET = re.compile(r"^(?:[-*]|\d+\.)\s+(.*)$")
 KEYWORD_LINE = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*:\s*(.+)$")
-KEYWORD_FIELD = re.compile(r"^\s+-\s+(필수 용어|인정|불인정|빠졌을 때):\s*(.*)$")
+KEYWORD_FIELD = re.compile(r"^\s+-\s+(들어가야 할 것|필수 용어|인정|불인정|빠졌을 때):\s*(.*)$")
 BONUS_LINE = re.compile(r"^-\s+\*\*(.+?)\*\*:\s*(.+)$")
 
 
@@ -30,10 +30,12 @@ class WorldDoc:
 
 @dataclass(frozen=True)
 class Keyword:
-    """정답 조건 하나. 필수 용어·인정·불인정은 판정 기준, missing은 빠졌을 때 진행자가 하는 말이다."""
+    """정답 조건 하나. 들어가야 할 것·필수 용어·인정·불인정은 판정 기준, missing은 빠졌을 때 진행자가 하는 말이다.
+    must: 답안에 모두 들어가야 하는 내용. 한 줄에 하나씩 적는다(쉼표로 나누지 않는다)."""
 
     name: str
     description: str
+    must: list[str] = field(default_factory=list)
     required: list[str] = field(default_factory=list)
     accept: list[str] = field(default_factory=list)
     reject: list[str] = field(default_factory=list)
@@ -151,7 +153,7 @@ def _split_list(value: str) -> list[str]:
 
 
 def parse_keywords(section: str | None) -> list[Keyword]:
-    """'## 핵심 키워드' 절을 읽는다. 하위 줄(필수 용어·인정·불인정·빠졌을 때)은 순서와 상관없다."""
+    """'## 핵심 키워드' 절을 읽는다. 하위 줄(들어가야 할 것·필수 용어·인정·불인정·빠졌을 때)은 순서와 상관없다."""
     keywords: list[dict] = []
     for line in (section or "").split("\n"):
         m = KEYWORD_LINE.match(line)
@@ -163,6 +165,9 @@ def parse_keywords(section: str | None) -> list[Keyword]:
             label, value = f.group(1), f.group(2).strip()
             if label == "빠졌을 때":
                 keywords[-1]["missing"] = value
+            elif label == "들어가야 할 것":
+                if value:
+                    keywords[-1].setdefault("must", []).append(value)
             else:
                 key = {"필수 용어": "required", "인정": "accept", "불인정": "reject"}[label]
                 keywords[-1][key] = _split_list(value)

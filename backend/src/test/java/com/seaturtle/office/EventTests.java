@@ -236,7 +236,7 @@ class EventTests {
 		var reset = events(id, "game_reset");
 		assertThat(reset).hasSize(1);
 		assertThat(reset.getFirst().get("detail").toString()).contains("PLAYING").contains("\"used\": 10");
-		// 판은 지워졌지만 기록은 남는다.
+		// 판은 숨겨졌고 이벤트도 남는다.
 		assertThat(events(id, "game_started")).hasSize(1);
 		assertThat(events(id, "hint_used")).hasSize(1);
 	}

@@ -59,6 +59,10 @@ class GameEntity {
 	@Column(name = "updated_at", nullable = false)
 	OffsetDateTime updatedAt;
 
+	/** 초기화한 때. null이 아니면 기기에서는 없는 판으로 본다. */
+	@Column(name = "hidden_at")
+	OffsetDateTime hiddenAt;
+
 	@OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("seq")
 	List<GameEntryEntity> entries = new ArrayList<>();

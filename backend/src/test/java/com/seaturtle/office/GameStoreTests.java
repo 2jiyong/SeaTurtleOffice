@@ -142,17 +142,44 @@ class GameStoreTests {
 	}
 
 	@Test
-	void deleteRemovesEntries() {
+	void hideKeepsGameAndEntriesInDb() {
 		Game game = store.create(client, scenario());
 		game.addQuestion("q", Answer.YES);
 		store.save(game);
 
-		assertThat(store.delete(UUID.randomUUID().toString(), game.id())).isFalse();
-		assertThat(store.delete(client, game.id())).isTrue();
+		assertThat(store.hide(UUID.randomUUID().toString(), game.id())).isFalse();
+		assertThat(store.hide(client, game.id())).isTrue();
+		assertThat(store.hide(client, game.id())).isFalse();
 		assertThat(store.find(client, game.id())).isEmpty();
+		assertThat(store.findByScenario(client, scenario().slug())).isEmpty();
+		assertThat(store.list(client)).isEmpty();
 		long rows = jdbc.sql("select count(*) from game_entries where game_id = ?::uuid").param(game.id())
 				.query(Long.class).single();
-		assertThat(rows).isZero();
+		assertThat(rows).isOne();
+		boolean hidden = jdbc.sql("select hidden_at is not null from games where id = ?::uuid").param(game.id())
+				.query(Boolean.class).single();
+		assertThat(hidden).isTrue();
+	}
+
+	@Test
+	void hiddenGameDoesNotBlockNewGameOfSameScenario() {
+		Game first = store.create(client, scenario());
+		store.hide(client, first.id());
+		Game second = store.create(client, scenario());
+		store.hide(client, second.id());
+		Game third = store.create(client, scenario());
+
+		assertThat(store.list(client)).extracting(Game::id).containsExactly(third.id());
+		assertThatThrownBy(() -> store.create(client, scenario())).isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void saveAfterHideConflicts() {
+		Game game = store.create(client, scenario());
+		Game other = store.find(client, game.id()).orElseThrow();
+		store.hide(client, game.id());
+		other.addQuestion("다른 창", Answer.YES);
+		assertThatThrownBy(() -> store.save(other)).isInstanceOf(GameConflictException.class);
 	}
 
 	@Test
@@ -216,7 +243,7 @@ class GameStoreTests {
 	}
 
 	@Test
-	void deleteKeepsGameWhoseScenarioIsGone() {
+	void hideSkipsGameWhoseScenarioIsGone() {
 		String id = UUID.randomUUID().toString();
 		OffsetDateTime now = OffsetDateTime.now();
 		jdbc.sql("""
@@ -224,13 +251,13 @@ class GameStoreTests {
 				                   version, created_at, updated_at)
 				values (?::uuid, ?::uuid, 'gone', 'SOLVED', 0, 0, '{}', '{}', 0, ?, ?)
 				""").params(id, client, now, now).update();
-		assertThat(store.delete(client, id)).isFalse();
+		assertThat(store.hide(client, id)).isFalse();
 		long rows = jdbc.sql("select count(*) from games where id = ?::uuid").param(id).query(Long.class).single();
 		assertThat(rows).isOne();
 	}
 
 	@Test
-	void deleteRacingWithSaveNeverFailsUnexpectedly() throws Exception {
+	void hideRacingWithSaveNeverFailsUnexpectedly() throws Exception {
 		// 초기화와 다른 창의 저장이 겹친다. 초기화는 성공하고, 저장은 저장되거나 충돌(409)로만 끝나야 한다.
 		for (int round = 0; round < 20; round++) {
 			Game game = store.create(UUID.randomUUID().toString(), scenario());
@@ -239,9 +266,9 @@ class GameStoreTests {
 			var start = new java.util.concurrent.CountDownLatch(1);
 			var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
 			try {
-				var deleted = pool.submit(() -> {
+				var hidden = pool.submit(() -> {
 					start.await();
-					return store.delete(game.clientId(), game.id());
+					return store.hide(game.clientId(), game.id());
 				});
 				var saved = pool.submit(() -> {
 					start.await();
@@ -249,7 +276,7 @@ class GameStoreTests {
 					return null;
 				});
 				start.countDown();
-				assertThat(deleted.get()).isTrue();
+				assertThat(hidden.get()).isTrue();
 				try {
 					saved.get();
 				} catch (java.util.concurrent.ExecutionException e) {

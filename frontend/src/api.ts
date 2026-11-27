@@ -195,7 +195,7 @@ export const api = {
   /** 이 기기에 그 사건의 판이 있으면 그 판, 없으면 새 판 */
   start: (scenario: string) => request<GameView>('/games', { scenario }),
   myGames: () => request<MyGame[]>('/games'),
-  /** 초기화: 판과 기록을 지운다 */
+  /** 초기화: 판을 숨기고 처음부터 다시 시작하게 한다(서버 DB에는 남는다) */
   reset: (id: string) => request<void>(`/games/${id}`, undefined, 'DELETE'),
   game: (id: string) => request<GameView>(`/games/${id}`),
   ask: (id: string, text: string) => request<GameView>(`/games/${id}/questions`, { text }),

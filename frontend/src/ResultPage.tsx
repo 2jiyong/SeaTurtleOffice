@@ -268,7 +268,7 @@ export default function ResultPage({
       {confirmingReset && (
         <ConfirmDialog
           title="사건 기록 초기화"
-          message="이 사건의 질문, 추리, 계시 기록이 모두 지워지고 처음부터 다시 시작합니다."
+          message="이 사건의 질문, 추리, 계시 기록을 비우고 처음부터 다시 시작합니다."
           confirmLabel="초기화"
           cancelLabel="취소"
           onConfirm={reset}

@@ -17,7 +17,7 @@ import com.seaturtle.office.game.GameEntryEntity.Kind;
 
 /**
  * 게임을 DB(games, game_entries)에 쓰고 되살린다. 기기(clientId)가 다르면 없는 판으로 본다.
- * 시나리오 파일이 사라진 판도 없는 판으로 본다(지우지는 않는다).
+ * 시나리오 파일이 사라진 판과 초기화로 숨긴 판도 없는 판으로 본다(지우지는 않는다).
  */
 @Component
 public class GameStore {
@@ -51,17 +51,17 @@ public class GameStore {
 		if (client.isEmpty() || id.isEmpty()) {
 			return Optional.empty();
 		}
-		return repo.findByIdAndClientId(id.get(), client.get()).flatMap(this::toGame);
+		return repo.findByIdAndClientIdAndHiddenAtIsNull(id.get(), client.get()).flatMap(this::toGame);
 	}
 
 	@Transactional(readOnly = true)
 	public Optional<Game> findByScenario(String clientId, String slug) {
-		return uuid(clientId).flatMap(c -> repo.findByClientIdAndScenarioSlug(c, slug)).flatMap(this::toGame);
+		return uuid(clientId).flatMap(c -> repo.findByClientIdAndScenarioSlugAndHiddenAtIsNull(c, slug)).flatMap(this::toGame);
 	}
 
 	@Transactional(readOnly = true)
 	public List<Game> list(String clientId) {
-		return uuid(clientId).map(repo::findByClientId).orElse(List.of()).stream()
+		return uuid(clientId).map(repo::findByClientIdAndHiddenAtIsNull).orElse(List.of()).stream()
 				.flatMap(e -> toGame(e).stream())
 				.toList();
 	}
@@ -69,7 +69,7 @@ public class GameStore {
 	/** 읽었을 때의 버전과 DB 버전이 다르면(그사이 다른 요청이 바꿨거나 지웠으면) GameConflictException. */
 	@Transactional
 	public void save(Game game) {
-		GameEntity entity = repo.findLockedByIdAndClientId(UUID.fromString(game.id()), UUID.fromString(game.clientId()))
+		GameEntity entity = repo.findLockedByIdAndClientIdAndHiddenAtIsNull(UUID.fromString(game.id()), UUID.fromString(game.clientId()))
 				.orElseThrow(GameConflictException::new);
 		if (entity.version != game.version()) {
 			throw new GameConflictException();
@@ -92,19 +92,19 @@ public class GameStore {
 		}
 	}
 
-	/** 판과 항목을 지운다. 이 기기의 판이 아니거나 시나리오가 사라진 판이면 false. */
+	/** 판을 숨긴다(초기화). 판과 항목은 DB에 남는다. 이 기기의 판이 아니거나 시나리오가 사라진 판이면 false. */
 	@Transactional
-	public boolean delete(String clientId, String gameId) {
+	public boolean hide(String clientId, String gameId) {
 		Optional<UUID> client = uuid(clientId);
 		Optional<UUID> id = uuid(gameId);
 		if (client.isEmpty() || id.isEmpty()) {
 			return false;
 		}
-		// 시나리오 파일이 사라진 판은 없는 판으로 본다(목록·조회와 같다). 지우지 않고 남겨 둔다.
-		boolean visible = repo.findByIdAndClientId(id.get(), client.get())
+		// 시나리오 파일이 사라진 판은 없는 판으로 본다(목록·조회와 같다). 숨기지 않고 그대로 둔다.
+		boolean visible = repo.findByIdAndClientIdAndHiddenAtIsNull(id.get(), client.get())
 				.filter(e -> content.scenario(e.scenarioSlug).isPresent())
 				.isPresent();
-		return visible && repo.deleteOwned(id.get(), client.get()) > 0;
+		return visible && repo.hideOwned(id.get(), client.get(), OffsetDateTime.now()) > 0;
 	}
 
 	private static void copy(Game game, GameEntity entity) {

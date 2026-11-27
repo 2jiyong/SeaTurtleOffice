@@ -108,7 +108,7 @@ cd frontend && npm install && npm run dev
   `/api/info`, `/api/scenarios`, 그림 요청은 쿠키를 주지 않는다. 첫 화면에서 함께 나간 요청이 늦게 와서 판을 만든 뒤의 쿠키를 덮어쓰지 않게 하려는 것이다. 같은 이유로 메인 페이지는 내 진행 상태(`GET /api/games`) 응답을 받은 뒤에 시작 요청을 보낸다.
   `/api/games/**`는 그 기기의 판만 다룬다. 남의 판 id는 404다. 배포(HTTPS)에서는 `COOKIE_SECURE=true`로 쿠키에 Secure를 붙인다.
 - `POST /api/games`는 이 기기에 그 시나리오의 판이 있으면 새로 만들지 않고 그 판을 돌려준다(200, 새 판은 201).
-  `GET /api/games`는 이 기기의 판 목록(`id`, `scenario`, `status`, `used`, `limit`, `grade`(끝난 판만)), `DELETE /api/games/{id}`는 초기화(판과 기록 삭제, 204).
+  `GET /api/games`는 이 기기의 판 목록(`id`, `scenario`, `status`, `used`, `limit`, `grade`(끝난 판만)), `DELETE /api/games/{id}`는 초기화(판을 숨긴다. 판과 기록은 DB에 남고 `games.hidden_at`에 숨긴 때가 적힌다. 204).
 - 판정을 기다리는 사이 다른 창에서 같은 판이 바뀌면 저장하지 않고 409("다른 창에서 진행이 바뀌었습니다. 새로고침해 주세요.")를 돌려준다(`games.version`).
 
 ## 이미지 자리

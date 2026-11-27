@@ -208,10 +208,10 @@ public class GameService {
 		return game;
 	}
 
-	/** 초기화: 판과 기록을 지운다. 이벤트는 남는다. */
+	/** 초기화: 판을 숨기고 기기에서는 새로 시작하게 한다. 판과 기록, 이벤트는 DB에 남는다. */
 	public void reset(String clientId, String id) {
 		Game game = get(clientId, id);
-		if (!store.delete(clientId, id)) {
+		if (!store.hide(clientId, id)) {
 			throw new GameNotFoundException("게임");
 		}
 		Map<String, Object> detail = new LinkedHashMap<>();

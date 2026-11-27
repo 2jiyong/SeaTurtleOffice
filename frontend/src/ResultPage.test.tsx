@@ -206,7 +206,7 @@ describe('초기화', () => {
     await openConfirm()
     const dialog = screen.getByRole('alertdialog')
     expect(dialog.textContent).toContain('사건 기록 초기화')
-    expect(dialog.textContent).toContain('이 사건의 질문, 추리, 계시 기록이 모두 지워지고 처음부터 다시 시작합니다.')
+    expect(dialog.textContent).toContain('이 사건의 질문, 추리, 계시 기록을 비우고 처음부터 다시 시작합니다.')
   })
 
   it('확인하면 지우고 새 판을 시작해 onRestarted로 넘긴다', async () => {

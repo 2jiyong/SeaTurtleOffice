@@ -280,6 +280,21 @@ cd /opt/seaturtle && deploy/deploy.sh
 
 `git pull` → 이미지를 하나씩 빌드(2~4분, 그동안 서버가 느리다) → 다시 띄우기 → 옛 이미지·빌드 캐시 정리. 백엔드가 뜨는 10~30초 동안 끊긴다. 시나리오만 바꿔도 같은 명령이다(두 서버가 내용을 시작할 때만 읽어서 늘 다시 띄운다).
 
+### 점검 안내 켜기·끄기
+
+서버에서:
+
+```bash
+cd /opt/seaturtle
+deploy/maintenance.sh on       # 점검 안내 켬
+deploy/maintenance.sh off      # 끔
+deploy/maintenance.sh status   # 지금 상태
+```
+
+켜면 사이트의 모든 요청이 503을 받는다. 화면은 점검 안내 페이지(`deploy/caddy/maintenance.html`), `/api/*`는 `{"detail":"잠시 점검 중입니다…"}`라서 이미 열어 둔 화면에도 그 문장이 뜬다.
+Caddy가 요청마다 `maintenance/on` 파일을 보므로 다시 띄울 필요 없이 바로 바뀐다. 백엔드·AI 서버는 그대로 돈다. 아예 멈추려면 켠 뒤 `docker compose -f compose.prod.yaml stop backend ai`.
+`deploy.sh`로 새 버전을 올려도 점검 안내는 `off` 할 때까지 그대로라, 점검 중에 배포·확인한 뒤 끄면 된다. 통계 주소(`stats.`)는 영향을 받지 않는다.
+
 ### 사용량 보기
 
 내 컴퓨터에서:

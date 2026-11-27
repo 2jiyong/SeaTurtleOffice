@@ -19,3 +19,5 @@ FROM caddy:2.11.9
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 COPY --from=frontend /src/dist /srv
 COPY deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+# 점검 안내 페이지(deploy/maintenance.sh로 켠다)
+COPY deploy/caddy/maintenance.html /maintenance-page/index.html

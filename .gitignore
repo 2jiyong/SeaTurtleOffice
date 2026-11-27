@@ -22,3 +22,6 @@ __pycache__/
 
 # 배포 구성 로컬 시험 값
 deploy/local.env
+
+# 점검 스위치(서버에서만 켠다)
+maintenance/on

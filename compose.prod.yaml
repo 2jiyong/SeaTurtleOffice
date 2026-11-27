@@ -28,6 +28,8 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+      # 점검 스위치. 파일 maintenance/on이 있으면 점검 안내를 띄운다(deploy/maintenance.sh).
+      - ./maintenance:/maintenance:ro
     depends_on: [backend, umami]
     mem_limit: 128m
     restart: unless-stopped

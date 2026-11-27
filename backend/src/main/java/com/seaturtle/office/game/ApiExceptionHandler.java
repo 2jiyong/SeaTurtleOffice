@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.seaturtle.office.judge.JudgeException;
+import com.seaturtle.office.limit.UsageLimitException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -17,6 +18,13 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(GameNotFoundException.class)
 	ProblemDetail notFound(GameNotFoundException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+	}
+
+	@ExceptionHandler(UsageLimitException.class)
+	ProblemDetail limited(UsageLimitException e) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
+		problem.setProperty("reason", e.reason());
+		return problem;
 	}
 
 	@ExceptionHandler(GameConflictException.class)

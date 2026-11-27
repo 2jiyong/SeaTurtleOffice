@@ -32,6 +32,17 @@ judge:
   # AI 서버(OpenAI 최대 24초)보다 조금 길게, 화면(30초)보다 짧게. 안쪽이 먼저 포기해야 결과가 버려지지 않는다.
   timeout: 28s
 
+# 판정 사용량 한도(3단계). 0 이하면 그 검사를 끈다. 단가는 100만 토큰당 달러(gpt-5-mini 기준).
+limits:
+  daily-budget-usd: ${LIMIT_DAILY_BUDGET_USD:2.0}
+  device-per-day: ${LIMIT_DEVICE_PER_DAY:200}
+  ip-per-day: ${LIMIT_IP_PER_DAY:600}
+  zone: Asia/Seoul
+  price:
+    input: 0.25
+    cached-input: 0.025
+    output: 2.0
+
 # 개발 로그에도 요청 ID를 찍는다. 배포에서는 LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs로 JSON 한 줄(MDC와 키가 함께 나간다).
 logging:
   pattern:

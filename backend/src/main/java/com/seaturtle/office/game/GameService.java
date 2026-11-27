@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,9 @@ import com.seaturtle.office.event.Event;
 import com.seaturtle.office.event.EventRecorder;
 import com.seaturtle.office.judge.Judge;
 import com.seaturtle.office.judge.JudgeException;
+import com.seaturtle.office.limit.UsageLimitException;
+import com.seaturtle.office.limit.UsageLimiter;
+import com.seaturtle.office.log.RequestIdFilter;
 
 /**
  * 게임 진행. 요청마다 DB에서 판을 읽고, 규칙을 확인하고, (질문·추리는 트랜잭션 밖에서) 판정한 뒤 저장한다.
@@ -31,12 +35,15 @@ public class GameService {
 	private final GameStore store;
 	private final Judge judge;
 	private final EventRecorder events;
+	private final UsageLimiter limiter;
 
-	public GameService(ContentRepository content, GameStore store, Judge judge, EventRecorder events) {
+	public GameService(ContentRepository content, GameStore store, Judge judge, EventRecorder events,
+			UsageLimiter limiter) {
 		this.content = content;
 		this.store = store;
 		this.judge = judge;
 		this.events = events;
+		this.limiter = limiter;
 	}
 
 	/** 이 기기에 그 시나리오의 판이 있으면 그 판, 없으면 새 판. */
@@ -69,6 +76,13 @@ public class GameService {
 		long started = System.nanoTime();
 		Game game = get(clientId, id);
 		game.requireQuestionAllowed();
+		limit(game, Event.QUESTION_ASKED, question, started);
+		try (var slot = limiter.enter(game.id())) {
+			return judgeQuestion(game, question, started);
+		}
+	}
+
+	private Game judgeQuestion(Game game, String question, long started) {
 		List<Judge.HistoryEntry> history = game.questions().stream()
 				.map(q -> new Judge.HistoryEntry(q.text(), q.answer()))
 				.toList();
@@ -91,6 +105,13 @@ public class GameService {
 		long started = System.nanoTime();
 		Game game = get(clientId, id);
 		game.requirePlaying();
+		limit(game, Event.GUESS_SUBMITTED, answer, started);
+		try (var slot = limiter.enter(game.id())) {
+			return judgeGuess(game, answer, started);
+		}
+	}
+
+	private Game judgeGuess(Game game, String answer, long started) {
 		Judge.GuessVerdict verdict;
 		try {
 			verdict = judge.guess(game.scenario().slug(), answer);
@@ -110,6 +131,17 @@ public class GameService {
 		String closeness = game.guesses().getLast().closeness().name();
 		saveJudged(game, Event.GUESS_SUBMITTED, closeness, answer, started, usedBefore, verdict.metrics(), detail);
 		return game;
+	}
+
+	/** 판정 전 한도 검사. 넘으면 limited 이벤트를 남기고 429로 거절한다(토큰을 쓰지 않는다). */
+	private void limit(Game game, String type, String text, long started) {
+		try {
+			limiter.check(game.clientId(), MDC.get(RequestIdFilter.MDC_IP));
+		} catch (UsageLimitException e) {
+			events.record(Event.judged(type, game, "limited", null, text, started, game.used(), null,
+					Map.of("reason", e.reason())));
+			throw e;
+		}
 	}
 
 	/** AI 서버가 답했지만 믿을 수 없는 판정. 토큰은 이미 썼으므로 지표를 담아 던진다. */

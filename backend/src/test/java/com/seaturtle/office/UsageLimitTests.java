@@ -1,0 +1,257 @@
+package com.seaturtle.office;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.seaturtle.office.game.Answer;
+import com.seaturtle.office.game.ClientIdFilter;
+import com.seaturtle.office.game.GameService;
+import com.seaturtle.office.judge.Judge;
+import com.seaturtle.office.judge.JudgeException;
+import com.seaturtle.office.limit.UsageLimitException;
+import com.seaturtle.office.limit.UsageLimiter;
+import com.seaturtle.office.log.IpHasher;
+
+import jakarta.servlet.http.Cookie;
+
+/** 판정 전 한도: 동시 판정, 하루 예산, 기기, IP. 한도는 작게 잡아 시험한다. */
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+@TestPropertySource(properties = { "limits.device-per-day=3", "limits.ip-per-day=5", "limits.daily-budget-usd=0.01" })
+class UsageLimitTests {
+
+	static class CountingJudge implements Judge {
+		final AtomicInteger calls = new AtomicInteger();
+		volatile Runnable duringSlow = () -> {
+		};
+
+		@Override
+		public Verdict question(String scenario, List<HistoryEntry> history, String question) {
+			calls.incrementAndGet();
+			if (question.contains("오류")) {
+				throw new JudgeException("테스트용 판정 실패");
+			}
+			if (question.contains("느린")) {
+				duringSlow.run();
+			}
+			return new Verdict(Answer.YES, null);
+		}
+
+		@Override
+		public GuessVerdict guess(String scenario, String guess) {
+			calls.incrementAndGet();
+			return new GuessVerdict(List.of(1), 3, List.of(), 1, true, null);
+		}
+
+		@Override
+		public Status status() {
+			return new Status("테스트 판정기", true, true);
+		}
+	}
+
+	@TestConfiguration
+	static class Config {
+		@Bean
+		@Primary
+		CountingJudge countingJudge() {
+			return new CountingJudge();
+		}
+	}
+
+	@Autowired
+	GameService games;
+
+	@Autowired
+	CountingJudge judge;
+
+	@Autowired
+	UsageLimiter limiter;
+
+	@Autowired
+	IpHasher hasher;
+
+	@Autowired
+	JdbcClient jdbc;
+
+	@Autowired
+	MockMvc mvc;
+
+	final String client = UUID.randomUUID().toString();
+
+	@BeforeEach
+	@AfterEach
+	void clearEvents() {
+		// 하루 예산은 모든 이벤트를 합하므로, 다른 테스트가 남긴 이벤트를 비우고 시작·끝낸다.
+		jdbc.sql("delete from events").update();
+		judge.calls.set(0);
+	}
+
+	void insertJudged(String clientId, String ipHash, OffsetDateTime at, int input, int cached, int output,
+			String outcome) {
+		jdbc.sql("""
+				insert into events (at, type, client_id, outcome, input_tokens, cached_tokens, output_tokens,
+				                    app_version, ip_hash)
+				values (?, 'question_asked', ?::uuid, ?, ?, ?, ?, 'test', ?)
+				""").params(at, clientId, outcome, input, cached, output, ipHash).update();
+	}
+
+	void insertJudged(String clientId, String ipHash) {
+		insertJudged(clientId, ipHash, OffsetDateTime.now(), 0, 0, 0, "ok");
+	}
+
+	String start() {
+		return games.start(client, "boys-order").game().id();
+	}
+
+	long limited(String clientId) {
+		return jdbc.sql("select count(*) from events where client_id = ?::uuid and outcome = 'limited'")
+				.param(clientId).query(Long.class).single();
+	}
+
+	@Test
+	void deviceLimit() {
+		String id = start();
+		for (int i = 0; i < 3; i++) {
+			insertJudged(client, null);
+		}
+		assertThatThrownBy(() -> games.ask(client, id, "네 번째"))
+				.isInstanceOfSatisfying(UsageLimitException.class, e -> assertThat(e.reason()).isEqualTo("device"));
+		assertThat(judge.calls).hasValue(0);
+		assertThat(limited(client)).isEqualTo(1);
+		String detail = jdbc.sql("select detail::text from events where outcome = 'limited'").query(String.class)
+				.single();
+		assertThat(detail).contains("device");
+	}
+
+	@Test
+	void ipLimit() throws Exception {
+		String ip = hasher.hash("198.51.100.20");
+		for (int i = 0; i < 5; i++) {
+			insertJudged(UUID.randomUUID().toString(), ip);
+		}
+		String id = start();
+		mvc.perform(post("/api/games/" + id + "/questions").cookie(new Cookie(ClientIdFilter.COOKIE, client))
+				.with(r -> {
+					r.setRemoteAddr("198.51.100.20");
+					return r;
+				})
+				.contentType(APPLICATION_JSON).content("{\"text\":\"질문\"}"))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.reason").value("ip"))
+				.andExpect(jsonPath("$.detail").value("오늘 이 단말의 교신 한도를 넘었습니다. 내일 다시 시도해 주세요."));
+		assertThat(judge.calls).hasValue(0);
+	}
+
+	@Test
+	void budgetLimit() throws Exception {
+		// 0.025달러 > 0.01달러
+		insertJudged(UUID.randomUUID().toString(), null, OffsetDateTime.now(), 100_000, 0, 0, "ok");
+		String id = start();
+		mvc.perform(post("/api/games/" + id + "/questions").cookie(new Cookie(ClientIdFilter.COOKIE, client))
+				.contentType(APPLICATION_JSON).content("{\"text\":\"질문\"}"))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.reason").value("budget"))
+				.andExpect(jsonPath("$.detail").value("오늘 응시자와의 교신량이 모두 찼습니다. 내일 다시 시도해 주세요."));
+		assertThat(judge.calls).hasValue(0);
+	}
+
+	@Test
+	void yesterdayNotCounted() {
+		// 한국 시간 어제 23:30. UTC로는 오늘 날짜일 수 있어 UTC 기준으로 세면 틀린다.
+		OffsetDateTime lastNight = limiter.todayStart().minusMinutes(30);
+		for (int i = 0; i < 3; i++) {
+			insertJudged(client, null, lastNight, 100_000, 0, 0, "ok");
+		}
+		String id = start();
+		games.ask(client, id, "오늘 첫 질문");
+		assertThat(judge.calls).hasValue(1);
+	}
+
+	@Test
+	void limitedNotCounted() {
+		for (int i = 0; i < 3; i++) {
+			insertJudged(client, null, OffsetDateTime.now(), 0, 0, 0, "limited");
+		}
+		String id = start();
+		games.ask(client, id, "질문");
+		assertThat(judge.calls).hasValue(1);
+	}
+
+	@Test
+	void concurrentJudgingRejected() {
+		String id = start();
+		judge.duringSlow = () -> assertThatThrownBy(() -> games.ask(client, id, "끼어든 질문"))
+				.isInstanceOf(IllegalStateException.class).hasMessage("이전 판정을 기다리는 중입니다.");
+		try {
+			games.ask(client, id, "느린 질문");
+		} finally {
+			judge.duringSlow = () -> {
+			};
+		}
+		assertThat(judge.calls).hasValue(1);
+		assertThat(games.get(client, id).questions()).hasSize(1);
+	}
+
+	@Test
+	void slotReleasedAfterFailure() {
+		String id = start();
+		assertThatThrownBy(() -> games.ask(client, id, "오류")).isInstanceOf(JudgeException.class);
+		games.ask(client, id, "다시");
+		assertThat(games.get(client, id).questions()).hasSize(1);
+	}
+
+	@Test
+	void checkFailureDoesNotBlock() {
+		String id = start();
+		jdbc.sql("alter table events rename to events_off").update();
+		try {
+			games.ask(client, id, "검사가 안 되어도");
+		} finally {
+			jdbc.sql("alter table events_off rename to events").update();
+		}
+		assertThat(games.get(client, id).questions()).hasSize(1);
+	}
+
+	@Test
+	void hintAndGiveUpNotLimited() {
+		String id = start();
+		for (int i = 0; i < 3; i++) {
+			insertJudged(client, null);
+		}
+		games.hint(client, id);
+		games.giveUp(client, id);
+		assertThat(judge.calls).hasValue(0);
+	}
+
+	@Test
+	void budgetMath() {
+		insertJudged(client, null, OffsetDateTime.now(), 100_000, 40_000, 1_000, "ok");
+		// (100000 − 40000) × 0.25e-6 + 40000 × 0.025e-6 + 1000 × 2e-6
+		assertThat(limiter.spentTodayUsd()).isCloseTo(0.018, within(1e-9));
+	}
+}

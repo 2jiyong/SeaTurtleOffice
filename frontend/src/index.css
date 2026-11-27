@@ -1594,13 +1594,27 @@ h3 {
   outline-offset: -1px;
 }
 
-/* 추리 제출 버튼: 질문 입력창 왼쪽. 누르면 추리 창이 뜬다(질문과 추리를 같은 칸에서 바꾸지 않는다). */
+/* 송신 단말 아래 줄: 왼쪽 글자 수·비용 안내, 오른쪽 추리 제출 */
+.composer-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.composer-foot .counter {
+  margin-top: 0;
+}
+
+/* 추리 제출 버튼: 질문 입력줄과 떼어 아래 줄 오른쪽에 둔다. 누르면 추리 창이 뜬다. */
 .guess-open {
   flex: none;
-  min-width: 64px;
-  padding: 7px 10px;
+  margin-left: auto;
+  padding: 6px 14px;
   font-family: 'Black Han Sans', var(--sans);
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   letter-spacing: 0.1em;
   line-height: 1.25;
   color: #e6e9e0;

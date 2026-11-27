@@ -133,26 +133,27 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
   // 추리 창을 닫고 초점을 질문 입력창으로(마지막 기회라 막혀 있으면 추리 제출 버튼으로) 돌려준다.
   const closeGuess = () => {
     setGuessOpen(false)
-    setGuessError(null)
     const box = questionBox.current
     if (box && !box.disabled) box.focus()
     else guessButton.current?.focus()
   }
 
+  // 보내면 창을 바로 닫고, 판정을 기다리는 추리는 질문처럼 수신 기록에 '수신 중'으로 보인다.
+  // 실패하면 창을 다시 열어 쓴 글과 오류를 보여 준다(글은 보내고 판정이 끝나야 비운다).
   const submitGuess = async (value: string) => {
     if (busy) return
     setPending({ mode: 'guess', text: value })
-    setGuessError(null)
     setError(null)
+    closeGuess()
     try {
       const next = await api.guess(game.id, value)
-      // 이 추리로 계시가 열리면 계시창을 닫은 뒤 질문 입력창으로 돌아오게 한다(추리 창의 버튼은 곧 사라진다).
+      // 이 추리로 계시가 열리면 계시창을 닫은 뒤 질문 입력창으로 돌아오게 한다.
       returnFocus.current = questionBox.current
       receive(next)
       setGuessText('')
-      closeGuess()
     } catch (err) {
       setGuessError((err as Error).message)
+      setGuessOpen(true)
       reloadIfStale(err)
     } finally {
       setPending(null)
@@ -225,15 +226,6 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
             </div>
             {game.finalChance && <p className="final-chance">질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.</p>}
             <div className="composer-row">
-            <button
-              ref={guessButton}
-              type="button"
-              className="guess-open"
-              disabled={busy}
-              onClick={() => setGuessOpen(true)}
-            >
-              추리 제출
-            </button>
             <div className="input-row">
               <textarea
                 ref={questionBox}
@@ -256,13 +248,28 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
               </button>
             </div>
             </div>
-            <span className="counter">
-              {text.length}/{QUESTION_LIMIT} {'//'} 모든 송신은 기록된다
-              {/* 질문·추리 모두 안내 줄을 한 줄 둬서 송신 단말 크기가 바뀌지 않게 한다 */}
-              <span className="cost-note">
-                {game.finalChance ? '질문을 모두 썼습니다. 추리 제출로 마지막 추리를 보내세요.' : '질문은 사용 1을 씁니다.'}
+            {/* 아래 줄: 왼쪽은 글자 수와 비용 안내, 오른쪽은 추리 창을 여는 버튼(질문 입력줄과 떼어 둔다) */}
+            <div className="composer-foot">
+              <span className="counter">
+                {text.length}/{QUESTION_LIMIT} {'//'} 모든 송신은 기록된다
+                <span className="cost-note">
+                  {game.finalChance ? '질문을 모두 썼습니다. 추리 제출로 마지막 추리를 보내세요.' : '질문은 사용 1을 씁니다.'}
+                </span>
               </span>
-            </span>
+              <button
+                ref={guessButton}
+                type="button"
+                className="guess-open"
+                aria-label="추리 제출"
+                disabled={busy}
+                onClick={() => {
+                  setGuessError(null)
+                  setGuessOpen(true)
+                }}
+              >
+                추리 제출 ▸
+              </button>
+            </div>
           </form>
         )}
         </ReceiveLog>

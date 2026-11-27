@@ -471,19 +471,26 @@ describe('추리 창', () => {
     expect((within(dialog).getByRole('textbox', { name: '추리' }) as HTMLTextAreaElement).value).toBe('긴 추리')
   })
 
-  it('송신 중에는 수신 대기로 바뀌고, 다시 보내거나 닫을 수 없다', async () => {
+  it('보내면 창이 바로 닫히고, 판정을 기다리는 추리가 수신 기록에 보인다. 그동안 추리·질문은 막힌다', async () => {
     const user = userEvent.setup()
     await openGame()
     vi.mocked(api.guess).mockImplementation(never)
     await user.click(screen.getByRole('button', { name: '추리 제출' }))
-    await user.type(screen.getByRole('textbox', { name: '추리' }), 't')
+    await user.type(screen.getByRole('textbox', { name: '추리' }), '기다리는 추리')
     await user.click(screen.getByRole('button', { name: '추리 송신' }))
-    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
-    expect((within(dialog).getByRole('button', { name: '수신 대기' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((within(dialog).getByRole('button', { name: '취소' }) as HTMLButtonElement).disabled).toBe(true)
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('dialog', { name: '추리 제출' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull()
+    expect(document.querySelector('.entry-guess')?.textContent).toContain('기다리는 추리')
+    expect((screen.getByRole('button', { name: '추리 제출' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
+    expect(api.ask).not.toHaveBeenCalled()
     expect(api.guess).toHaveBeenCalledTimes(1)
+  })
+
+  it('추리 제출 버튼은 질문 입력줄 옆이 아니라 아래 줄에 있다', async () => {
+    await openGame()
+    const button = screen.getByRole('button', { name: '추리 제출' })
+    expect(button.closest('.input-row')).toBeNull()
+    expect(button.closest('.composer-foot')).not.toBeNull()
   })
 
   it('창을 닫았다 다시 열어도 쓰던 추리가 남아 있고, 보내고 나서야 비운다', async () => {

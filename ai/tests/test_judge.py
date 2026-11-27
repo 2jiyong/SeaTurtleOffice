@@ -185,8 +185,8 @@ def test_openai_timeout_and_retries():
     assert judge.client.timeout == 12.0
 
 
-def test_question_thinks_less_than_guess():
-    # 질문은 한 게임에 수십 번이라 빨라야 한다(minimal ≈ 2초). 추리 채점은 몇 번뿐이라 꼼꼼하게(low).
+def test_question_and_guess_use_their_own_effort():
+    # 기본값은 둘 다 low다. 질문과 추리 채점은 각자의 설정을 보낸다.
     import asyncio
     from types import SimpleNamespace
 
@@ -194,10 +194,12 @@ def test_question_thinks_less_than_guess():
     from app.judges import OpenAiJudge
     from app.prompts import GUESS_SCHEMA, QUESTION_SCHEMA, Prompt
 
-    s = Settings(openai_api_key="test")
-    assert s.openai_question_reasoning_effort == "minimal"
-    assert s.openai_guess_reasoning_effort == "low"
+    defaults = Settings(openai_api_key="test")
+    assert defaults.openai_question_reasoning_effort == "low"
+    assert defaults.openai_guess_reasoning_effort == "low"
 
+    s = Settings(openai_api_key="test", openai_question_reasoning_effort="minimal",
+                 openai_guess_reasoning_effort="medium")
     judge = OpenAiJudge(s)
     sent = []
 
@@ -209,4 +211,4 @@ def test_question_thinks_less_than_guess():
     judge.client.chat.completions.create = fake_create
     asyncio.run(judge.complete(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
     asyncio.run(judge.complete(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
-    assert sent == ["minimal", "low"]
+    assert sent == ["minimal", "medium"]

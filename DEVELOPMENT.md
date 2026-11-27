@@ -73,7 +73,7 @@ cd frontend && npm install && npm run dev
 | `OPENAI_API_KEY` | | |
 | `OPENAI_MODEL` | `gpt-5-mini` | |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 호환 서버도 쓸 수 있다 |
-| `OPENAI_QUESTION_REASONING_EFFORT` | `minimal` | 질문 판정에서 AI가 생각하는 양. 빠르게(약 2초). 추론 모델이 아니면 빈 값으로 둔다 |
+| `OPENAI_QUESTION_REASONING_EFFORT` | `low` | 질문 판정에서 AI가 생각하는 양(약 3초). `minimal`(약 2초)은 판정 규칙을 잘 따르지 못한다. 추론 모델이 아니면 빈 값으로 둔다 |
 | `OPENAI_GUESS_REASONING_EFFORT` | `low` | 추리 채점에서 AI가 생각하는 양. 꼼꼼하게(약 3초) |
 | `HISTORY_LIMIT` | `40` | 프롬프트에 넣을 최근 질문 수 |
 | `OPENAI_TIMEOUT` | `12` | OpenAI 요청 하나를 기다리는 시간(초) |

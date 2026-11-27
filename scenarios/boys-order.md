@@ -4,7 +4,7 @@ title: 열 개의 손목
 difficulty: hard
 era: [ruina-era]
 works: [ruina]
-uses: [syndicate.fingers.thumb, syndicate.fingers.thumb.etiquette, syndicate.fingers.thumb.ranks, concept.taboo.city-taboos.resurrection, syndicate.fingers.index, syndicate.fingers.index.history]
+uses: [syndicate.fingers, syndicate.fingers.thumb, syndicate.fingers.thumb.etiquette, syndicate.fingers.thumb.ranks, concept.taboo.city-taboos.resurrection, syndicate.fingers.index, syndicate.fingers.index.history]
 updated: 2026-11-27
 ---
 
@@ -46,7 +46,8 @@ updated: 2026-11-27
 ## 판정 메모
 - 남자들은 꼬마를 두려워했나요? → 예로 볼 수 있다. 정확히는 꼬마가 넘겨받은 카포의 권위다.
 - 꼬마는 특별한 능력이 있나요? → 아니오.
-- 꼬마는 조직의 일원인가요? → 예로 볼 수 있다. 아빠에게서 카포의 권위를 넘겨받았다.
+- 꼬마는 조직의 일원인가요? → 조건이 붙으면 예다. 아빠에게서 카포의 권위를 넘겨받았다.
+- 꼬마는 엄지의 고위직인가요? / 꼬마는 조직에서 높은 직위인가요? → 조건이 붙으면 예다. 꼬마 자신의 신분이 아니라 아빠에게 넘겨받은 권위다.
 - 꼬마가 손목을 자르라고 시켰나요? → 아니오.
 - 꼬마의 부탁은 위험한 일이었나요? → 아니오. 불가능한 일이었다.
 - 누가 죽었나요? → 예. 꼬마의 아빠(카포)다.
@@ -58,6 +59,10 @@ updated: 2026-11-27
 - 아빠는 왜 그냥 아들을 지키라고 명령하지 않았나요? → 상관없음.
 - 남자들은 벌을 받은 건가요? → 예. 스스로 규율대로 벌을 받았다.
 - 세계관 규칙(금기)이 관련 있나요? → 예. 죽은 사람을 생전 그대로 되살리는 것은 도시의 금기다.
+- 손가락 걸기가 있었나요? → 아니오. 이 사건은 손가락 걸기(손가락들의 회담)가 아니라 지령을 받은 검지의 습격이다.
+- 남자들이나 카포가 손가락 걸기에 나갔나요? → 아니오.
+- 손가락 걸기 때문에 일어난 일인가요? → 아니오.
+- 환상체나 뒤틀림이 관련 있나요? → 아니오.
 
 ## 힌트
 1. 꼬마가 그린 아빠와 자기 모습.

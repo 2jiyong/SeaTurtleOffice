@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5-mini"
     # AI가 생각하는 양. 추론 모델에만 보낸다. 비우면 보내지 않는다.
-    # 질문은 한 게임에 수십 번이라 빠르게(minimal ≈ 2초), 추리 채점은 몇 번뿐이라 꼼꼼하게(low ≈ 3초).
-    openai_question_reasoning_effort: str = "minimal"
+    # 둘 다 low(질문 ≈ 3초, 추리 채점 ≈ 3~7초). minimal(≈ 2초)은 판정 규칙을 잘 따르지 못해 운영 질문 재판정에서 오답이 많았다(2026-11-27).
+    openai_question_reasoning_effort: str = "low"
     openai_guess_reasoning_effort: str = "low"
     # 요청 하나를 기다리는 시간(초)과 재시도 횟수. 최악 = timeout × (1 + max_retries) = 24초.
     # 백엔드(judge.timeout 28초)보다 먼저 끝나야 결과가 버려지지 않는다.

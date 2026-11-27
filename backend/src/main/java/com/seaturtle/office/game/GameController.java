@@ -27,6 +27,7 @@ import com.seaturtle.office.game.GameDtos.QuestionRequest;
 import com.seaturtle.office.game.GameDtos.ScenarioSummary;
 import com.seaturtle.office.game.GameDtos.StartRequest;
 import com.seaturtle.office.judge.Judge;
+import com.seaturtle.office.limit.UsageLimiter;
 
 import jakarta.validation.Valid;
 
@@ -38,21 +39,25 @@ public class GameController {
 	private final GameService games;
 	private final Judge judge;
 	private final ScenarioImages images;
+	private final UsageLimiter limiter;
 
-	public GameController(ContentRepository content, GameService games, Judge judge, ScenarioImages images) {
+	public GameController(ContentRepository content, GameService games, Judge judge, ScenarioImages images,
+			UsageLimiter limiter) {
 		this.content = content;
 		this.games = games;
 		this.judge = judge;
 		this.images = images;
+		this.limiter = limiter;
 	}
 
-	public record ServerInfo(String judge, boolean fakeJudge, boolean judgeOnline) {
+	/** budgetExhausted: 오늘 판정 예산을 다 썼다(쓴 금액 자체는 공개하지 않는다). */
+	public record ServerInfo(String judge, boolean fakeJudge, boolean judgeOnline, boolean budgetExhausted) {
 	}
 
 	@GetMapping("/info")
 	public ServerInfo info() {
 		Judge.Status status = judge.status();
-		return new ServerInfo(status.judge(), status.fake(), status.online());
+		return new ServerInfo(status.judge(), status.fake(), status.online(), limiter.budgetExhausted());
 	}
 
 	@GetMapping("/scenarios")

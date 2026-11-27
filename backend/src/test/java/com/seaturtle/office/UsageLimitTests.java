@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -24,6 +28,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -43,6 +48,7 @@ import jakarta.servlet.http.Cookie;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = { "limits.device-per-day=3", "limits.ip-per-day=5", "limits.daily-budget-usd=0.01" })
+@ExtendWith(OutputCaptureExtension.class)
 class UsageLimitTests {
 
 	static class CountingJudge implements Judge {
@@ -253,5 +259,29 @@ class UsageLimitTests {
 		insertJudged(client, null, OffsetDateTime.now(), 100_000, 40_000, 1_000, "ok");
 		// (100000 − 40000) × 0.25e-6 + 40000 × 0.025e-6 + 1000 × 2e-6
 		assertThat(limiter.spentTodayUsd()).isCloseTo(0.018, within(1e-9));
+	}
+
+	@Test
+	void infoShowsBudgetExhausted() throws Exception {
+		mvc.perform(get("/api/info")).andExpect(jsonPath("$.budgetExhausted").value(false));
+		insertJudged(UUID.randomUUID().toString(), null, OffsetDateTime.now(), 100_000, 0, 0, "ok");
+		mvc.perform(get("/api/info"))
+				.andExpect(jsonPath("$.budgetExhausted").value(true))
+				// 쓴 금액 자체는 공개하지 않는다.
+				.andExpect(jsonPath("$.spentUsd").doesNotExist());
+	}
+
+	@Test
+	// 경고 단계는 메모리에 남는다. 다른 테스트가 먼저 예산을 넘겼으면 이미 찍혀 있으므로 새 컨텍스트에서 본다.
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+	void warnsOncePerThreshold(CapturedOutput output) {
+		// 0.0085달러 = 예산(0.01)의 85%
+		insertJudged(UUID.randomUUID().toString(), null, OffsetDateTime.now(), 34_000, 0, 0, "ok");
+		String id = start();
+		games.ask(client, id, "하나");
+		games.ask(client, id, "둘");
+		String out = output.getOut();
+		assertThat(out.split("판정 비용 80%", -1)).hasSize(2);
+		assertThat(out).contains("판정 비용 50%");
 	}
 }

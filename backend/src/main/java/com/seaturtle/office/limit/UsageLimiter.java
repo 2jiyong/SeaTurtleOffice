@@ -34,6 +34,9 @@ public class UsageLimiter {
 	private final JdbcClient jdbc;
 	private final LimitProperties props;
 	private final Set<String> judging = ConcurrentHashMap.newKeySet();
+	/** 오늘 이미 남긴 경고 단계("2026-11-27:80"). 메모리 기준이라 재시작하면 한 번 더 찍힐 수 있다. */
+	private final Set<String> warned = ConcurrentHashMap.newKeySet();
+	private static final int[] WARN_PERCENTS = { 50, 80, 100 };
 
 	public UsageLimiter(DataSource dataSource, LimitProperties props) {
 		// events가 잠겨 있어도 판정을 오래 붙잡지 않게 2초에서 포기한다(검사 실패 = 통과).
@@ -63,8 +66,12 @@ public class UsageLimiter {
 	}
 
 	private String exceeded(String clientId, String ipHash) {
-		if (props.dailyBudgetUsd() > 0 && spentTodayUsd() >= props.dailyBudgetUsd()) {
-			return "budget";
+		if (props.dailyBudgetUsd() > 0) {
+			double spent = spentTodayUsd();
+			warnThresholds(spent);
+			if (spent >= props.dailyBudgetUsd()) {
+				return "budget";
+			}
 		}
 		OffsetDateTime today = todayStart();
 		if (props.devicePerDay() > 0 && count("client_id = ?::uuid", clientId, today) >= props.devicePerDay()) {
@@ -92,6 +99,30 @@ public class UsageLimiter {
 				from events where""" + " " + JUDGED)
 				.params(p.input(), p.cachedInput(), p.output(), todayStart()).query(Double.class).single();
 		return usd == null ? 0 : usd;
+	}
+
+	/** 예산을 다 썼는가(화면 상단 안내용). 계산하지 못하면 false. */
+	public boolean budgetExhausted() {
+		if (props.dailyBudgetUsd() <= 0) {
+			return false;
+		}
+		try {
+			return spentTodayUsd() >= props.dailyBudgetUsd();
+		} catch (RuntimeException e) {
+			log.warn("예산 계산 실패", e);
+			return false;
+		}
+	}
+
+	/** 예산의 50·80·100%를 처음 넘을 때 경고 한 줄(같은 날 같은 단계는 한 번). */
+	private void warnThresholds(double spent) {
+		String today = LocalDate.now(props.zone()).toString();
+		for (int percent : WARN_PERCENTS) {
+			if (spent >= props.dailyBudgetUsd() * percent / 100.0 && warned.add(today + ":" + percent)) {
+				log.warn("오늘 판정 비용 {}% 도달: {}달러 / {}달러", percent, String.format("%.4f", spent),
+						props.dailyBudgetUsd());
+			}
+		}
 	}
 
 	/** 이 판이 이미 판정 중이면 IllegalStateException(409). 끝나면(성공·실패 모두) close로 비운다. */

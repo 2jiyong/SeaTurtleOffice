@@ -238,6 +238,100 @@ where outcome = 'limited'
 group by 1;
 ```
 
+## 배포
+
+서버 한 대(EC2 `t4g.small`, 서울, Ubuntu 24.04)에서 `compose.prod.yaml`로 다섯 컨테이너를 띄운다. 이미지는 서버에서 직접 빌드한다. 설계: `docs/superpowers/specs/2026-11-27-deploy-design.md`.
+
+```
+사용자 ─HTTPS─▶ caddy (인증서 자동, IP별 요청 제한)
+                ├ www.seaturtleoffice.site   → 프론트 + /api → backend → ai → OpenAI
+                ├ seaturtleoffice.site       → www로 301
+                └ stats.seaturtleoffice.site → umami (방문 통계)
+               postgres (게임 DB seaturtle, Umami DB umami)
+```
+
+밖으로 열린 포트는 80/443(caddy)과 22(내 IP만)뿐이다. 비밀 값은 서버의 `/opt/seaturtle/.env`에만 있다(틀: `.env.example`).
+
+### 처음 한 번
+
+1. AWS에 서버·고정 IP·보안 그룹(`seaturtle-office`)을 만든다. 키는 `~/.ssh/seaturtle-office.pem`.
+2. 가비아 DNS에 A 레코드 `@`, `www`, `stats` → 고정 IP. `dig +short www.seaturtleoffice.site`로 퍼졌는지 본다(퍼지기 전에 Caddy를 켜면 인증서 발급이 잠시 막힐 수 있다).
+3. 접속: `ssh -i ~/.ssh/seaturtle-office.pem ubuntu@www.seaturtleoffice.site`
+4. `curl -fsSLO https://raw.githubusercontent.com/2jiyong/SeaTurtleOffice/main/deploy/bootstrap.sh && sudo bash bootstrap.sh` 뒤 다시 로그인.
+5. `cd /opt/seaturtle && cp .env.example .env` → 비밀 값은 `openssl rand -hex 32`로 만들어 채운다. `OPENAI_API_KEY`는 직접 붙여 넣는다.
+6. `deploy/deploy.sh`
+7. `https://stats.seaturtleoffice.site`에 `admin` / `umami`로 들어가 **비밀번호부터 바꾼다**. 웹사이트(`www.seaturtleoffice.site`)를 등록하고 받은 ID를 `.env`의 `VITE_UMAMI_WEBSITE_ID`에 넣은 뒤 `deploy/deploy.sh`를 한 번 더.
+8. 내 컴퓨터에서 `deploy/smoke.sh https://www.seaturtleoffice.site https://seaturtleoffice.site https://stats.seaturtleoffice.site` → 모두 `통과`.
+
+### 새 버전 올리기
+
+main에 푸시한 뒤 서버에서:
+
+```bash
+cd /opt/seaturtle && deploy/deploy.sh
+```
+
+`git pull` → 빌드(2~4분, 그동안 서버가 느리다) → 다시 띄우기. 백엔드가 뜨는 10~30초 동안 끊긴다. 시나리오만 바꿔도 같은 명령이다(두 서버가 내용을 시작할 때만 읽어서 늘 다시 띄운다).
+
+### 로그와 상태
+
+```bash
+cd /opt/seaturtle
+docker compose -f compose.prod.yaml ps
+docker compose -f compose.prod.yaml logs -f --no-log-prefix backend | jq -c 'select(.message)'   # JSON 한 줄씩
+docker compose -f compose.prod.yaml logs --no-log-prefix ai | grep <요청 ID>                       # 두 서버 로그 잇기
+docker stats --no-stream    # 컨테이너별 CPU·메모리(상한: backend 640m, ai 256m, postgres 384m, umami 320m, caddy 128m)
+free -h; df -h /            # 서버 메모리·디스크
+```
+
+로그는 컨테이너마다 10MB × 5개까지만 남는다. 오래 비교할 숫자(응답 시간, 토큰)는 `events` 테이블에 있다(위 "자주 쓸 SQL"). DB에 들어가기: `docker compose -f compose.prod.yaml exec postgres psql -U seaturtle`.
+
+Caddy는 접속 로그를 남기지 않는다(원본 IP가 남지 않게).
+
+### 백업과 복원
+
+매일 04:00 `deploy/backup.sh`가 `/opt/seaturtle-backups/날짜-seaturtle.dump`, `날짜-umami.dump`를 만들고 14일 지난 것을 지운다. 기록: `/var/log/seaturtle-backup.log`. 백업은 같은 디스크에 있으니 가끔 내 컴퓨터로 받아 둔다:
+
+```bash
+scp -i ~/.ssh/seaturtle-office.pem 'ubuntu@www.seaturtleoffice.site:/opt/seaturtle-backups/*.dump' ~/seaturtle-backups/
+```
+
+복원(게임 DB, 서비스를 잠시 멈춘다):
+
+```bash
+docker compose -f compose.prod.yaml stop backend
+docker compose -f compose.prod.yaml exec -T postgres pg_restore -U seaturtle -d seaturtle --clean --if-exists < /opt/seaturtle-backups/<날짜>-seaturtle.dump
+docker compose -f compose.prod.yaml start backend
+```
+
+### 경보
+
+CloudWatch 경보가 메일(SNS 주제 `seaturtle-alerts`)로 온다.
+
+| 경보 | 뜻 |
+|---|---|
+| CPU 크레딧 < 30 (30분) | 크레딧이 곧 바닥난다. standard 모드라 바닥나면 CPU가 20%로 묶여 느려진다(요금은 늘지 않는다) |
+| CPU > 80% (15분) | 무언가 CPU를 계속 쓴다. `docker stats`로 찾는다 |
+| 시스템 상태 검사 실패 (2분) | AWS 하드웨어 문제. 자동 복구가 돈다 |
+| 인스턴스 상태 검사 실패 (3분) | 서버 OS가 응답하지 않는다. 콘솔에서 재부팅 |
+
+CPU 크레딧 잔량 직접 보기(내 컴퓨터): `aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUCreditBalance --dimensions Name=InstanceId,Value=<인스턴스 ID> --start-time $(date -u -v-6H +%FT%TZ) --end-time $(date -u +%FT%TZ) --period 3600 --statistics Average`
+
+### SSH가 안 될 때
+
+보안 그룹이 내 IP에서만 22번을 연다. 장소를 옮겨 IP가 바뀌면 내 컴퓨터에서 `deploy/ssh-allow-my-ip.sh`.
+
+### 로컬에서 배포 구성 시험
+
+맥(Apple Silicon)은 서버와 같은 arm64라 그대로 시험할 수 있다. 개발 DB와 프로젝트 이름(`sea-turtle-office-prod`)·볼륨이 달라 서로 건드리지 않는다. 80/443 포트를 쓴다.
+
+```bash
+cp deploy/local.env.example deploy/local.env
+docker compose -f compose.prod.yaml --env-file deploy/local.env up -d --build
+deploy/smoke.sh https://www.localhost https://localhost https://stats.localhost --insecure
+docker compose -f compose.prod.yaml --env-file deploy/local.env down -v   # 시험 스택만 지운다
+```
+
 ## 테스트
 ```bash
 cd ai && uv run pytest        # 세계관·시나리오 읽기, uses ID 검사, 프롬프트, API

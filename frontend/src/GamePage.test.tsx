@@ -120,7 +120,7 @@ describe('질문 기록', () => {
         { no: 1, seq: 1, text: '꼬마는 엄지가 아닌가요?', answer: 'NO', proposition: '꼬마는 엄지가 아니다' },
       ],
     })
-    expect(screen.getByText('└ 꼬마는 엄지가 아니다')).toBeTruthy()
+    expect(screen.getByText('명제: 꼬마는 엄지가 아니다')).toBeTruthy()
   })
 
   it('반려된 질문은 번호 대신 반려로 보이고 다시 물어 달라고 한다', async () => {

@@ -222,6 +222,12 @@ export const ANSWER_TEXT: Record<Answer, { say: string; note: string; tone: Tone
 
 type Rejected = 'INVALID_FORM' | 'INVALID_TRUTH' | 'INVALID_RULE'
 
+/** 답 아래에 보일 명제 한 줄("명제: …"). 명제가 없거나 반려면 null */
+export function propositionLine(q: QuestionRecord) {
+  if (!q.proposition || q.answer in REJECTED_TEXT) return null
+  return `명제: ${q.proposition}`
+}
+
 /** 반려된 질문의 말. 예전 기록의 형식 오류는 번호가 있고 횟수도 썼으므로 ANSWER_TEXT를 그대로 쓴다. */
 export const REJECTED_TEXT: Record<Rejected, { say: string; note: string; tone: Tone }> = {
   INVALID_FORM: {

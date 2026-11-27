@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type RefObject } from 'react'
-import { answerText, askedCount, type Closeness, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import { answerText, askedCount, propositionLine, type Closeness, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
 import Risk from './Risk.tsx'
 import Transmission from './Transmission.tsx'
 import WatcherEye from './WatcherEye.tsx'
@@ -123,13 +123,14 @@ export function ReceiveLog({
             if (e.kind === 'question') {
               const a = answerText(e.item)
               const rejected = e.item.no === null
+              const line = propositionLine(e.item)
               return (
                 <li key={`q${e.item.seq}`} className={`entry ${rejected ? 'entry-rejected' : ''} ${isNew ? 'fresh' : ''}`}>
                   <span className="entry-no">{rejected ? '반려' : `Q${e.item.no}`}</span>
                   <p className="entry-text">{e.item.text}</p>
                   <Transmission text={a.say} animate={isNew} className={`ans s-${a.tone}`} />
                   <span className="stamp-note">
-                    {e.item.proposition && <span className="proposition">└ {e.item.proposition}</span>}
+                    {line && <span className="proposition">{line}</span>}
                     {a.note}
                   </span>
                 </li>

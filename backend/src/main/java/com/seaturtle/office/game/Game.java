@@ -22,15 +22,23 @@ public class Game {
 	/** 힌트는 한도 전까지만(10, 20, 30). 40에는 힌트가 없다. */
 	public static final int MAX_HINTS = (LIMIT - 1) / HINT_STEP;
 
-	public record QuestionRecord(int no, int seq, String text, Answer answer) {
+	/**
+	 * 질문 하나. 반려(answer.rejected())된 질문은 번호(no)가 null이다.
+	 * proposition: 진행자가 읽은 명제(화면에 보인다, 반려·예전 기록은 null).
+	 * reason: 판정 근거. 진상이 담겨 있어 DB에만 남기고 화면에는 보내지 않는다(GameDtos.QuestionView).
+	 */
+	public record QuestionRecord(Integer no, int seq, String text, Answer answer, String proposition, String reason) {
 	}
 
 	/** 힌트가 열린 순간의 순번(seq)과 함께 남긴다. 화면은 이 순서대로 질문 사이에 끼워 넣는다. */
 	public record HintRecord(int no, int seq, String text) {
 	}
 
-	/** 추리 하나. 얼마나 가까운지만 남긴다. 맞힌 개수, 빠진 항목, 보너스는 담지 않는다. */
-	public record GuessRecord(int seq, String text, boolean correct, Closeness closeness) {
+	/**
+	 * 추리 하나. 얼마나 가까운지만 남긴다. 맞힌 개수, 빠진 항목, 보너스는 담지 않는다.
+	 * reason: 채점 근거. DB에만 남기고 화면에는 보내지 않는다(GameDtos.GuessView).
+	 */
+	public record GuessRecord(int seq, String text, boolean correct, Closeness closeness, String reason) {
 	}
 
 	private final String id;
@@ -199,16 +207,31 @@ public class Game {
 	}
 
 	public QuestionRecord addQuestion(String text, Answer answer) {
+		return addQuestion(text, answer, null, null);
+	}
+
+	/** 반려된 질문은 횟수를 쓰지 않고 번호 없이 남는다. 힌트도 열지 않는다. */
+	public QuestionRecord addQuestion(String text, Answer answer, String proposition, String reason) {
 		requireQuestionAllowed();
-		used++;
-		var record = new QuestionRecord(questions.size() + 1, ++seq, text, answer);
+		boolean rejected = answer.rejected();
+		Integer no = rejected ? null : (int) questions.stream().filter(q -> q.no() != null).count() + 1;
+		String shown = rejected || proposition == null || proposition.isBlank() ? null : proposition.strip();
+		var record = new QuestionRecord(no, ++seq, text, answer, shown, reason);
 		questions.add(record);
-		openHints();
+		if (!rejected) {
+			used++;
+			openHints();
+		}
 		return record;
 	}
 
 	/** story: 답안 전체가 진상과 맞는 이야기인가. 정답은 핵심을 모두 맞히고 이야기도 맞아야 한다. */
 	public GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus, boolean story) {
+		return addGuess(text, matched, bonus, story, null);
+	}
+
+	public GuessRecord addGuess(String text, List<Integer> matched, List<Integer> bonus, boolean story,
+			String reason) {
 		requirePlaying();
 		boolean last = used >= LIMIT;
 		int total = scenario.keywords().size();
@@ -220,7 +243,7 @@ public class Game {
 		boolean correct = allHit && story;
 		// 핵심은 다 맞혔는데 이야기가 어긋나면 "하나 모자람"과 같은 답을 준다(무엇이 틀렸는지는 알리지 않는다).
 		var closeness = correct ? Closeness.CORRECT : Closeness.of(Math.max(1, total - hit.size()));
-		var record = new GuessRecord(++seq, text, correct, closeness);
+		var record = new GuessRecord(++seq, text, correct, closeness, reason);
 		guesses.add(record);
 		// 추리는 틀렸을 때만 사용 횟수를 쓴다. 맞히면 그대로 끝난다.
 		if (!last && !correct) {

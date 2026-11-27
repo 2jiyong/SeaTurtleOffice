@@ -680,6 +680,24 @@ h3 {
   text-align: right;
 }
 
+/* 진행자가 읽은 명제: 답 바로 아래, 안내 문장 위 */
+.stamp-note .proposition {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.transcript.radio .stamp-note .proposition {
+  color: var(--radio-text);
+}
+
+/* 반려된 질문: 횟수를 쓰지 않았으니 흐리게 */
+.entry-rejected .entry-text {
+  color: var(--ink-muted);
+}
+
 .s-pending {
   color: var(--grey-ink);
   border-style: dotted;
@@ -1063,6 +1081,10 @@ h3 {
 }
 
 .transcript.radio .stamp-note {
+  color: var(--radio-muted);
+}
+
+.transcript.radio .entry-rejected .entry-text {
   color: var(--radio-muted);
 }
 

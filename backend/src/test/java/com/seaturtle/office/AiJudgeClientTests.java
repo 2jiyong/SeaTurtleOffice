@@ -57,6 +57,27 @@ class AiJudgeClientTests {
 	}
 
 	@Test
+	void sendsHistoryPropositionAndReadsPropositionAndReason() {
+		server.expect(requestTo("http://ai/judge/question"))
+				.andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath(
+						"$.history[0].proposition").value("앞 명제"))
+				.andRespond(withSuccess("{\"answer\":\"NO\",\"proposition\":\"명제\",\"reason\":\"근거\"}",
+						MediaType.APPLICATION_JSON));
+		var verdict = client.question("s",
+				List.of(new com.seaturtle.office.judge.Judge.HistoryEntry("앞 질문", Answer.YES, "앞 명제")), "q");
+		assertThat(verdict.proposition()).isEqualTo("명제");
+		assertThat(verdict.reason()).isEqualTo("근거");
+	}
+
+	@Test
+	void guessReadsReason() {
+		server.expect(requestTo("http://ai/judge/guess")).andRespond(withSuccess(
+				"{\"matched\":[1],\"total\":3,\"bonus\":[],\"bonusTotal\":1,\"story\":true,\"reason\":\"채점\"}",
+				MediaType.APPLICATION_JSON));
+		assertThat(client.guess("s", "g").reason()).isEqualTo("채점");
+	}
+
+	@Test
 	void oldServerWithoutMetrics() {
 		server.expect(requestTo("http://ai/judge/question"))
 				.andRespond(withSuccess("{\"answer\":\"YES\"}", MediaType.APPLICATION_JSON));

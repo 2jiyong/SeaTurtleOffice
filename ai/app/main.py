@@ -38,6 +38,7 @@ Answer = Literal[
 class HistoryEntry(BaseModel):
     text: str
     answer: Answer
+    proposition: str | None = None
 
 
 class QuestionRequest(BaseModel):
@@ -58,7 +59,11 @@ class Metrics(BaseModel):
 
 
 class QuestionResult(BaseModel):
+    """proposition은 화면에 보인다. reason은 백엔드가 DB에만 남기고 화면에는 보내지 않는다(진상이 담겨 있다)."""
+
     answer: Answer
+    proposition: str
+    reason: str
     metrics: Metrics
 
 
@@ -76,10 +81,13 @@ class GuessResult(BaseModel):
     bonus: list[int]
     bonusTotal: int
     story: bool
+    # 백엔드가 DB에만 남긴다(화면에는 보내지 않는다).
+    reason: str
     metrics: Metrics
 
 
 class QuestionJudgement(BaseModel):
+    proposition: str
     reason: str
     answer: Answer
 
@@ -178,15 +186,17 @@ async def health(request: Request) -> Health:
 async def judge_question(body: QuestionRequest, request: Request) -> QuestionResult:
     request.state.started = time.perf_counter()
     scenario = _scenario(request, body.scenario)
-    history = [HistoryItem(h.text, h.answer) for h in body.history]
+    history = [HistoryItem(h.text, h.answer, h.proposition or "") for h in body.history]
     prompt = request.app.state.prompts.question(scenario, history, body.question.strip())
     completion = await request.app.state.judge.complete(prompt)
     result = _validate(QuestionJudgement, completion)
     spent = _with_ai_ms(completion.metrics(), request)
-    # 판정 근거는 로그에만 남긴다. 플레이어에게 새지 않게 응답에는 넣지 않는다.
-    log.info("[%s] Q: %s → %s / %s [%s]", scenario.slug, body.question, result.answer, result.reason, _cost(spent),
-             extra={"scenario": scenario.slug, "answer": result.answer, **_log_fields(spent)})
-    return QuestionResult(answer=result.answer, metrics=Metrics(**spent))
+    # 반려(INVALID_*)는 명제를 보여 주지 않는다. 모델이 채워 보내도 비운다.
+    proposition = "" if result.answer.startswith("INVALID_") else result.proposition.strip()
+    log.info("[%s] Q: %s → %s (명제: %s) / %s [%s]", scenario.slug, body.question, result.answer, proposition,
+             result.reason, _cost(spent), extra={"scenario": scenario.slug, "answer": result.answer, **_log_fields(spent)})
+    return QuestionResult(answer=result.answer, proposition=proposition, reason=result.reason,
+                          metrics=Metrics(**spent))
 
 
 @app.post("/judge/guess")
@@ -204,6 +214,7 @@ async def judge_guess(body: GuessRequest, request: Request) -> GuessResult:
              scenario.slug, matched, total, bonus, bonus_total, result.story, body.guess, result.reason, _cost(spent),
              extra={"scenario": scenario.slug, **_log_fields(spent)})
     return GuessResult(matched=matched, total=total, bonus=bonus, bonusTotal=bonus_total, story=result.story,
+                       reason=result.reason,
                        metrics=Metrics(**spent))
 
 

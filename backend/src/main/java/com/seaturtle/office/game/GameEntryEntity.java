@@ -52,6 +52,12 @@ class GameEntryEntity {
 	@Enumerated(EnumType.STRING)
 	Closeness closeness;
 
+	/** 질문의 명제(화면에 보인다). 반려·예전 기록은 null. */
+	String proposition;
+
+	/** 질문·추리의 판정 근거. 진상이 담겨 있어 화면에는 보내지 않는다. */
+	String reason;
+
 	@Column(name = "created_at", nullable = false)
 	OffsetDateTime createdAt;
 }

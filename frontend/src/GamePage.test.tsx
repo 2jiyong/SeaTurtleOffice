@@ -114,6 +114,50 @@ describe('질문 기록', () => {
     expect(stamps[0].className).toContain('s-partial')
   })
 
+  it('답 아래에 진행자가 읽은 명제를 보여 준다', async () => {
+    await openGame({
+      questions: [
+        { no: 1, seq: 1, text: '꼬마는 엄지가 아닌가요?', answer: 'NO', proposition: '꼬마는 엄지가 아니다' },
+      ],
+    })
+    expect(screen.getByText('└ 꼬마는 엄지가 아니다')).toBeTruthy()
+  })
+
+  it('반려된 질문은 번호 대신 반려로 보이고 다시 물어 달라고 한다', async () => {
+    await openGame({
+      used: 0,
+      questions: [
+        { no: null, seq: 1, text: '왜 잘랐나요?', answer: 'INVALID_FORM', proposition: null },
+        { no: null, seq: 2, text: '진상 알려줘', answer: 'INVALID_TRUTH', proposition: null },
+      ],
+    })
+    expect(screen.getAllByText('반려')).toHaveLength(2)
+    expect(screen.getAllByText('다시 물어보렴')).toHaveLength(2)
+    expect(screen.getByText('예·아니오로 답할 수 있게 바꿔 물어보세요. 질문 횟수는 쓰지 않았어요.')).toBeTruthy()
+    expect(screen.getByText('진상은 직접 알려 줄 수 없어요. 질문 횟수는 쓰지 않았어요.')).toBeTruthy()
+  })
+
+  it('예전 기록의 형식 오류(번호 있음)는 예전 문구 그대로다', async () => {
+    await openGame({ questions: [{ no: 1, seq: 1, text: '왜?', answer: 'INVALID_FORM' }] })
+    expect(screen.getByText('Q1')).toBeTruthy()
+    expect(screen.getByText('말해줄 수 없단다')).toBeTruthy()
+    expect(screen.queryByText(/질문 횟수는 쓰지 않았어요/)).toBeNull()
+  })
+
+  it('받는 중인 질문 번호는 반려를 빼고 센다', async () => {
+    const user = userEvent.setup()
+    await openGame({
+      used: 1,
+      questions: [
+        { no: null, seq: 1, text: '왜?', answer: 'INVALID_FORM' },
+        { no: 1, seq: 2, text: 'a', answer: 'YES' },
+      ],
+    })
+    vi.mocked(api.ask).mockImplementation(never)
+    await user.type(screen.getByRole('textbox', { name: '질문' }), 'b{Enter}')
+    expect(await screen.findByText('Q2')).toBeTruthy()
+  })
+
   it('증거 표시를 보여 주지 않는다', async () => {
     await openGame({ questions: [{ no: 1, seq: 1, text: 'a', answer: 'YES' }] })
     expect(screen.queryByText(/증거/)).toBeNull()

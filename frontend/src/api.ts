@@ -29,10 +29,13 @@ export interface ScenarioSummary {
 }
 
 export interface QuestionRecord {
-  no: number
+  /** 반려된 질문(형식 오류·진상 요청·규칙 위반)은 번호가 없다(null). 횟수도 쓰지 않았다. */
+  no: number | null
   seq: number
   text: string
   answer: Answer
+  /** 진행자가 읽은 명제. 반려된 질문과 예전 기록은 없다 */
+  proposition?: string | null
 }
 
 export interface HintRecord {
@@ -215,6 +218,38 @@ export const ANSWER_TEXT: Record<Answer, { say: string; note: string; tone: Tone
   INVALID_FORM: { say: '말해줄 수 없단다', note: '예·아니오로 답할 수 없는 질문입니다.', tone: 'invalid' },
   INVALID_TRUTH: { say: '말해줄 수 없단다', note: '진상을 직접 묻는 질문입니다.', tone: 'invalid' },
   INVALID_RULE: { say: '말해줄 수 없단다', note: '규칙을 벗어난 요청입니다.', tone: 'invalid' },
+}
+
+type Rejected = 'INVALID_FORM' | 'INVALID_TRUTH' | 'INVALID_RULE'
+
+/** 반려된 질문의 말. 예전 기록의 형식 오류는 번호가 있고 횟수도 썼으므로 ANSWER_TEXT를 그대로 쓴다. */
+export const REJECTED_TEXT: Record<Rejected, { say: string; note: string; tone: Tone }> = {
+  INVALID_FORM: {
+    say: '다시 물어보렴',
+    note: '예·아니오로 답할 수 있게 바꿔 물어보세요. 질문 횟수는 쓰지 않았어요.',
+    tone: 'invalid',
+  },
+  INVALID_TRUTH: {
+    say: '다시 물어보렴',
+    note: '진상은 직접 알려 줄 수 없어요. 질문 횟수는 쓰지 않았어요.',
+    tone: 'invalid',
+  },
+  INVALID_RULE: {
+    say: '다시 물어보렴',
+    note: '규칙을 벗어난 요청이에요. 질문 횟수는 쓰지 않았어요.',
+    tone: 'invalid',
+  },
+}
+
+/** 질문 하나에 보일 진행자의 말과 안내 문장 */
+export function answerText(q: QuestionRecord) {
+  if (q.no === null && q.answer in REJECTED_TEXT) return REJECTED_TEXT[q.answer as Rejected]
+  return ANSWER_TEXT[q.answer]
+}
+
+/** 번호가 붙은 질문(반려 제외) 수 */
+export function askedCount(questions: QuestionRecord[]) {
+  return questions.filter((q) => q.no !== null).length
 }
 
 export const DIFFICULTY_LABEL: Record<string, string> = {

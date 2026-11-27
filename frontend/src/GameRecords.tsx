@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type RefObject } from 'react'
-import { ANSWER_TEXT, type Closeness, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
+import { answerText, askedCount, type Closeness, type GameView, type GuessRecord, type QuestionRecord } from './api.ts'
 import Risk from './Risk.tsx'
 import Transmission from './Transmission.tsx'
 import WatcherEye from './WatcherEye.tsx'
@@ -121,13 +121,17 @@ export function ReceiveLog({
           {entries.map((e) => {
             const isNew = freshSeqs.has(e.item.seq)
             if (e.kind === 'question') {
-              const a = ANSWER_TEXT[e.item.answer]
+              const a = answerText(e.item)
+              const rejected = e.item.no === null
               return (
-                <li key={`q${e.item.seq}`} className={`entry ${isNew ? 'fresh' : ''}`}>
-                  <span className="entry-no">Q{e.item.no}</span>
+                <li key={`q${e.item.seq}`} className={`entry ${rejected ? 'entry-rejected' : ''} ${isNew ? 'fresh' : ''}`}>
+                  <span className="entry-no">{rejected ? '반려' : `Q${e.item.no}`}</span>
                   <p className="entry-text">{e.item.text}</p>
                   <Transmission text={a.say} animate={isNew} className={`ans s-${a.tone}`} />
-                  <span className="stamp-note">{a.note}</span>
+                  <span className="stamp-note">
+                    {e.item.proposition && <span className="proposition">└ {e.item.proposition}</span>}
+                    {a.note}
+                  </span>
                 </li>
               )
             }
@@ -145,7 +149,7 @@ export function ReceiveLog({
           })}
           {pending && (
             <li className={`entry ${pending.mode === 'guess' ? 'entry-guess' : ''}`}>
-              <span className="entry-no">{pending.mode === 'question' ? `Q${game.questions.length + 1}` : '추리'}</span>
+              <span className="entry-no">{pending.mode === 'question' ? `Q${askedCount(game.questions) + 1}` : '추리'}</span>
               <p className="entry-text">{pending.text}</p>
               <span className="ans receiving">▓▒░ 수신 중</span>
             </li>

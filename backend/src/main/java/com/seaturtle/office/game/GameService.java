@@ -85,7 +85,7 @@ public class GameService {
 
 	private Game judgeQuestion(Game game, String question, long started) {
 		List<Judge.HistoryEntry> history = game.questions().stream()
-				.map(q -> new Judge.HistoryEntry(q.text(), q.answer()))
+				.map(q -> new Judge.HistoryEntry(q.text(), q.answer(), q.proposition()))
 				.toList();
 		Judge.Verdict verdict;
 		try {
@@ -96,7 +96,7 @@ public class GameService {
 			throw e;
 		}
 		int usedBefore = game.used();
-		game.addQuestion(question, verdict.answer());
+		game.addQuestion(question, verdict.answer(), verdict.proposition(), verdict.reason());
 		String answer = verdict.answer().name();
 		saveJudged(game, Event.QUESTION_ASKED, answer, question, started, usedBefore, verdict.metrics(), null);
 		return game;
@@ -123,7 +123,7 @@ public class GameService {
 			throw e;
 		}
 		int usedBefore = game.used();
-		game.addGuess(answer, verdict.matched(), verdict.bonus(), verdict.story());
+		game.addGuess(answer, verdict.matched(), verdict.bonus(), verdict.story(), verdict.reason());
 		Map<String, Object> detail = new LinkedHashMap<>();
 		detail.put("matched", verdict.matched());
 		detail.put("total", verdict.total());

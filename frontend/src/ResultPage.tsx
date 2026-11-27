@@ -1,6 +1,6 @@
 import { trackEvent } from './analytics.ts'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ApiError, type GameStatus, type GameView } from './api.ts'
+import { api, ApiError, askedCount, type GameStatus, type GameView } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
 import { CaseScreen, ReceiveLog } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
@@ -239,7 +239,7 @@ export default function ResultPage({
               <h2>{game.scenario.title}</h2>
               <p className="truth">{reveal.truth}</p>
               <p className="reveal-meta">
-                사용 {game.used} / {game.limit}, 질문 {game.questions.length}개, 힌트 {game.hints.length}개.
+                사용 {game.used} / {game.limit}, 질문 {askedCount(game.questions)}개, 힌트 {game.hints.length}개.
               </p>
             </section>
           </div>

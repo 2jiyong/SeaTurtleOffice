@@ -55,6 +55,13 @@ class GameFlowTests {
 				duringSlowQuestion.run();
 			}
 			histories.add(history);
+			if (question.contains("반려")) {
+				// 모델이 명제를 채워 보내도 반려된 질문에는 보이지 않아야 한다.
+				return new Verdict(Answer.INVALID_FORM, "반려된 명제", "형식 근거", null);
+			}
+			if (question.contains("명제")) {
+				return new Verdict(Answer.YES, question + "의 명제", "비밀 근거", null);
+			}
 			return new Verdict(Answer.IRRELEVANT_UNDECIDED, null);
 		}
 
@@ -77,7 +84,7 @@ class GameFlowTests {
 				return new GuessVerdict(List.of(1, 2, 3), 3, List.of(1), 1, true, null);
 			}
 			// 오답: 둘째 핵심 키워드가 빠졌고 보너스를 맞혔다.
-			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1, true, null);
+			return new GuessVerdict(List.of(1, 3), 3, List.of(1), 1, true, "비밀 채점 근거", null);
 		}
 
 		@Override
@@ -123,6 +130,47 @@ class GameFlowTests {
 	/** 서비스는 부를 때마다 DB에서 새로 읽는다. 지금 상태를 보려면 다시 읽는다. */
 	Game reload(Game game) {
 		return games.get(client, game.id());
+	}
+
+	@Test
+	void rejectedQuestionUsesNothingAndHasNoNumber() {
+		var game = games.start(client, "boys-order").game();
+
+		var after = games.ask(client, game.id(), "반려될 질문");
+		var rejected = after.questions().getLast();
+		assertThat(rejected.no()).isNull();
+		assertThat(rejected.answer()).isEqualTo(Answer.INVALID_FORM);
+		assertThat(rejected.proposition()).isNull();
+		assertThat(after.used()).isZero();
+
+		var next = games.ask(client, game.id(), "다음 질문").questions().getLast();
+		assertThat(next.no()).isEqualTo(1);
+		assertThat(reload(game).used()).isEqualTo(1);
+		// 반려된 질문도 다음 판정의 기록에 간다("그" 같은 말이 가리킬 수 있다).
+		assertThat(judge.histories.getLast()).extracting(Judge.HistoryEntry::text).containsExactly("반려될 질문");
+	}
+
+	@Test
+	void propositionGoesToHistoryAndScreenButReasonNever() throws Exception {
+		var game = games.start(client, "boys-order").game();
+		mvc.perform(post("/api/games/" + game.id() + "/questions").contentType(APPLICATION_JSON)
+				.content("{\"text\":\"명제 질문\"}"))
+				.andExpect(jsonPath("$.questions[0].proposition").value("명제 질문의 명제"))
+				.andExpect(jsonPath("$.questions[0].reason").doesNotExist());
+		mvc.perform(post("/api/games/" + game.id() + "/guesses").contentType(APPLICATION_JSON)
+				.content("{\"text\":\"모르겠어요\"}"))
+				.andExpect(jsonPath("$.guesses[0].reason").doesNotExist());
+		String body = mvc.perform(get("/api/games/" + game.id())).andReturn().getResponse().getContentAsString();
+		assertThat(body).doesNotContain("비밀 근거").doesNotContain("비밀 채점 근거");
+
+		// 근거는 DB에 남는다.
+		var saved = reload(game);
+		assertThat(saved.questions().getFirst().reason()).isEqualTo("비밀 근거");
+		assertThat(saved.guesses().getFirst().reason()).isEqualTo("비밀 채점 근거");
+
+		games.ask(client, game.id(), "다음 질문");
+		assertThat(judge.histories.getLast())
+				.containsExactly(new Judge.HistoryEntry("명제 질문", Answer.YES, "명제 질문의 명제"));
 	}
 
 	@Test

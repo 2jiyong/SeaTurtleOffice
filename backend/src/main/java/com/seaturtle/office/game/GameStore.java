@@ -122,12 +122,15 @@ public class GameStore {
 			GameEntryEntity e = entry(Kind.QUESTION, q.seq(), q.text());
 			e.no = q.no();
 			e.answer = q.answer();
+			e.proposition = q.proposition();
+			e.reason = q.reason();
 			result.add(e);
 		}
 		for (var g : game.guesses()) {
 			GameEntryEntity e = entry(Kind.GUESS, g.seq(), g.text());
 			e.correct = g.correct();
 			e.closeness = g.closeness();
+			e.reason = g.reason();
 			result.add(e);
 		}
 		for (var h : game.hints()) {
@@ -153,8 +156,9 @@ public class GameStore {
 			List<Game.HintRecord> hints = new ArrayList<>();
 			for (GameEntryEntity e : entity.entries) {
 				switch (e.kind) {
-					case QUESTION -> questions.add(new Game.QuestionRecord(e.no, e.seq, e.text, e.answer));
-					case GUESS -> guesses.add(new Game.GuessRecord(e.seq, e.text, e.correct, e.closeness));
+					case QUESTION -> questions.add(
+							new Game.QuestionRecord(e.no, e.seq, e.text, e.answer, e.proposition, e.reason));
+					case GUESS -> guesses.add(new Game.GuessRecord(e.seq, e.text, e.correct, e.closeness, e.reason));
 					case HINT -> hints.add(new Game.HintRecord(e.no, e.seq, e.text));
 				}
 			}

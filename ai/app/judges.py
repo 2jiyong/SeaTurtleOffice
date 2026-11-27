@@ -58,7 +58,7 @@ class FakeJudge:
 
     async def complete(self, prompt: Prompt) -> Completion:
         if prompt.schema_name == "question_judgement":
-            return Completion({"reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}, "fake", 0)
+            return Completion({"proposition": "", "reason": "가짜 판정기", "answer": "IRRELEVANT_UNRELATED"}, "fake", 0)
         if prompt.schema_name == "guess_judgement":
             return Completion({"reason": "가짜 판정기", "matched": [], "bonus": [], "story": False}, "fake", 0)
         raise JudgeError(f"알 수 없는 스키마: {prompt.schema_name}", metrics("fake", 0))

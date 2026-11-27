@@ -103,13 +103,29 @@ public final class GameDtos {
 		}
 	}
 
+	/** 화면에 보내는 질문. 판정 근거(reason)는 진상이 담겨 있어 넣지 않는다. 반려된 질문은 no가 null이다. */
+	public record QuestionView(Integer no, int seq, String text, Answer answer, String proposition) {
+
+		static QuestionView of(Game.QuestionRecord q) {
+			return new QuestionView(q.no(), q.seq(), q.text(), q.answer(), q.proposition());
+		}
+	}
+
+	/** 화면에 보내는 추리. 채점 근거(reason)는 넣지 않는다. */
+	public record GuessView(int seq, String text, boolean correct, Closeness closeness) {
+
+		static GuessView of(Game.GuessRecord g) {
+			return new GuessView(g.seq(), g.text(), g.correct(), g.closeness());
+		}
+	}
+
 	public record GameView(
 			String id,
 			ScenarioSummary scenario,
 			GameStatus status,
-			List<Game.QuestionRecord> questions,
+			List<QuestionView> questions,
 			List<HintView> hints,
-			List<Game.GuessRecord> guesses,
+			List<GuessView> guesses,
 			int used,
 			int limit,
 			List<Integer> hintSteps,
@@ -124,8 +140,9 @@ public final class GameDtos {
 			List<HintView> hints = game.hints().stream()
 					.map(h -> new HintView(h.no(), h.seq(), h.text(), images.url(s.slug(), "hint-" + h.no())))
 					.toList();
-			return new GameView(game.id(), ScenarioSummary.of(s, images), status, game.questions(),
-					hints, game.guesses(), game.used(), Game.LIMIT,
+			return new GameView(game.id(), ScenarioSummary.of(s, images), status,
+					game.questions().stream().map(QuestionView::of).toList(),
+					hints, game.guesses().stream().map(GuessView::of).toList(), game.used(), Game.LIMIT,
 					game.hintSteps(), game.finalChance(), game.nextHintAt(), reveal);
 		}
 	}

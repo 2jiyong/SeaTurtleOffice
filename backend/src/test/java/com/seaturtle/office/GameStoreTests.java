@@ -49,6 +49,24 @@ class GameStoreTests {
 	}
 
 	@Test
+	void roundTripKeepsPropositionAndReason() {
+		Game game = store.create(client, scenario());
+		game.addQuestion("꼬마는 엄지가 아닌가요?", Answer.NO, " 꼬마는 엄지가 아니다 ", "질문 근거");
+		game.addQuestion("왜?", Answer.INVALID_FORM, "버릴 명제", "형식 근거");
+		game.addGuess("g", List.of(1), List.of(), false, "채점 근거");
+		store.save(game);
+
+		Game loaded = store.find(client, game.id()).orElseThrow();
+		assertThat(loaded.questions()).extracting(Game.QuestionRecord::no, Game.QuestionRecord::proposition,
+				Game.QuestionRecord::reason)
+				.containsExactly(org.assertj.core.groups.Tuple.tuple(1, "꼬마는 엄지가 아니다", "질문 근거"),
+						org.assertj.core.groups.Tuple.tuple(null, null, "형식 근거"));
+		// 질문 1(반려는 세지 않는다) + 틀린 추리 5
+		assertThat(loaded.used()).isEqualTo(1 + Game.GUESS_COST);
+		assertThat(loaded.guesses().getFirst().reason()).isEqualTo("채점 근거");
+	}
+
+	@Test
 	void roundTripKeepsEverything() {
 		Game game = store.create(client, scenario());
 		for (int i = 0; i < 10; i++) {

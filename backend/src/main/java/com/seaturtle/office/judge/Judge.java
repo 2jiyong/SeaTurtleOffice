@@ -14,7 +14,12 @@ public interface Judge {
 	/** 화면 상단 안내에 쓴다. AI 서버에 닿지 못하면 online=false. */
 	Status status();
 
-	record HistoryEntry(String text, Answer answer) {
+	/** proposition: 그 질문의 명제. 반려·예전 기록은 null. */
+	record HistoryEntry(String text, Answer answer, String proposition) {
+
+		public HistoryEntry(String text, Answer answer) {
+			this(text, answer, null);
+		}
 	}
 
 	/**
@@ -24,7 +29,15 @@ public interface Judge {
 			Integer cachedTokens) {
 	}
 
-	record Verdict(Answer answer, Metrics metrics) {
+	/**
+	 * proposition: 진행자가 읽은 명제(화면에 보인다). reason: 판정 근거(DB에만 남긴다).
+	 * 예전 AI 서버는 둘 다 보내지 않는다(null).
+	 */
+	record Verdict(Answer answer, String proposition, String reason, Metrics metrics) {
+
+		public Verdict(Answer answer, Metrics metrics) {
+			this(answer, null, null, metrics);
+		}
 	}
 
 	/**
@@ -33,7 +46,12 @@ public interface Judge {
 	 * 이 값을 모르는 예전 AI 서버는 보내지 않는다(null).
 	 */
 	record GuessVerdict(List<Integer> matched, int total, List<Integer> bonus, int bonusTotal, Boolean story,
-			Metrics metrics) {
+			String reason, Metrics metrics) {
+
+		public GuessVerdict(List<Integer> matched, int total, List<Integer> bonus, int bonusTotal, Boolean story,
+				Metrics metrics) {
+			this(matched, total, bonus, bonusTotal, story, null, metrics);
+		}
 	}
 
 	record Status(String judge, boolean fake, boolean online) {

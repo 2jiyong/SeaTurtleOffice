@@ -17,10 +17,15 @@ public enum Answer {
 	IRRELEVANT_UNRELATED,
 	/** 중요하지 않단다 — 이 사건에서 정하지 않은 세부사항입니다. */
 	IRRELEVANT_UNDECIDED,
-	/** 말해줄 수 없단다 — 예·아니오로 답할 수 없는 질문입니다. */
+	/** 반려(다시 물어보렴) — 예·아니오로 답할 수 없는 질문. */
 	INVALID_FORM,
-	/** 말해줄 수 없단다 — 진상을 직접 묻는 질문입니다. */
+	/** 반려(다시 물어보렴) — 진상을 직접 묻는 질문. */
 	INVALID_TRUTH,
-	/** 말해줄 수 없단다 — 규칙을 벗어난 요청입니다. */
-	INVALID_RULE
+	/** 반려(다시 물어보렴) — 규칙을 벗어난 요청. */
+	INVALID_RULE;
+
+	/** 반려: 질문 횟수를 쓰지 않고 번호 없이 기록에 남는다. */
+	public boolean rejected() {
+		return this == INVALID_FORM || this == INVALID_TRUTH || this == INVALID_RULE;
+	}
 }

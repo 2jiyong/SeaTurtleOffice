@@ -63,11 +63,12 @@ def test_fake_judge_flow(client):
     r = client.post("/judge/question", json={"scenario": "boys-order", "question": "세입자들은 죽었나요?"})
     assert r.status_code == 200
     assert r.json()["answer"] == "IRRELEVANT_UNRELATED"
+    assert r.json()["proposition"] == "" and r.json()["reason"] == "가짜 판정기"
 
     r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "모르겠어요"})
     assert r.status_code == 200
     assert {k: v for k, v in r.json().items() if k != "metrics"} == {
-        "matched": [], "total": 3, "bonus": [], "bonusTotal": 1, "story": False}
+        "matched": [], "total": 3, "bonus": [], "bonusTotal": 1, "story": False, "reason": "가짜 판정기"}
 
 
 def test_unknown_scenario_is_404(client):
@@ -77,7 +78,8 @@ def test_unknown_scenario_is_404(client):
 
 def test_answers_are_nine_codes():
     assert ANSWERS == CODES
-    assert QUESTION_SCHEMA["required"] == ["reason", "answer"]
+    # 명제를 먼저 쓰고 판정한다.
+    assert QUESTION_SCHEMA["required"] == ["proposition", "reason", "answer"]
     assert "key" not in QUESTION_SCHEMA["properties"]
 
 
@@ -92,13 +94,59 @@ def test_history_uses_new_codes(content):
     assert "- 건물주는 몇 살? → IRRELEVANT_UNDECIDED" in prompt.user
 
 
+def test_history_carries_proposition_when_known(content):
+    s = content.scenario("boys-order")
+    history = [HistoryItem("꼬마는 엄지가 아닌가요?", "NO", "꼬마는 엄지가 아니다"),
+               HistoryItem("왜 잘랐나요?", "INVALID_FORM")]
+    user = JudgePrompts(content, 40).question(s, history, "q").user
+    assert "- 꼬마는 엄지가 아닌가요? (명제: 꼬마는 엄지가 아니다) → NO" in user
+    assert "- 왜 잘랐나요? → INVALID_FORM" in user
+
+
+def test_history_accepts_entries_without_proposition(client):
+    r = client.post("/judge/question", json={"scenario": "boys-order", "question": "q",
+                                             "history": [{"text": "예전 질문", "answer": "YES"},
+                                                         {"text": "새 질문", "answer": "NO", "proposition": "명제"}]})
+    assert r.status_code == 200
+
+
+def _answering(data):
+    class Fixed:
+        name, fake = "fixed", True
+
+        async def complete(self, prompt):
+            return Completion(data, "fixed", 0)
+
+    return Fixed()
+
+
+def test_question_returns_proposition_and_reason(client):
+    saved = app.state.judge
+    app.state.judge = _answering({"proposition": " 꼬마는 엄지가 아니다 ", "reason": "근거", "answer": "NO"})
+    try:
+        body = client.post("/judge/question", json={"scenario": "boys-order", "question": "꼬마는 엄지가 아닌가요?"}).json()
+        assert (body["answer"], body["proposition"], body["reason"]) == ("NO", "꼬마는 엄지가 아니다", "근거")
+    finally:
+        app.state.judge = saved
+
+
+def test_rejected_answer_has_no_proposition(client):
+    saved = app.state.judge
+    app.state.judge = _answering({"proposition": "왜 잘랐다", "reason": "왜 질문", "answer": "INVALID_FORM"})
+    try:
+        body = client.post("/judge/question", json={"scenario": "boys-order", "question": "왜 잘랐나요?"}).json()
+        assert body["answer"] == "INVALID_FORM" and body["proposition"] == ""
+    finally:
+        app.state.judge = saved
+
+
 def test_old_answer_code_is_rejected(client):
     class OldJudge:
         name, fake = "old", True
 
         async def complete(self, prompt):
             # 예전 형식 그대로(key 포함). 코드만 목록에 없어야 거부된다.
-            return Completion({"reason": "r", "answer": "PARTIAL", "key": False}, "old", 0)
+            return Completion({"proposition": "", "reason": "r", "answer": "PARTIAL", "key": False}, "old", 0)
 
     saved = app.state.judge
     app.state.judge = OldJudge()
@@ -152,7 +200,7 @@ def test_guess_numbers_are_cleaned(client):
     try:
         r = client.post("/judge/guess", json={"scenario": "boys-order", "guess": "g"})
         assert {k: v for k, v in r.json().items() if k != "metrics"} == {
-            "matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1, "story": True}
+            "matched": [1, 3], "total": 3, "bonus": [1], "bonusTotal": 1, "story": True, "reason": "r"}
     finally:
         app.state.judge = saved
 

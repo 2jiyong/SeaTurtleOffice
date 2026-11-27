@@ -41,7 +41,7 @@ QUESTION_RULES = """\
 
 ## 판정 규칙
 1. [판정 메모]에 같거나 거의 같은 질문이 있으면 그 답을 따른다. 메모의 "예"는 YES, "아니오"는 NO, "일부만 맞다"는 PARTIAL_SOME, "조건이 붙으면 예다"는 PARTIAL_CONDITION, "정해지지 않음"은 IRRELEVANT_UNDECIDED다. "상관없음"은 IRRELEVANT_UNRELATED 또는 IRRELEVANT_UNDECIDED, "예로 볼 수 있다"는 PARTIAL_SOME 또는 PARTIAL_CONDITION이다. 이 둘은 어느 쪽인지 진상을 보고 고른다.
-2. 한 질문에 주장을 여러 개 이어 붙였으면("A였고, B도 했나요?") 모두 맞을 때만 YES, 일부만 맞으면 PARTIAL_SOME이다. "가족", "사람들"처럼 여럿을 묶는 말은 무엇을 묻든 "그중에 해당하는 사람이 있나요?"로 읽는다. 전원이 해당해야 YES인 것이 아니다.
+2. 한 질문에 주장을 여러 개 이어 붙였으면("A였고, B도 했나요?", "A지만 B인가요?", "A인데 B인가요?") 모두 맞을 때만 YES, 일부만 맞으면 PARTIAL_SOME이다. "가족", "사람들"처럼 여럿을 묶는 말은 무엇을 묻든 "그중에 해당하는 사람이 있나요?"로 읽는다. 전원이 해당해야 YES인 것이 아니다.
    예: 아빠만 죽었으면 "가족이 죽었나요?" → YES. 아빠만 그 조직원이면 "가족이 그 조직인가요?" → YES.
 3. 플레이어의 표현이 진상의 표현과 달라도 뜻이 같으면 같은 것으로 본다. 세계관 고유명사를 몰라 일상어로 묻는 질문도 뜻이 맞으면 인정한다.
 4. 모든 질문은 이 사건에 대한 질문으로 읽고, 세계관의 일반 사실을 답하지 않는다. [세계관]은 질문의 낱말과 진상의 뜻을 이해하는 데 쓴다.
@@ -67,7 +67,19 @@ QUESTION_RULES = """\
    - 물음표가 없는 평서문("~이다", "~했다")도 그 내용이 맞는지 묻는 질문으로 읽는다.
    - INVALID_FORM은 다음뿐이다: 이유를 묻는 "왜", 방법을 묻는 "어떻게", 수를 묻는 "몇", 둘 이상에서 고르라는 질문("A인가요, B인가요?"), 그리고 질문이 아닌 말.
 
+## 명제
+판정하기 전에 질문을 평서문 명제 하나로 바꿔 쓴다. 이 명제가 진상에 비추어 맞는지를 판정한다. 명제는 답 아래에 플레이어에게 그대로 보인다.
+- 질문의 낱말을 그대로 쓴다. 바꿔도 되는 것은 다음뿐이다.
+  - 묻는 꼴을 평서문으로("~인가요?" → "~이다"). 부정은 부정으로 둔다. 예: "꼬마는 엄지가 아닌가요?" → "꼬마는 엄지가 아니다".
+  - "누가", "무엇", "어디"를 "누군가", "무언가", "어딘가"로(규칙 8). 예: "누가 시켜서 태웠나요?" → "누군가 시켜서 태웠다".
+  - "그", "당신도"처럼 앞 질문을 가리키는 말을 앞 질문의 낱말로 채우기.
+- 그 밖의 낱말은 바꾸거나 빼지 않는다. 판정하기 쉽게 뜻을 고쳐 쓰지 않는다(예: "느껴졌다"를 "이었다"로 바꾸지 않는다). 판정 규칙의 말("이 사건에 ~가 끼어 있다" 등)로 바꿔 쓰지도 않는다.
+- 질문과 지금까지의 질문에 없는 말은 넣지 않는다. 진상, 판정 메모, 키워드에서 가져온 말은 넣지 않는다. 명제가 정답의 실마리가 되면 안 된다.
+- 답이 INVALID_FORM, INVALID_TRUTH, INVALID_RULE이면 빈 문자열로 둔다.
+- 판정 메모와 맞춰 볼 때도 명제를 판정한다. 메모의 질문은 긍정형인데 명제가 부정형이면 YES와 NO를 뒤집는다. 예: 메모 "그 회담에 나갔나요? → 아니오"이면 명제 "그 회담에 나가지 않았다"는 YES다. 메모의 답이 "일부만 맞다", "조건이 붙으면 예다"이면 부정형 명제에도 같은 답을 준다.
+
 ## 출력
+- proposition: 위 규칙대로 쓴 명제. 플레이어에게 보인다.
 - reason: 판정 근거를 한두 문장으로 쓴다. 플레이어에게 보이지 않는다.
 - answer: 위 아홉 가지 중 하나.
 """
@@ -101,13 +113,15 @@ GUESS_RULES = """\
 """
 
 # OpenAI structured outputs의 strict 모드 규칙: 모든 속성 required, additionalProperties=false
+# 명제를 먼저 쓰게 한다. 질문을 어떻게 읽었는지 정한 뒤에 판정한다.
 QUESTION_SCHEMA = {
     "type": "object",
     "properties": {
+        "proposition": {"type": "string"},
         "reason": {"type": "string"},
         "answer": {"type": "string", "enum": ANSWERS},
     },
-    "required": ["reason", "answer"],
+    "required": ["proposition", "reason", "answer"],
     "additionalProperties": False,
 }
 
@@ -136,6 +150,13 @@ class Prompt:
 class HistoryItem:
     text: str
     answer: str
+    # 예전 기록과 반려된 질문에는 명제가 없다.
+    proposition: str = ""
+
+
+def _line(h: HistoryItem) -> str:
+    text = h.text.replace("\n", " ")
+    return f"{text} (명제: {h.proposition.replace(chr(10), ' ')})" if h.proposition else text
 
 
 class JudgePrompts:
@@ -148,7 +169,7 @@ class JudgePrompts:
     def question(self, scenario: Scenario, history: list[HistoryItem], question: str) -> Prompt:
         history = history[-self.history_limit :] if self.history_limit > 0 else []
         if history:
-            lines = "".join(f"- {h.text.replace(chr(10), ' ')} → {h.answer}\n" for h in history)
+            lines = "".join(f"- {_line(h)} → {h.answer}\n" for h in history)
             user = f"지금까지의 질문과 판정:\n{lines}\n"
         else:
             user = "지금까지의 질문: 없음\n\n"

@@ -1,0 +1,68 @@
+# 주소 셋은 .env에서 받는다(로컬 시험에서는 localhost 이름).
+{
+	order rate_limit before basic_auth
+}
+
+# 앞 도메인은 www로 보낸다.
+{$APEX_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+# 방문 통계(Umami)
+{$STATS_DOMAIN} {
+	header -Server
+	reverse_proxy umami:3000
+}
+
+{$SITE_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# 같은 IP의 폭주만 끊는다. 하루 한도(기기·IP·예산)는 백엔드가 맡는다.
+	# 한 사람은 판정이 2~3초씩 걸려 분당 20회를 넘기 어렵다. 60회는 공용 IP 뒤 여러 명을 막지 않는다.
+	rate_limit {
+		zone judge {
+			match {
+				method POST
+				path_regexp ^/api/games/[^/]+/(questions|guesses)$
+			}
+			key {remote_host}
+			events 60
+			window 1m
+		}
+		zone api {
+			match {
+				path /api/*
+			}
+			key {remote_host}
+			events 120
+			window 1m
+		}
+	}
+
+	handle /api/* {
+		header Cache-Control no-store
+		reverse_proxy backend:8080 {
+			# 사용자가 보낸 요청 ID는 버리고 새로 만든다(로그 연결이 오염되지 않게).
+			header_up X-Request-Id {http.request.uuid}
+		}
+	}
+
+	handle {
+		root * /srv
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header / Cache-Control no-cache
+		header /index.html Cache-Control no-cache
+		file_server
+	}
+
+	handle_errors 429 {
+		header Content-Type "application/json; charset=utf-8"
+		header Cache-Control no-store
+		respond `{"detail":"요청이 너무 잦습니다. 잠시 뒤 다시 시도해 주세요."}` 429
+	}
+}

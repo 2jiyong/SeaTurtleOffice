@@ -1,0 +1,16 @@
+# 저장소 루트를 빌드 위치로 쓰는 이미지(deploy/caddy)용. 비밀 파일과 빌드 결과를 뺀다.
+.git
+.worktrees
+.superpowers
+.claude
+**/.env
+**/.env.*
+!**/.env.example
+deploy/local.env
+**/node_modules
+frontend/dist
+backend/build
+backend/.gradle
+**/.venv
+**/__pycache__
+**/.pytest_cache

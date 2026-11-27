@@ -1,0 +1,115 @@
+# 배포 전체(4단계). 서버에서 deploy/deploy.sh가 이 파일로 빌드하고 띄운다.
+# 값은 같은 폴더의 .env에서 받는다(틀: .env.example). 로컬 시험은 --env-file deploy/local.env.
+# 개발 DB(compose.yaml, 프로젝트 sea-turtle-office)와 이름·볼륨이 달라 서로 건드리지 않는다.
+name: sea-turtle-office-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/caddy/Dockerfile
+      args:
+        VITE_UMAMI_SRC: ${VITE_UMAMI_SRC:-}
+        VITE_UMAMI_WEBSITE_ID: ${VITE_UMAMI_WEBSITE_ID:-}
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?}
+      APEX_DOMAIN: ${APEX_DOMAIN:?}
+      STATS_DOMAIN: ${STATS_DOMAIN:?}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend, umami]
+    mem_limit: 128m
+    restart: unless-stopped
+    logging: *logging
+
+  backend:
+    build: backend
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/seaturtle
+      DB_USER: seaturtle
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?}
+      AI_BASE_URL: http://ai:8000
+      GAME_CONTENT_DIR: /content
+      COOKIE_SECURE: "true"
+      # Caddy가 넘긴 X-Forwarded-For로 실제 접속 IP를 본다(도커 내부망은 Tomcat 기본 신뢰 대역).
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+      LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+      IP_HASH_SECRET: ${IP_HASH_SECRET:?}
+      APP_VERSION: ${APP_VERSION:-unknown}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
+    volumes:
+      - ./world:/content/world:ro
+      - ./scenarios:/content/scenarios:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai:
+        condition: service_started
+    mem_limit: 640m
+    restart: unless-stopped
+    logging: *logging
+
+  ai:
+    build: ai
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GAME_CONTENT_DIR: /content
+      LOG_FORMAT: json
+    volumes:
+      - ./world:/content/world:ro
+      - ./scenarios:/content/scenarios:ro
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    restart: unless-stopped
+    logging: *logging
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: seaturtle
+      POSTGRES_USER: seaturtle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seaturtle -d seaturtle"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 384m
+    restart: unless-stopped
+    logging: *logging
+
+  umami:
+    image: ghcr.io/umami-software/umami:3.5.0
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:?}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 320m
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

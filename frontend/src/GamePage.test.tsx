@@ -486,6 +486,53 @@ describe('추리 창', () => {
     expect(api.guess).toHaveBeenCalledTimes(1)
   })
 
+  it('창을 닫았다 다시 열어도 쓰던 추리가 남아 있고, 보내고 나서야 비운다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), '길게 쓴 추리')
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    expect((screen.getByRole('textbox', { name: '추리' }) as HTMLTextAreaElement).value).toBe('길게 쓴 추리')
+    vi.mocked(api.guess).mockResolvedValue({ ...game, used: 3, guesses: [{ seq: 1, text: '길게 쓴 추리', correct: false, closeness: 'FAR' }] })
+    await user.click(screen.getByRole('button', { name: '추리 송신' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull())
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    expect((screen.getByRole('textbox', { name: '추리' }) as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('글을 쓰는 중에는 바깥을 눌러도 닫지 않는다(빈 창은 닫는다)', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), '쓰는 중')
+    fireEvent.mouseDown(document.querySelector('.confirm-backdrop')!)
+    expect(screen.getByRole('dialog', { name: '추리 제출' })).toBeTruthy()
+    await user.clear(screen.getByRole('textbox', { name: '추리' }))
+    fireEvent.mouseDown(document.querySelector('.confirm-backdrop')!)
+    expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull()
+  })
+
+  it('한글 조합 중의 Esc로는 닫지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    fireEvent.keyDown(document, { key: 'Escape', isComposing: true })
+    expect(screen.getByRole('dialog', { name: '추리 제출' })).toBeTruthy()
+  })
+
+  it('송신이 실패하면 오류를 알리고 초점을 추리 칸으로 돌려준다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.guess).mockRejectedValue(new ApiError('실패', 0))
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), 't')
+    await user.click(screen.getByRole('button', { name: '추리 송신' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('실패')
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: '추리' }))
+  })
+
   it('취소와 Esc로 닫는다', async () => {
     const user = userEvent.setup()
     await openGame()

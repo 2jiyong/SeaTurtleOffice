@@ -23,6 +23,8 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
   // 추리 창이 떠 있는가. 입력창은 질문 전용이고, 추리는 이 창에서만 보낸다.
   const [guessOpen, setGuessOpen] = useState(false)
   const [guessError, setGuessError] = useState<string | null>(null)
+  // 쓰던 추리. 창을 닫아도 남고, 보내고 나서야 비운다.
+  const [guessText, setGuessText] = useState('')
   const questionBox = useRef<HTMLTextAreaElement>(null)
   const guessButton = useRef<HTMLButtonElement>(null)
   const [pending, setPending] = useState<Pending>(null)
@@ -143,7 +145,11 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
     setGuessError(null)
     setError(null)
     try {
-      receive(await api.guess(game.id, value))
+      const next = await api.guess(game.id, value)
+      // 이 추리로 계시가 열리면 계시창을 닫은 뒤 질문 입력창으로 돌아오게 한다(추리 창의 버튼은 곧 사라진다).
+      returnFocus.current = questionBox.current
+      receive(next)
+      setGuessText('')
       closeGuess()
     } catch (err) {
       setGuessError((err as Error).message)
@@ -276,6 +282,8 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
       )}
       {guessOpen && playing && (
         <GuessDialog
+          text={guessText}
+          onText={setGuessText}
           costNote={game.finalChance ? '이 추리는 횟수를 쓰지 않습니다.' : `추리가 틀리면 사용 ${GUESS_COST}을 씁니다.`}
           pending={pending?.mode === 'guess'}
           error={guessError}

@@ -40,7 +40,7 @@ select :c_today
 	count(*) filter (where type = 'game_ended' and detail ->> 'status' = 'SOLVED') "해결",
 	count(*) filter (where type = 'game_ended' and detail ->> 'status' <> 'SOLVED') "미해결",
 	round(coalesce(sum(cost) filter (where judged), 0), 3) "비용($)",
-	2.00 "예산($)"
+	3.00 "예산($)"
 from e;
 
 \echo ■ 날짜별 (최근 :days 일, p50·p95는 성공한 판정의 전체 응답 시간)

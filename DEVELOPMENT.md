@@ -209,7 +209,7 @@ from events group by 1 order by 1;
 
 | 한도 | 기본값 | 환경 변수 | 넘으면 |
 |---|---|---|---|
-| 하루 전체 판정 비용 | 2달러 | `LIMIT_DAILY_BUDGET_USD` | 429 `reason: budget`, 화면 상단 안내 |
+| 하루 전체 판정 비용 | 3달러 | `LIMIT_DAILY_BUDGET_USD` | 429 `reason: budget`, 화면 상단 안내 |
 | 기기 하나, 하루 판정 | 200번 | `LIMIT_DEVICE_PER_DAY` | 429 `reason: device` |
 | IP 하나, 하루 판정 | 600번 | `LIMIT_IP_PER_DAY` | 429 `reason: ip` |
 | 한 판의 동시 판정 | 1건 | — | 409 "이전 판정을 기다리는 중입니다." |

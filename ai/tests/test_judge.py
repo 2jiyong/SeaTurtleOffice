@@ -274,3 +274,34 @@ def test_question_and_guess_use_their_own_effort():
     asyncio.run(judge.complete(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
     asyncio.run(judge.complete(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
     assert sent == ["minimal", "medium"]
+
+
+def test_service_tier_priority_by_default_and_can_be_turned_off():
+    # 응답 속도 때문에 기본은 우선 처리(priority). 비우면 보내지 않는다(표준 처리).
+    import asyncio
+    from types import SimpleNamespace
+
+    from app.config import Settings
+    from app.judges import OpenAiJudge
+    from app.prompts import GUESS_SCHEMA, QUESTION_SCHEMA, Prompt
+
+    assert Settings(openai_api_key="test").openai_service_tier == "priority"
+    for tier, expected in (("priority", "priority"), ("", None)):
+        judge = OpenAiJudge(Settings(openai_api_key="test", openai_service_tier=tier))
+        sent = []
+
+        async def fake_create(**kwargs):
+            sent.append(kwargs.get("service_tier", None))
+            message = SimpleNamespace(refusal=None, content='{"reason": "r", "answer": "YES"}')
+            return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+        judge.client.chat.completions.create = fake_create
+        asyncio.run(judge.complete(Prompt("s", "u", "question_judgement", QUESTION_SCHEMA)))
+        asyncio.run(judge.complete(Prompt("s", "u", "guess_judgement", GUESS_SCHEMA)))
+        assert sent == [expected, expected]
+
+
+def test_question_reason_is_short():
+    # 근거는 화면에 보이지 않고 DB에만 남는다. 길면 응답이 느려지므로 짧게 쓰게 한다.
+    assert "40자 안쪽 한 문장" in QUESTION_RULES
+    assert "판정 근거를 한두 문장으로" not in QUESTION_RULES

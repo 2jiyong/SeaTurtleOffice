@@ -34,16 +34,17 @@ judge:
 
 # 판정 사용량 한도(3단계). 0 이하면 그 검사를 끈다. 단가는 100만 토큰당 달러(gpt-5-mini 기준).
 limits:
-  daily-budget-usd: ${LIMIT_DAILY_BUDGET_USD:3.0}
+  daily-budget-usd: ${LIMIT_DAILY_BUDGET_USD:6.0}
   device-per-day: ${LIMIT_DEVICE_PER_DAY:200}
   ip-per-day: ${LIMIT_IP_PER_DAY:600}
   # 서버 전체 동시 판정 상한. 넘으면 503(잠시 뒤 다시).
   max-in-flight: ${LIMIT_MAX_IN_FLIGHT:20}
   zone: Asia/Seoul
+  # 우선 처리(service_tier priority, Fast mode) 단가 = 표준(0.25 / 0.025 / 2.0)의 1.8배. AI 서버 openai_service_tier와 맞춘다.
   price:
-    input: 0.25
-    cached-input: 0.025
-    output: 2.0
+    input: 0.45
+    cached-input: 0.045
+    output: 3.6
 
 # 개발 로그에도 요청 ID를 찍는다. 배포에서는 LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs로 JSON 한 줄(MDC와 키가 함께 나간다).
 logging:

@@ -21,7 +21,7 @@ expect() { # 이름 기대줄(정규식) 출력
 
 # 1) 빈 DB: 오류 없이 0
 out=$(usage) || { echo "실패  빈 DB에서 실행 오류"; exit 1; }
-expect "빈 DB 오늘 0" "오늘\|0\|0\|0\|0\|0\|0\|0\|0\.000\|3\.00" "$out"
+expect "빈 DB 오늘 0" "오늘\|0\|0\|0\|0\|0\|0\|0\|0\.000\|6\.00" "$out"
 expect "빈 DB 날짜별 7일" "7" "$(grep -c '^일|' <<<"$out")"
 
 # 2) 정해 둔 이벤트. t0 = 오늘 한국 시간 자정.
@@ -29,19 +29,19 @@ psql > /dev/null <<'SQL'
 create temp table k as select (date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul') t0;
 insert into events (at, type, client_id, game_id, scenario, outcome, total_ms, llm_ms, model, input_tokens, cached_tokens, output_tokens, app_version, detail)
 select t0 + o, type, c::uuid, g::uuid, s, outcome, ms, ms, 'm', i, ca, ou, coalesce(ver, 'v1'), d::jsonb from k, (values
-  -- 기기 A: 새 판, 질문 2(0.405달러씩), 추리 1(토큰 없음), 해결(사용 3)
+  -- 기기 A: 새 판, 질문 2(0.729달러씩), 추리 1(토큰 없음), 해결(사용 3)
   (interval '1 hour', 'game_started', 'aaaaaaaa-0000-0000-0000-000000000000', 'a1111111-0000-0000-0000-000000000000', 's1', 'ok',          null, null, null, null, null, null),
   (interval '1 hour', 'question_asked', 'aaaaaaaa-0000-0000-0000-000000000000', 'a1111111-0000-0000-0000-000000000000', 's1', 'ok',          1000, 1000000, 200000, 100000, null, null),
   (interval '1 hour', 'question_asked', 'aaaaaaaa-0000-0000-0000-000000000000', 'a1111111-0000-0000-0000-000000000000', 's1', 'ok',          3000, 1000000, 200000, 100000, null, null),
   (interval '1 hour', 'guess_submitted', 'aaaaaaaa-0000-0000-0000-000000000000', 'a1111111-0000-0000-0000-000000000000', 's1', 'ok',          2000, null, null, null, null, null),
   (interval '1 hour', 'game_ended', 'aaaaaaaa-0000-0000-0000-000000000000', 'a1111111-0000-0000-0000-000000000000', 's1', 'ok',          null, null, null, null, '{"status":"SOLVED","used":3}', null),
-  -- 기기 B: 새 판, 판정 오류 1(0.25달러), 한도초과 1(토큰 없음), 힌트, 포기
+  -- 기기 B: 새 판, 판정 오류 1(0.45달러), 한도초과 1(토큰 없음), 힌트, 포기
   (interval '2 hour', 'game_started', 'bbbbbbbb-0000-0000-0000-000000000000', 'b1111111-0000-0000-0000-000000000000', 's1', 'ok',          null, null, null, null, null, null),
   (interval '2 hour', 'question_asked', 'bbbbbbbb-0000-0000-0000-000000000000', 'b1111111-0000-0000-0000-000000000000', 's1', 'judge_error', 500,  1000000, 0, 0, null, null),
   (interval '2 hour', 'question_asked', 'bbbbbbbb-0000-0000-0000-000000000000', 'b1111111-0000-0000-0000-000000000000', 's1', 'limited',     null, null, null, null, null, null),
   (interval '2 hour', 'hint_used', 'bbbbbbbb-0000-0000-0000-000000000000', 'b1111111-0000-0000-0000-000000000000', 's1', 'ok',          null, null, null, null, null, null),
   (interval '2 hour', 'game_ended', 'bbbbbbbb-0000-0000-0000-000000000000', 'b1111111-0000-0000-0000-000000000000', 's1', 'ok',          null, null, null, null, '{"status":"GAVE_UP","used":5}', null),
-  -- 기기 C: 어제 23:59 한국 시간(오늘로 세면 안 된다), 질문 1(0.25달러)
+  -- 기기 C: 어제 23:59 한국 시간(오늘로 세면 안 된다), 질문 1(0.45달러)
   (interval '-1 minute', 'question_asked', 'cccccccc-0000-0000-0000-000000000000', null, 's2', 'ok',      9000, 1000000, 0, 0, null, null)
   -- 기간 경계(7일 = 오늘 포함 7일): 맨 앞날 0:01은 세고, 그 1분 전(기간 밖)은 세지 않는다
   ,(interval '-6 day' + interval '1 minute', 'question_asked', 'dddddddd-0000-0000-0000-000000000000', null, 's3', 'ok', 4000, 0, 0, 0, null, 'v0')
@@ -54,9 +54,9 @@ SQL
 out=$(usage) || { echo "실패  실행 오류"; exit 1; }
 today=$(TZ=Asia/Seoul date +%m-%d)
 yesterday=$(TZ=Asia/Seoul date -v-1d +%m-%d 2> /dev/null || TZ=Asia/Seoul date -d yesterday +%m-%d)
-expect "오늘 요약" "오늘\|2\|2\|2\|1\|1\|1\|1\|1\.060\|3\.00" "$out"
-expect "날짜별 오늘" "일\|$today\|2\|4\|1\.060\|2000\|2900\|1\|1" "$out"
-expect "날짜별 어제(자정 경계)" "일\|$yesterday\|1\|1\|0\.250\|9000\|9000\|0\|0" "$out"
+expect "오늘 요약" "오늘\|2\|2\|2\|1\|1\|1\|1\|1\.908\|6\.00" "$out"
+expect "날짜별 오늘" "일\|$today\|2\|4\|1\.908\|2000\|2900\|1\|1" "$out"
+expect "날짜별 어제(자정 경계)" "일\|$yesterday\|1\|1\|0\.450\|9000\|9000\|0\|0" "$out"
 expect "버전별" "버전\|v1\|m\|4\|2500\|[0-9]+\|2500\|[0-9]+\|[0-9]+" "$out"
 expect "사건별(기간 안에 시작한 판만)" "사건\|s1\|2\|1\|50%\|3" "$out"
 expect "버전별 기간 맨 앞날 포함" "버전\|v0\|m\|1\|4000\|.*" "$out"

@@ -209,14 +209,14 @@ from events group by 1 order by 1;
 
 | 한도 | 기본값 | 환경 변수 | 넘으면 |
 |---|---|---|---|
-| 하루 전체 판정 비용 | 3달러 | `LIMIT_DAILY_BUDGET_USD` | 429 `reason: budget`, 화면 상단 안내 |
+| 하루 전체 판정 비용 | 6달러 | `LIMIT_DAILY_BUDGET_USD` | 429 `reason: budget`, 화면 상단 안내 |
 | 기기 하나, 하루 판정 | 200번 | `LIMIT_DEVICE_PER_DAY` | 429 `reason: device` |
 | IP 하나, 하루 판정 | 600번 | `LIMIT_IP_PER_DAY` | 429 `reason: ip` |
 | 한 판의 동시 판정 | 1건 | — | 409 "이전 판정을 기다리는 중입니다." |
 | 서버 전체 동시 판정 | 20건 | `LIMIT_MAX_IN_FLIGHT` | 503 "응시자가 다른 교신으로 바쁩니다. 잠시 뒤 다시 시도해 주세요." |
 
 - 0 이하로 두면 그 검사를 끈다. 힌트·포기·조회·초기화는 막지 않는다. 판정이 실패한 요청(`judge_error`, `timeout`, `conflict`)도 센다. `limited`는 세지 않는다.
-- 비용 = `(입력 − 캐시) × 0.25 + 캐시 × 0.025 + 출력 × 2.0`(100만 토큰당 달러, `gpt-5-mini`). 모델을 바꾸면 `application.yml`의 `limits.price`를 고친다.
+- 비용 = `(입력 − 캐시) × 0.45 + 캐시 × 0.045 + 출력 × 3.6`(100만 토큰당 달러, `gpt-5-mini` 우선 처리). AI 서버는 기본으로 `service_tier: priority`(Fast mode)를 보낸다(`OPENAI_SERVICE_TIER`, 비우면 표준 처리이고 단가는 0.25 / 0.025 / 2.0). 모델이나 처리 등급을 바꾸면 `application.yml`의 `limits.price`와 `deploy/usage.sql`을 함께 고친다.
   **하루 도중에 단가를 바꾸면 오늘 쓴 토큰 전체에 새 단가가 적용된다**(이벤트에 단가를 남기지 않는다). 모델은 자정 무렵에 바꾸는 편이 낫다.
 - 한도는 판정이 끝난 뒤 기록되는 이벤트로 센다. 한도 직전에 요청이 몰리면 그 순간 판정 중인 만큼(최대 `LIMIT_MAX_IN_FLIGHT`건) 넘을 수 있다.
 - 시간 초과로 응답을 잃은 판정과 OpenAI 자동 재시도 1회의 토큰은 예산에 들어가지 않는다(드물다). 최종 안전망은 OpenAI 충전 잔액이다.
@@ -229,8 +229,8 @@ from events group by 1 order by 1;
 
 ```sql
 -- 오늘(한국 시간) 쓴 판정 비용(달러)
-select sum((coalesce(input_tokens,0) - coalesce(cached_tokens,0)) * 0.25
-         + coalesce(cached_tokens,0) * 0.025 + coalesce(output_tokens,0) * 2.0) / 1e6 usd
+select sum((coalesce(input_tokens,0) - coalesce(cached_tokens,0)) * 0.45
+         + coalesce(cached_tokens,0) * 0.045 + coalesce(output_tokens,0) * 3.6) / 1e6 usd
 from events
 where type in ('question_asked', 'guess_submitted') and outcome <> 'limited'
   and at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
@@ -317,7 +317,7 @@ SSH로 서버 DB에 읽기 쿼리(`deploy/usage.sql`)만 보내 표 네 개를 �
 | 버전별 | 버전·모델마다 판정 수, p50·p95, LLM p50, 평균 입력·출력 토큰 — 배포·모델 바꾸기 전후 비교 |
 | 사건별 | 시작, 해결, 해결률, 해결한 판의 평균 사용 횟수 |
 
-비용은 한도와 같은 식(입력-캐시 × 0.25, 캐시 × 0.025, 출력 × 2.0, 100만 토큰당 달러)이다. `application.yml`의 단가·예산을 바꾸면 `usage.sql`도 고친다. 방문만 하고 간 사람 수와 페이지 그래프는 Umami(`stats.`)에서 본다. 쿼리를 고치면 `deploy/usage-test.sh`(일회용 postgres 컨테이너, 도커 필요)로 확인한다.
+비용은 한도와 같은 식(입력-캐시 × 0.45, 캐시 × 0.045, 출력 × 3.6, 100만 토큰당 달러, 우선 처리)이다. `application.yml`의 단가·예산을 바꾸면 `usage.sql`도 고친다. 방문만 하고 간 사람 수와 페이지 그래프는 Umami(`stats.`)에서 본다. 쿼리를 고치면 `deploy/usage-test.sh`(일회용 postgres 컨테이너, 도커 필요)로 확인한다.
 
 ### 로그와 상태
 

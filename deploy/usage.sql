@@ -1,6 +1,6 @@
 -- 사용량 표 네 개(읽기 전용). deploy/usage.sh가 서버 DB에 흘려 보낸다.
 -- 날짜는 한국 시간 자정 기준(한도와 같다). 기간: psql 변수 days(기본 7).
--- 비용 = (입력-캐시)×0.25 + 캐시×0.025 + 출력×2.0, 100만 토큰당 달러. 대상은 질문·추리(limited 제외).
+-- 비용 = (입력-캐시)×0.45 + 캐시×0.045 + 출력×3.6, 100만 토큰당 달러(우선 처리 단가). 대상은 질문·추리(limited 제외).
 -- 단가와 예산은 backend application.yml의 limits와 같다. 바꾸면 여기도 고친다.
 \set ON_ERROR_STOP 1
 -- 날짜 더하기(interval '1 day')가 늘 24시간이 되게 세션 시간대를 UTC로 둔다(경계는 아래에서 한국 시간으로 계산).
@@ -27,8 +27,8 @@ with p as (select date_trunc('day', now() at time zone 'Asia/Seoul') at time zon
 e as (
 	select ev.*,
 		type in ('question_asked', 'guess_submitted') and outcome <> 'limited' judged,
-		((coalesce(input_tokens, 0) - coalesce(cached_tokens, 0)) * 0.25
-			+ coalesce(cached_tokens, 0) * 0.025 + coalesce(output_tokens, 0) * 2.0) / 1000000.0 cost
+		((coalesce(input_tokens, 0) - coalesce(cached_tokens, 0)) * 0.45
+			+ coalesce(cached_tokens, 0) * 0.045 + coalesce(output_tokens, 0) * 3.6) / 1000000.0 cost
 	from events ev, p where ev.at >= p.t0
 )
 select :c_today
@@ -40,7 +40,7 @@ select :c_today
 	count(*) filter (where type = 'game_ended' and detail ->> 'status' = 'SOLVED') "해결",
 	count(*) filter (where type = 'game_ended' and detail ->> 'status' <> 'SOLVED') "미해결",
 	round(coalesce(sum(cost) filter (where judged), 0), 3) "비용($)",
-	3.00 "예산($)"
+	6.00 "예산($)"
 from e;
 
 \echo ■ 날짜별 (최근 :days 일, p50·p95는 성공한 판정의 전체 응답 시간)
@@ -50,8 +50,8 @@ e as (
 	select ev.*,
 		type in ('question_asked', 'guess_submitted') and outcome <> 'limited' judged,
 		type in ('question_asked', 'guess_submitted') and outcome = 'ok' ok_judge,
-		((coalesce(input_tokens, 0) - coalesce(cached_tokens, 0)) * 0.25
-			+ coalesce(cached_tokens, 0) * 0.025 + coalesce(output_tokens, 0) * 2.0) / 1000000.0 cost
+		((coalesce(input_tokens, 0) - coalesce(cached_tokens, 0)) * 0.45
+			+ coalesce(cached_tokens, 0) * 0.045 + coalesce(output_tokens, 0) * 3.6) / 1000000.0 cost
 	from events ev, p where ev.at >= p.t0 - (p.days - 1) * interval '1 day'
 )
 select :c_day

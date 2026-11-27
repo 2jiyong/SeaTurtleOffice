@@ -89,6 +89,8 @@ class OpenAiJudge:
         )
         if effort:
             extra["reasoning_effort"] = effort
+        if self.settings.openai_service_tier:
+            extra["service_tier"] = self.settings.openai_service_tier
         started = time.perf_counter()
         try:
             response = await self.client.chat.completions.create(

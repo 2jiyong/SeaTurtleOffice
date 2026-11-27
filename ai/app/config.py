@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     openai_timeout: float = 12.0
     openai_max_retries: int = 1
 
+    # OpenAI 처리 등급. priority(Fast mode)는 같은 추론을 더 빨리 돌려 질문 판정이 약 5초 → 2.4초가 된다(2026-11-28 측정).
+    # 단가는 표준의 1.8배라 backend limits.price도 같은 등급 단가로 맞춘다. 비우면 보내지 않는다(표준).
+    openai_service_tier: str = "priority"
+
     # text: 사람이 읽는 한 줄(개발), json: JSON 한 줄(배포)
     log_format: str = "text"
 

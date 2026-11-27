@@ -48,7 +48,9 @@ import jakarta.servlet.http.Cookie;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = { "limits.device-per-day=3", "limits.ip-per-day=5", "limits.daily-budget-usd=0.01",
-		"limits.max-in-flight=1" })
+		"limits.max-in-flight=1",
+		// 계산식 검사용 단가(표준 처리). 운영 기본값(우선 처리)이 바뀌어도 아래 숫자가 그대로 맞게 고정한다.
+		"limits.price.input=0.25", "limits.price.cached-input=0.025", "limits.price.output=2.0" })
 @ExtendWith(OutputCaptureExtension.class)
 class UsageLimitTests {
 

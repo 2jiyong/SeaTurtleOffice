@@ -2,15 +2,15 @@ import { trackEvent } from './analytics.ts'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type GameView } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
+import GuessDialog from './GuessDialog.tsx'
 import { CaseScreen, ReceiveLog, type Pending } from './GameRecords.tsx'
 import RevelationDialog from './RevelationDialog.tsx'
 import SignalCut from './SignalCut.tsx'
 
-type Mode = 'question' | 'guess'
-
-const LIMIT: Record<Mode, number> = { question: 200, guess: 1000 }
+/** 질문 한 번의 최대 글자 수(백엔드 QuestionRequest와 같다). */
+const QUESTION_LIMIT = 200
 /** 틀린 추리 한 번이 쓰는 사용 횟수(백엔드 Game.GUESS_COST와 같다). 맞힌 추리는 쓰지 않는다. */
-const GUESS_COST = 5
+const GUESS_COST = 3
 
 /**
  * 진행 중인 사건 화면. 게임이 끝나면 신호 단절 연출을 보여 준 뒤 onEnded로 결과 페이지에 넘긴다.
@@ -19,8 +19,12 @@ const GUESS_COST = 5
 export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; onExit: () => void; onEnded: () => void }) {
   const [game, setGame] = useState<GameView | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [mode, setMode] = useState<Mode>('question')
   const [text, setText] = useState('')
+  // 추리 창이 떠 있는가. 입력창은 질문 전용이고, 추리는 이 창에서만 보낸다.
+  const [guessOpen, setGuessOpen] = useState(false)
+  const [guessError, setGuessError] = useState<string | null>(null)
+  const questionBox = useRef<HTMLTextAreaElement>(null)
+  const guessButton = useRef<HTMLButtonElement>(null)
   const [pending, setPending] = useState<Pending>(null)
   // 힌트·포기 요청 중. 질문 판정(pending)과 함께, 진행 중에는 게임 상태를 바꾸는 요청을 더 보내지 않는다.
   const [acting, setActing] = useState(false)
@@ -54,6 +58,12 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
 
+  // 마지막 추리 기회가 오면 추리 창을 바로 연다(닫아도 추리 제출 버튼은 남는다).
+  const finalChance = game?.finalChance ?? false
+  useEffect(() => {
+    if (finalChance) setGuessOpen(true)
+  }, [finalChance])
+
   // 기록이 늘면 수신 기록 칸 안에서만 맨 아래로 내린다(페이지 전체는 움직이지 않는다).
   useEffect(() => {
     const log = logRef.current
@@ -72,8 +82,6 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
 
   const playing = game.status === 'PLAYING'
   const busy = acting || pending !== null
-  // 사용 횟수를 다 쓰면 추리만 남는다.
-  const inputMode: Mode = game.finalChance ? 'guess' : mode
   // 서버가 돌려준 게임으로 바꾸면서, 이전에 없던 기록만 '새로 들어온 것'으로 표시한다.
   const receive = (next: GameView) => {
     const seqsOf = (g: GameView) => [...g.questions, ...g.guesses, ...g.hints].map((e) => e.seq)
@@ -104,20 +112,41 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const value = text.trim()
-    if (!value || busy) return
-    setPending({ mode: inputMode, text: value })
+    if (!value || busy || game.finalChance) return
+    setPending({ mode: 'question', text: value })
     setError(null)
     setText('')
     try {
-      if (inputMode === 'question') {
-        // 질문 하나로 힌트가 열릴 수 있어서 게임 전체를 받는다.
-        receive(await api.ask(game.id, value))
-      } else {
-        receive(await api.guess(game.id, value))
-      }
+      // 질문 하나로 힌트가 열릴 수 있어서 게임 전체를 받는다.
+      receive(await api.ask(game.id, value))
     } catch (err) {
       setError((err as Error).message)
       setText(value)
+      reloadIfStale(err)
+    } finally {
+      setPending(null)
+    }
+  }
+
+  // 추리 창을 닫고 초점을 질문 입력창으로(마지막 기회라 막혀 있으면 추리 제출 버튼으로) 돌려준다.
+  const closeGuess = () => {
+    setGuessOpen(false)
+    setGuessError(null)
+    const box = questionBox.current
+    if (box && !box.disabled) box.focus()
+    else guessButton.current?.focus()
+  }
+
+  const submitGuess = async (value: string) => {
+    if (busy) return
+    setPending({ mode: 'guess', text: value })
+    setGuessError(null)
+    setError(null)
+    try {
+      receive(await api.guess(game.id, value))
+      closeGuess()
+    } catch (err) {
+      setGuessError((err as Error).message)
       reloadIfStale(err)
     } finally {
       setPending(null)
@@ -190,36 +219,24 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
             </div>
             {game.finalChance && <p className="final-chance">질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.</p>}
             <div className="composer-row">
-            <div className="tabs" role="tablist" aria-label="입력 종류">
-              <button
-                type="button"
-                role="tab"
-                aria-label="질문하기"
-                aria-selected={inputMode === 'question'}
-                className={inputMode === 'question' ? 'on' : ''}
-                disabled={game.finalChance}
-                onClick={() => setMode('question')}
-              >
-                질문
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-label="추리 제출"
-                aria-selected={inputMode === 'guess'}
-                className={inputMode === 'guess' ? 'on' : ''}
-                onClick={() => setMode('guess')}
-              >
-                추리
-              </button>
-            </div>
+            <button
+              ref={guessButton}
+              type="button"
+              className="guess-open"
+              disabled={busy}
+              onClick={() => setGuessOpen(true)}
+            >
+              추리 제출
+            </button>
             <div className="input-row">
               <textarea
+                ref={questionBox}
                 value={text}
-                maxLength={LIMIT[inputMode]}
+                maxLength={QUESTION_LIMIT}
                 rows={3}
-                aria-label={inputMode === 'question' ? '질문' : '추리'}
-                placeholder={inputMode === 'question' ? '예나 아니오로 답할 수 있는 질문을 입력하라' : '사건의 전말을 송신하라. 무엇이 일어났고, 누가 왜 그랬는지.'}
+                aria-label="질문"
+                disabled={game.finalChance}
+                placeholder="예나 아니오로 답할 수 있는 질문을 입력하라"
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -228,20 +245,16 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
                   }
                 }}
               />
-              <button className="send-btn" disabled={!text.trim() || busy}>
-                {pending ? '수신 대기' : '송신 ▶'}
+              <button className="send-btn" disabled={!text.trim() || busy || game.finalChance}>
+                {pending?.mode === 'question' ? '수신 대기' : '송신 ▶'}
               </button>
             </div>
             </div>
             <span className="counter">
-              {text.length}/{LIMIT[inputMode]} {'//'} 모든 송신은 기록된다
+              {text.length}/{QUESTION_LIMIT} {'//'} 모든 송신은 기록된다
               {/* 질문·추리 모두 안내 줄을 한 줄 둬서 송신 단말 크기가 바뀌지 않게 한다 */}
               <span className="cost-note">
-                {inputMode === 'question'
-                  ? '질문은 사용 1을 씁니다.'
-                  : game.finalChance
-                    ? '이 추리는 횟수를 쓰지 않습니다.'
-                    : `추리가 틀리면 사용 ${GUESS_COST}를 씁니다.`}
+                {game.finalChance ? '질문을 모두 썼습니다. 추리 제출로 마지막 추리를 보내세요.' : '질문은 사용 1을 씁니다.'}
               </span>
             </span>
           </form>
@@ -259,6 +272,15 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
           confirmLabel="조사를 중단한다"
           onCancel={cancelGiveUp}
           onConfirm={confirmGiveUp}
+        />
+      )}
+      {guessOpen && playing && (
+        <GuessDialog
+          costNote={game.finalChance ? '이 추리는 횟수를 쓰지 않습니다.' : `추리가 틀리면 사용 ${GUESS_COST}을 씁니다.`}
+          pending={pending?.mode === 'guess'}
+          error={guessError}
+          onSubmit={submitGuess}
+          onClose={closeGuess}
         />
       )}
       {ending && game.status !== 'PLAYING' && <SignalCut status={game.status} onDone={onEnded} />}

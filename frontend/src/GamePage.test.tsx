@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ANSWER_TEXT, ApiError, type GameView } from './api.ts'
@@ -216,12 +216,24 @@ describe('사용 횟수와 점수', () => {
     expect(screen.queryByRole('button', { name: /계시 \d 요청/ })).toBeNull()
   })
 
-  it('마지막 기회에는 질문 탭을 막고 안내를 보여 준다', async () => {
+  it('마지막 기회에는 질문을 막고 추리 창을 바로 연다', async () => {
     vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
     render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
     expect(await screen.findByText('질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.')).toBeTruthy()
-    expect((screen.getByRole('tab', { name: '질문하기' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('이 추리는 횟수를 쓰지 않습니다.')).toBeTruthy()
+    expect((screen.getByRole('textbox', { name: '질문' }) as HTMLTextAreaElement).disabled).toBe(true)
+    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
+    expect(dialog.textContent).toContain('이 추리는 횟수를 쓰지 않습니다.')
+  })
+
+  it('마지막 기회에 추리 창을 닫아도 추리 제출 버튼으로 다시 연다', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.game).mockResolvedValue({ ...game, used: 40, finalChance: true, nextHintAt: null })
+    render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
+    await screen.findByRole('dialog', { name: '추리 제출' })
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    expect(screen.getByRole('dialog', { name: '추리 제출' })).toBeTruthy()
   })
 
   it('질문 응답으로 받은 게임 상태로 화면을 바꾼다', async () => {
@@ -361,10 +373,12 @@ describe('무전기 조작판', () => {
     expect(waiting.disabled).toBe(true)
   })
 
-  it('조작판 버튼 글자는 질문·추리, 탭 이름은 그대로', async () => {
+  it('입력창은 질문 전용이고 질문·추리 탭이 없다. 추리는 따로 여는 버튼', async () => {
     await openGame()
-    expect(screen.getByRole('tab', { name: '질문하기' }).textContent).toBe('질문')
-    expect(screen.getByRole('tab', { name: '추리 제출' }).textContent).toBe('추리')
+    expect(screen.queryByRole('tab')).toBeNull()
+    expect(screen.getByRole('textbox', { name: '질문' })).toBeTruthy()
+    expect(screen.queryByRole('textbox', { name: '추리' })).toBeNull()
+    expect(screen.getByRole('button', { name: '추리 제출' })).toBeTruthy()
   })
 })
 
@@ -420,15 +434,67 @@ describe('계시창 초점', () => {
   })
 })
 
-describe('송신 단말 크기', () => {
-  it('질문과 추리를 바꿔도 입력칸 줄 수와 안내 줄이 같다', async () => {
+describe('추리 창', () => {
+  it('추리 제출을 누르면 창이 뜨고, 넓은 추리 칸에 초점과 비용 안내가 있다', async () => {
     const user = userEvent.setup()
     await openGame()
-    const rowsQ = screen.getByRole('textbox', { name: '질문' }).getAttribute('rows')
-    const notesQ = document.querySelectorAll('.cost-note').length
-    await user.click(screen.getByRole('tab', { name: '추리 제출' }))
-    expect(screen.getByRole('textbox', { name: '추리' }).getAttribute('rows')).toBe(rowsQ)
-    expect(document.querySelectorAll('.cost-note').length).toBe(notesQ)
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
+    const box = within(dialog).getByRole('textbox', { name: '추리' }) as HTMLTextAreaElement
+    expect(box.maxLength).toBe(1000)
+    expect(document.activeElement).toBe(box)
+    expect(dialog.textContent).toContain('추리가 틀리면 사용 3을 씁니다.')
+  })
+
+  it('틀린 추리를 보내면 창이 닫히고 질문 입력창으로 돌아간다(질문으로 보내지 않는다)', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.guess).mockResolvedValue({ ...game, used: 3, guesses: [{ seq: 1, text: '내 추리', correct: false, closeness: 'FAR' }] })
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), '내 추리')
+    await user.click(screen.getByRole('button', { name: '추리 송신' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull())
+    expect(api.guess).toHaveBeenCalledWith('g1', '내 추리')
+    expect(api.ask).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: '질문' }))
+  })
+
+  it('송신이 실패하면 창을 닫지 않고 쓴 글과 오류를 그대로 둔다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.guess).mockRejectedValue(new ApiError('응답이 너무 늦습니다. 다시 시도해 주세요.', 0))
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), '긴 추리')
+    await user.click(screen.getByRole('button', { name: '추리 송신' }))
+    const dialog = await screen.findByRole('dialog', { name: '추리 제출' })
+    await vi.waitFor(() => expect(dialog.textContent).toContain('응답이 너무 늦습니다.'))
+    expect((within(dialog).getByRole('textbox', { name: '추리' }) as HTMLTextAreaElement).value).toBe('긴 추리')
+  })
+
+  it('송신 중에는 수신 대기로 바뀌고, 다시 보내거나 닫을 수 없다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    vi.mocked(api.guess).mockImplementation(never)
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.type(screen.getByRole('textbox', { name: '추리' }), 't')
+    await user.click(screen.getByRole('button', { name: '추리 송신' }))
+    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
+    expect((within(dialog).getByRole('button', { name: '수신 대기' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((within(dialog).getByRole('button', { name: '취소' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: '추리 제출' })).toBeTruthy()
+    expect(api.guess).toHaveBeenCalledTimes(1)
+  })
+
+  it('취소와 Esc로 닫는다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: '추리 제출' })).toBeNull()
   })
 })
 
@@ -493,7 +559,7 @@ describe('게임이 끝나면 결과 페이지로', () => {
 
   /** 가짜 시계에서 추리를 보낸다(응답 처리까지 기다린다). */
   async function sendGuess() {
-    fireEvent.click(screen.getByRole('tab', { name: '추리 제출' }))
+    if (!screen.queryByRole('dialog', { name: '추리 제출' })) fireEvent.click(screen.getByRole('button', { name: '추리 제출' }))
     const box = screen.getByRole('textbox', { name: '추리' })
     fireEvent.change(box, { target: { value: 't' } })
     await act(async () => {

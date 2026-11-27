@@ -61,7 +61,7 @@ class GameStoreTests {
 				Game.QuestionRecord::reason)
 				.containsExactly(org.assertj.core.groups.Tuple.tuple(1, "꼬마는 엄지가 아니다", "질문 근거"),
 						org.assertj.core.groups.Tuple.tuple(null, null, "형식 근거"));
-		// 질문 1(반려는 세지 않는다) + 틀린 추리 5
+		// 질문 1(반려는 세지 않는다) + 틀린 추리(GUESS_COST)
 		assertThat(loaded.used()).isEqualTo(1 + Game.GUESS_COST);
 		assertThat(loaded.guesses().getFirst().reason()).isEqualTo("채점 근거");
 	}

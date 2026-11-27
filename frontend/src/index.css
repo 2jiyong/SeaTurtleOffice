@@ -727,33 +727,6 @@ h3 {
   background: linear-gradient(transparent, var(--room) 14px);
 }
 
-.tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 8px;
-}
-
-.tabs button {
-  border: 0;
-  background: none;
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-  color: var(--room-muted);
-  font-weight: 500;
-}
-
-.tabs button:hover {
-  color: var(--room-text);
-}
-
-.tabs button.on {
-  background: var(--room-2);
-  color: #eef0e8;
-  font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--hazard);
-}
-
 .input-row {
   display: flex;
   gap: 8px;
@@ -805,11 +778,6 @@ h3 {
   display: block;
   margin-top: 2px;
   color: var(--hazard);
-}
-
-.tabs button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
 }
 
 /* 진상 공개의 점수 */
@@ -1602,32 +1570,6 @@ h3 {
   align-items: stretch;
 }
 
-.radio-unit .tabs {
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-}
-
-.radio-unit .tabs button {
-  min-width: 58px;
-  padding: 7px 10px;
-  border-radius: 4px;
-  background: #3a4246;
-  color: #c9cec6;
-  font-weight: 700;
-  box-shadow: 0 3px 0 #15191b;
-}
-
-.radio-unit .tabs button.on {
-  background: var(--hazard);
-  color: var(--hazard-ink);
-  box-shadow: 0 3px 0 #7d6118;
-}
-
-.radio-unit .tabs button:disabled {
-  opacity: 0.35;
-}
-
 .radio-unit .input-row {
   flex: 1;
   min-width: 0;
@@ -1650,6 +1592,39 @@ h3 {
 .radio-unit .input-row textarea:focus {
   outline: 2px solid #5fd38a;
   outline-offset: -1px;
+}
+
+/* 추리 제출 버튼: 질문 입력창 왼쪽. 누르면 추리 창이 뜬다(질문과 추리를 같은 칸에서 바꾸지 않는다). */
+.guess-open {
+  flex: none;
+  min-width: 64px;
+  padding: 7px 10px;
+  font-family: 'Black Han Sans', var(--sans);
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  color: #e6e9e0;
+  background: #0d0f10;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #4a4f52, inset 3px 0 0 #b3261e;
+  cursor: pointer;
+  word-break: keep-all;
+}
+
+.guess-open:hover:not(:disabled) {
+  background: #1b2023;
+  text-shadow: 0 0 8px rgb(230 233 224 / 0.55);
+}
+
+.guess-open:focus-visible {
+  outline: 2px solid #e6e9e0;
+  outline-offset: 2px;
+}
+
+.guess-open:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* 송신 버튼 */
@@ -1881,25 +1856,6 @@ h3 {
 .terminal-bars i.off {
   background: #22302a;
   box-shadow: none;
-}
-
-.radio-unit .tabs button {
-  font-family: 'Black Han Sans', var(--sans);
-  font-weight: 400;
-  font-size: 1.05rem;
-  letter-spacing: 0.1em;
-  color: #6f777a;
-  background: #0d0f10;
-  border-radius: 2px;
-  clip-path: none;
-  box-shadow: inset 0 0 0 1px #2c3337;
-}
-
-.radio-unit .tabs button.on {
-  color: #e6e9e0;
-  background: #1b2023;
-  text-shadow: 0 0 8px rgb(230 233 224 / 0.55);
-  box-shadow: inset 0 0 0 1px #7d8682, inset 3px 0 0 #b3261e;
 }
 
 .radio-unit .input-row textarea {
@@ -2769,6 +2725,57 @@ h3 {
 .confirm-actions button:focus-visible {
   outline: 2px solid #e6e9e0;
   outline-offset: 2px;
+}
+
+/* 추리 창: 확인창 틀에 넓은 입력 칸 */
+.confirm.guess-dialog {
+  width: min(620px, 100%);
+}
+
+.guess-dialog textarea {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 9.5em;
+  resize: vertical;
+  padding: 10px 12px;
+  font: 0.95rem/1.7 var(--sans);
+  color: #9fe0b4;
+  caret-color: #9fe0b4;
+  background: #0f1a14;
+  border: 1px solid #2c3d33;
+  border-radius: 2px;
+  box-shadow: inset 0 0 14px rgb(0 0 0 / 0.8);
+}
+
+.guess-dialog textarea::placeholder {
+  color: #4f7a5d;
+}
+
+.guess-dialog textarea:focus {
+  outline: 2px solid #5fd38a;
+  outline-offset: -1px;
+}
+
+.confirm .guess-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 12px;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm .guess-note span:last-child {
+  color: var(--hazard);
+}
+
+.confirm-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ── 결과 진상 탭: 정답 조건 카드(핵심·보너스) → 사건의 전말 ── */

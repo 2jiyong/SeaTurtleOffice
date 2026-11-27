@@ -96,7 +96,7 @@ export interface GameView {
   /** 열린 힌트(계시). seq 순으로 질문 사이에 끼워 보여 준다 */
   hints: HintRecord[]
   guesses: GuessRecord[]
-  /** 사용 횟수(질문 1, 추리 5). 한도는 limit */
+  /** 사용 횟수(질문 1, 틀린 추리 3). 한도는 limit */
   used: number
   limit: number
   /** 힌트가 열리는 사용 횟수, 예: [10, 20, 30] */

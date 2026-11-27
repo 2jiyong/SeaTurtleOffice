@@ -162,7 +162,8 @@ cd frontend && npm install && npm run dev
 | `game_ended` | 해결·실패·포기로 끝났을 때. `detail`에 등급과 그 원재료(사용 횟수, 보정 사용 횟수, 맞힌 핵심·보너스 수) |
 | `game_reset` | 초기화 |
 
-- `outcome`: `ok`, `judge_error`(AI 서버 오류나 믿을 수 없는 판정), `timeout`(AI 서버가 28초 안에 답하지 않음. 연결조차 못 한 경우는 `judge_error`), `conflict`(판정은 됐는데 다른 창과 겹쳐 저장 실패).
+- `outcome`: `ok`, `limited`(사용량 한도에 막혀 판정하지 않음, `detail.reason`), `judge_error`(AI 서버 오류나 믿을 수 없는 판정), `timeout`(AI 서버가 28초 안에 답하지 않음. 연결조차 못 한 경우는 `judge_error`), `conflict`(판정은 됐는데 다른 창과 겹쳐 저장 실패).
+- `ip_hash`: 요청 IP의 해시(원문은 남기지 않는다). 아래 사용량 제한에서 IP별 판정 수를 센다.
 - 시간 칸: `total_ms` = `backend_ms` + `ai_ms`, `ai_ms` 안에 `llm_ms`(OpenAI 호출, 재시도 포함)가 들어 있다.
 - 토큰은 실패한 판정에도 남는다(쓴 만큼). **시간 초과만은 AI 서버 응답이 없어 토큰을 모른다**(AI 서버 로그에는 남는다).
 - 질문·추리 원문은 이벤트에 넣지 않는다(`text_length`만). 원문은 판이 있는 동안 `game_entries`와 AI 서버 로그에 있다.
@@ -196,6 +197,37 @@ from events where type in ('question_asked', 'guess_submitted') group by 1, 2 or
 -- 날짜별 기기 수와 토큰 합
 select date(at) d, count(distinct client_id) devices, sum(input_tokens) input, sum(output_tokens) output
 from events group by 1 order by 1;
+```
+
+## 사용량 제한
+판정(질문·추리)은 AI 서버에 보내기 **전에** 아래 한도를 검사한다. 넘으면 판정하지 않고(토큰을 쓰지 않고) 429를 돌려준다.
+기준은 `events`라 서버를 다시 켜도 오늘 쓴 양이 유지된다. 하루는 한국 시간 자정 기준.
+
+| 한도 | 기본값 | 환경 변수 | 넘으면 |
+|---|---|---|---|
+| 하루 전체 판정 비용 | 2달러 | `LIMIT_DAILY_BUDGET_USD` | 429 `reason: budget`, 화면 상단 안내 |
+| 기기 하나, 하루 판정 | 200번 | `LIMIT_DEVICE_PER_DAY` | 429 `reason: device` |
+| IP 하나, 하루 판정 | 600번 | `LIMIT_IP_PER_DAY` | 429 `reason: ip` |
+| 한 판의 동시 판정 | 1건 | — | 409 "이전 판정을 기다리는 중입니다." |
+
+- 0 이하로 두면 그 검사를 끈다. 힌트·포기·조회·초기화는 막지 않는다. 판정이 실패한 요청(`judge_error`, `timeout`, `conflict`)도 센다. `limited`는 세지 않는다.
+- 비용 = `(입력 − 캐시) × 0.25 + 캐시 × 0.025 + 출력 × 2.0`(100만 토큰당 달러, `gpt-5-mini`). 모델을 바꾸면 `application.yml`의 `limits.price`를 고친다.
+- 검사 쿼리가 실패하거나 2초 안에 끝나지 않으면 **판정을 막지 않는다**(경고 로그). 최종 안전망은 OpenAI 충전 잔액이다.
+- 예산의 50%, 80%, 100%를 처음 넘을 때 백엔드 로그에 경고가 한 줄 남는다. `/api/info`는 `budgetExhausted`만 알려 준다(금액은 공개하지 않는다).
+- IP 해시의 비밀 값은 `IP_HASH_SECRET`(배포에서 반드시 바꾼다, 로컬 기본값 `dev-only`).
+- **배포(Caddy 뒤)에서는** `SERVER_FORWARD_HEADERS_STRATEGY=native`로 `X-Forwarded-For`를 믿게 해야 진짜 IP로 센다. 안 켜면 모든 요청이 프록시 IP 하나로 보여 IP 한도(600)에 다 같이 걸린다.
+
+```sql
+-- 오늘(한국 시간) 쓴 판정 비용(달러)
+select sum((coalesce(input_tokens,0) - coalesce(cached_tokens,0)) * 0.25
+         + coalesce(cached_tokens,0) * 0.025 + coalesce(output_tokens,0) * 2.0) / 1e6 usd
+from events
+where type in ('question_asked', 'guess_submitted') and outcome <> 'limited'
+  and at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
+
+-- 오늘 한도에 막힌 요청
+select detail->>'reason' reason, count(*) from events
+where outcome = 'limited' and at >= current_date group by 1;
 ```
 
 ## 테스트

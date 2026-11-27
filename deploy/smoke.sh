@@ -1,12 +1,19 @@
 #!/bin/bash
-# 배포 뒤 확인. 사용법: deploy/smoke.sh <사이트 주소> <앞 도메인 주소> <통계 주소> [--insecure]
+# 배포 뒤 확인. 사용법: deploy/smoke.sh <사이트 주소> <앞 도메인 주소> <통계 주소> [--insecure] [--allow-fake]
 #   예) deploy/smoke.sh https://www.seaturtleoffice.site https://seaturtleoffice.site https://stats.seaturtleoffice.site
-#   로컬 시험) deploy/smoke.sh https://www.localhost https://localhost https://stats.localhost --insecure
+#   로컬 시험) deploy/smoke.sh https://www.localhost https://localhost https://stats.localhost --insecure --allow-fake
+#   --insecure: 자체 인증서 허용, --allow-fake: 가짜 판정기(OpenAI 키 없음)도 통과로 본다
 # 판정은 하지 않는다(OpenAI 비용 없음). 마지막 검사가 1분 동안 이 IP의 판정 요청을 막는다.
 set -uo pipefail
 SITE=${1:?사이트 주소}; APEX=${2:?앞 도메인 주소}; STATS=${3:?통계 주소}
 CURL=(curl -s --max-time 15)
-[[ "${4:-}" == "--insecure" ]] && CURL+=(-k)
+allow_fake=""
+for opt in "${@:4}"; do
+	case $opt in
+		--insecure) CURL+=(-k) ;;
+		--allow-fake) allow_fake=1 ;;
+	esac
+done
 failed=0
 check() { # 이름 조건(0=통과)
 	if [[ $2 == 0 ]]; then echo "통과  $1"; else echo "실패  $1"; failed=1; fi
@@ -23,11 +30,26 @@ grep -q '^HTTP/[0-9.]* 301' <<<"$headers" && grep -qi "^location: $SITE/some/pat
 headers=$("${CURL[@]}" -D - -o /dev/null "$SITE/api/info")
 grep -q '^HTTP/[0-9.]* 200' <<<"$headers" && grep -qi '^cache-control: no-store' <<<"$headers"; check "/api/info 200 + no-store" $?
 
+info=$("${CURL[@]}" "$SITE/api/info")
+if [[ -n $allow_fake ]]; then
+	grep -q '"judgeOnline":true' <<<"$info"; check "판정 서버 연결" $?
+else
+	grep -q '"judgeOnline":true' <<<"$info" && grep -q '"fakeJudge":false' <<<"$info"; check "진짜 판정기(OpenAI 키 있음)" $?
+fi
+
 cookie=$("${CURL[@]}" -D - -o /dev/null "$SITE/api/games" | grep -i '^set-cookie: sto_client=')
 grep -qi 'secure' <<<"$cookie" && grep -qi 'httponly' <<<"$cookie"; check "기기 쿠키 Secure·HttpOnly" $?
 
 code=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$STATS/script.js")
 [[ $code == 200 ]]; check "통계 스크립트 200" $?
+
+# 통계 로그인을 11번 틀리면 Caddy가 막는다(비밀번호 맞히기 방지).
+code=""
+for _ in $(seq 1 11); do
+	code=$("${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+		-d '{"username":"smoke","password":"smoke"}' "$STATS/api/auth/login")
+done
+[[ $code == 429 ]]; check "통계 로그인 요청 제한 429" $?
 
 # 없는 판으로 판정 경로를 61번: 앞 60번은 백엔드가 4xx로 거절(판정 안 함), 61번째는 Caddy가 429로 막는다.
 url="$SITE/api/games/00000000-0000-0000-0000-000000000000/questions"

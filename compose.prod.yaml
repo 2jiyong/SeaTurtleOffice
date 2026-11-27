@@ -89,7 +89,8 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U seaturtle -d seaturtle"]
+      # -h: 첫 설정 중 임시 서버(유닉스 소켓만)가 아니라 진짜 서버가 TCP로 뜬 뒤에 준비됨으로 본다.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U seaturtle -d seaturtle"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -102,6 +103,11 @@ services:
     environment:
       DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:?}@postgres:5432/umami
       APP_SECRET: ${UMAMI_APP_SECRET:?}
+      # 방문자 IP는 Caddy가 다시 쓴 X-Forwarded-For만 믿는다(True-Client-Ip 같은 위조 헤더 무시).
+      CLIENT_IP_HEADER: x-forwarded-for
+    # 서버 안에서만 열린다. 첫 배포 때 SSH 터널로 관리자 비밀번호를 바꾸는 데 쓴다(DEVELOPMENT.md).
+    ports:
+      - "127.0.0.1:3001:3000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -258,10 +258,17 @@ group by 1;
 2. 가비아 DNS에 A 레코드 `@`, `www`, `stats` → 고정 IP. `dig +short www.seaturtleoffice.site`로 퍼졌는지 본다(퍼지기 전에 Caddy를 켜면 인증서 발급이 잠시 막힐 수 있다).
 3. 접속: `ssh -i ~/.ssh/seaturtle-office.pem ubuntu@www.seaturtleoffice.site`
 4. `curl -fsSLO https://raw.githubusercontent.com/2jiyong/SeaTurtleOffice/main/deploy/bootstrap.sh && sudo bash bootstrap.sh` 뒤 다시 로그인.
-5. `cd /opt/seaturtle && cp .env.example .env` → 비밀 값은 `openssl rand -hex 32`로 만들어 채운다. `OPENAI_API_KEY`는 직접 붙여 넣는다.
-6. `deploy/deploy.sh`
-7. `https://stats.seaturtleoffice.site`에 `admin` / `umami`로 들어가 **비밀번호부터 바꾼다**. 웹사이트(`www.seaturtleoffice.site`)를 등록하고 받은 ID를 `.env`의 `VITE_UMAMI_WEBSITE_ID`에 넣은 뒤 `deploy/deploy.sh`를 한 번 더.
-8. 내 컴퓨터에서 `deploy/smoke.sh https://www.seaturtleoffice.site https://seaturtleoffice.site https://stats.seaturtleoffice.site` → 모두 `통과`.
+5. `cd /opt/seaturtle && cp .env.example .env && chmod 600 .env` → 비밀 값은 `openssl rand -hex 32`로 만들어 채운다. `OPENAI_API_KEY`는 직접 붙여 넣는다(비우면 가짜 판정기로 돈다 — smoke가 잡는다).
+6. **Umami만 먼저 켜고 관리자 비밀번호를 바꾼다.** 처음 계정은 누구나 아는 `admin` / `umami`라서, 통계 주소가 인터넷에 열리기 전에 바꿔야 한다.
+   - 서버: `docker compose -f compose.prod.yaml up -d umami` (postgres도 함께 뜬다. Caddy는 아직 안 켠다)
+   - 내 컴퓨터: `ssh -i ~/.ssh/seaturtle-office.pem -L 3001:127.0.0.1:3001 ubuntu@<고정 IP>` 를 켜 둔 채 `http://localhost:3001` 접속
+   - `admin` / `umami`로 들어가 비밀번호를 바꾸고, 웹사이트(`www.seaturtleoffice.site`)를 등록해 ID를 `.env`의 `VITE_UMAMI_WEBSITE_ID`에 넣는다.
+7. `deploy/deploy.sh` (이때 Caddy가 켜지고 인증서를 받는다)
+8. 내 컴퓨터에서 `deploy/smoke.sh https://www.seaturtleoffice.site https://seaturtleoffice.site https://stats.seaturtleoffice.site` → 모두 `통과`. 브라우저 개발자 도구에서 `stats…/api/send` 요청 하나를 열어 `url`에 `#/game/…`이 없는지 본다.
+
+DNS에는 A 레코드만 둔다. AAAA(IPv6)를 넣으면 도커가 IPv6 접속을 내부 주소 하나로 바꿔서, IPv6 사용자가 모두 같은 IP 한도·해시를 나눠 쓰게 된다.
+
+postgres 초기화 스크립트(`deploy/postgres-init/`)는 볼륨이 처음 만들어질 때만 돈다. 나중에 `UMAMI_DB_PASSWORD`를 바꾸면 DB에서도 바꾼다: `docker compose -f compose.prod.yaml exec postgres psql -U seaturtle -c "alter role umami password '<새 값>'"`.
 
 ### 새 버전 올리기
 
@@ -271,7 +278,7 @@ main에 푸시한 뒤 서버에서:
 cd /opt/seaturtle && deploy/deploy.sh
 ```
 
-`git pull` → 빌드(2~4분, 그동안 서버가 느리다) → 다시 띄우기. 백엔드가 뜨는 10~30초 동안 끊긴다. 시나리오만 바꿔도 같은 명령이다(두 서버가 내용을 시작할 때만 읽어서 늘 다시 띄운다).
+`git pull` → 이미지를 하나씩 빌드(2~4분, 그동안 서버가 느리다) → 다시 띄우기 → 옛 이미지·빌드 캐시 정리. 백엔드가 뜨는 10~30초 동안 끊긴다. 시나리오만 바꿔도 같은 명령이다(두 서버가 내용을 시작할 때만 읽어서 늘 다시 띄운다).
 
 ### 로그와 상태
 
@@ -296,12 +303,14 @@ Caddy는 접속 로그를 남기지 않는다(원본 IP가 남지 않게).
 scp -i ~/.ssh/seaturtle-office.pem 'ubuntu@www.seaturtleoffice.site:/opt/seaturtle-backups/*.dump' ~/seaturtle-backups/
 ```
 
-복원(게임 DB, 서비스를 잠시 멈춘다):
+복원(서비스를 잠시 멈춘다). 한 트랜잭션이라 중간에 실패하면 원래대로 남는다. 백업 뒤에 새로 생긴 테이블은 지워지지 않는다.
 
 ```bash
-docker compose -f compose.prod.yaml stop backend
-docker compose -f compose.prod.yaml exec -T postgres pg_restore -U seaturtle -d seaturtle --clean --if-exists < /opt/seaturtle-backups/<날짜>-seaturtle.dump
-docker compose -f compose.prod.yaml start backend
+cd /opt/seaturtle
+docker compose -f compose.prod.yaml stop backend umami
+docker compose -f compose.prod.yaml exec -T postgres pg_restore -U seaturtle -d seaturtle --clean --if-exists --single-transaction < /opt/seaturtle-backups/<날짜>-seaturtle.dump
+docker compose -f compose.prod.yaml exec -T postgres pg_restore -U seaturtle -d umami --clean --if-exists --single-transaction < /opt/seaturtle-backups/<날짜>-umami.dump
+docker compose -f compose.prod.yaml start backend umami
 ```
 
 ### 경보
@@ -317,6 +326,10 @@ CloudWatch 경보가 메일(SNS 주제 `seaturtle-alerts`)로 온다.
 
 CPU 크레딧 잔량 직접 보기(내 컴퓨터): `aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUCreditBalance --dimensions Name=InstanceId,Value=<인스턴스 ID> --start-time $(date -u -v-6H +%FT%TZ) --end-time $(date -u +%FT%TZ) --period 3600 --statistics Average`
 
+### 이미지 보안 갱신
+
+`deploy.sh`는 받아 둔 베이스 이미지(JDK, Python, Postgres 등)를 다시 받지 않는다. 한 달에 한 번쯤 `docker compose -f compose.prod.yaml build --pull && deploy/deploy.sh`로 보안 패치를 받는다. Caddy·플러그인·Umami는 버전이 고정돼 있어 올릴 때 파일을 고친다.
+
 ### SSH가 안 될 때
 
 보안 그룹이 내 IP에서만 22번을 연다. 장소를 옮겨 IP가 바뀌면 내 컴퓨터에서 `deploy/ssh-allow-my-ip.sh`.
@@ -328,7 +341,7 @@ CPU 크레딧 잔량 직접 보기(내 컴퓨터): `aws cloudwatch get-metric-st
 ```bash
 cp deploy/local.env.example deploy/local.env
 docker compose -f compose.prod.yaml --env-file deploy/local.env up -d --build
-deploy/smoke.sh https://www.localhost https://localhost https://stats.localhost --insecure
+deploy/smoke.sh https://www.localhost https://localhost https://stats.localhost --insecure --allow-fake
 docker compose -f compose.prod.yaml --env-file deploy/local.env down -v   # 시험 스택만 지운다
 ```
 

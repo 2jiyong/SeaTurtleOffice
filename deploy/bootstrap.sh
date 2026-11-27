@@ -32,6 +32,8 @@ if [[ ! -f /swapfile ]]; then
 fi
 
 timedatectl set-timezone Asia/Seoul
+# cron은 시작할 때의 시간대를 쓴다. 다시 띄워야 04:00이 한국 시간이 된다.
+systemctl restart cron
 
 # 저장소
 if [[ ! -d $REPO_DIR/.git ]]; then

@@ -11,10 +11,11 @@ ARG VITE_UMAMI_WEBSITE_ID=""
 ENV VITE_UMAMI_SRC=$VITE_UMAMI_SRC VITE_UMAMI_WEBSITE_ID=$VITE_UMAMI_WEBSITE_ID
 RUN npm run build
 
-FROM caddy:2-builder AS caddy
-RUN xcaddy build --with github.com/mholt/caddy-ratelimit
+# 버전을 고정한다. 요청 제한 플러그인은 1.0 전이라 설정 문법이 바뀔 수 있다. 올릴 때는 로컬 시험(DEVELOPMENT.md)부터.
+FROM caddy:2.11.9-builder AS caddy
+RUN xcaddy build --with github.com/mholt/caddy-ratelimit@5625512f24f6f59d6f64fb3aafe5eecff0b286db
 
-FROM caddy:2
+FROM caddy:2.11.9
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 COPY --from=frontend /src/dist /srv
 COPY deploy/caddy/Caddyfile /etc/caddy/Caddyfile

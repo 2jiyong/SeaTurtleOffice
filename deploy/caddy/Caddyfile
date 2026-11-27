@@ -11,7 +11,31 @@
 # 방문 통계(Umami)
 {$STATS_DOMAIN} {
 	header -Server
+	rate_limit {
+		# 관리자 비밀번호 맞히기를 막는다.
+		zone stats_login {
+			match {
+				method POST
+				path /api/auth/login
+			}
+			key {remote_host}
+			events 10
+			window 1m
+		}
+		# 방문 기록 보내기로 DB를 불리는 것을 막는다. 한 사람은 분당 몇 번이다.
+		zone stats_send {
+			match {
+				path /api/send
+			}
+			key {remote_host}
+			events 300
+			window 1m
+		}
+	}
 	reverse_proxy umami:3000
+	handle_errors 429 {
+		respond 429
+	}
 }
 
 {$SITE_DOMAIN} {

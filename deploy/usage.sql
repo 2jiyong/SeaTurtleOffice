@@ -3,6 +3,8 @@
 -- 비용 = (입력-캐시)×0.25 + 캐시×0.025 + 출력×2.0, 100만 토큰당 달러. 대상은 질문·추리(limited 제외).
 -- 단가와 예산은 backend application.yml의 limits와 같다. 바꾸면 여기도 고친다.
 \set ON_ERROR_STOP 1
+-- 날짜 더하기(interval '1 day')가 늘 24시간이 되게 세션 시간대를 UTC로 둔다(경계는 아래에서 한국 시간으로 계산).
+set time zone 'UTC';
 \if :{?days}
 \else
 	\set days 7
@@ -82,16 +84,20 @@ where at >= p.t0 - (p.days - 1) * interval '1 day'
 group by app_version, model
 order by max(at) desc;
 
-\echo ■ 사건별 (기간 안에 시작한 사건)
+\echo ■ 사건별 (기간 안에 시작한 판만, 해결은 지금까지)
 with p as (select date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul' t0, :days::int days),
+g as (
+	select game_id, scenario from events, p
+	where type = 'game_started' and at >= p.t0 - (p.days - 1) * interval '1 day'
+),
 s as (
-	select scenario,
-		count(*) filter (where type = 'game_started') started,
-		count(*) filter (where type = 'game_ended' and detail ->> 'status' = 'SOLVED') solved,
-		avg((detail ->> 'used')::int) filter (where type = 'game_ended' and detail ->> 'status' = 'SOLVED') used
-	from events, p
-	where at >= p.t0 - (p.days - 1) * interval '1 day' and scenario is not null
-	group by scenario
+	-- 해결은 그 판들 가운데 끝난 것(기간 밖에서 시작해 기간 안에 끝난 판은 넣지 않는다)
+	select g.scenario,
+		count(distinct g.game_id) started,
+		count(distinct e.game_id) filter (where e.detail ->> 'status' = 'SOLVED') solved,
+		avg((e.detail ->> 'used')::int) filter (where e.detail ->> 'status' = 'SOLVED') used
+	from g left join events e on e.game_id = g.game_id and e.type = 'game_ended'
+	group by g.scenario
 )
 select :c_case
 	scenario "사건",

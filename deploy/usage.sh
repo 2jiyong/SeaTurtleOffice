@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 DAYS=${1:-7}
-[[ $DAYS =~ ^[0-9]+$ ]] && (( DAYS >= 1 && DAYS <= 366 )) || { echo "일수는 1~366 사이 숫자로 주세요: $DAYS"; exit 1; }
+[[ $DAYS =~ ^[0-9]+$ ]] && DAYS=$((10#$DAYS)) && (( DAYS >= 1 && DAYS <= 366 )) || { echo "일수는 1~366 사이 숫자로 주세요: $DAYS"; exit 1; }
 HOST=${USAGE_HOST:-ubuntu@www.seaturtleoffice.site}
 KEY=${USAGE_KEY:-$HOME/.ssh/seaturtle-office.pem}
 

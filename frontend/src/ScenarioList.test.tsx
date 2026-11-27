@@ -80,6 +80,18 @@ describe('이 기기의 진행 상태', () => {
     expect(api.start).toHaveBeenCalledWith('boys-order')
   })
 
+  it('사건을 열면 통계에 case_open을 slug와 함께 남긴다', async () => {
+    const track = vi.fn()
+    window.umami = { track }
+    vi.mocked(api.start).mockResolvedValueOnce({ id: 'g1', status: 'PLAYING' } as never)
+    const onOpen = vi.fn()
+    render(<ScenarioList onOpen={onOpen} />)
+    fireEvent.click(await screen.findByText('열 개의 손목'))
+    await vi.waitFor(() => expect(onOpen).toHaveBeenCalled())
+    expect(track).toHaveBeenCalledWith('case_open', { scenario: 'boys-order' })
+    delete window.umami
+  })
+
   it('진행 상태를 못 불러와도 사건 목록은 보인다', async () => {
     vi.mocked(api.myGames).mockRejectedValueOnce(new Error('실패'))
     render(<ScenarioList onOpen={() => {}} />)

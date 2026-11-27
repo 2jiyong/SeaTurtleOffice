@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics.ts'
 import { useEffect, useRef, useState } from 'react'
 import { api, progressLabel, type GameView, type MyGame, type ScenarioSummary } from './api.ts'
 import Risk from './Risk.tsx'
@@ -38,7 +39,9 @@ export default function ScenarioList({ onOpen }: { onOpen: (game: GameView) => v
     setError(null)
     try {
       await mineLoaded.current
-      onOpen(await api.start(slug))
+      const game = await api.start(slug)
+      trackEvent('case_open', slug)
+      onOpen(game)
     } catch (e) {
       setError((e as Error).message)
       setStarting(null)

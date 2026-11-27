@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { trackPage } from './analytics.ts'
 import { api, BUDGET_EXHAUSTED, type ServerInfo } from './api.ts'
 import GamePage from './GamePage.tsx'
 import ResultPage from './ResultPage.tsx'
@@ -30,6 +31,9 @@ export default function App() {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
+
+  // 화면이 바뀔 때마다 방문 통계에 남긴다(주소는 정규화해서).
+  useEffect(() => trackPage(window.location.hash), [route])
 
   const goHome = () => {
     window.location.hash = '#/'

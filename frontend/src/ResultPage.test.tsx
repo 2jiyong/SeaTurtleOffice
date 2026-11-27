@@ -221,6 +221,18 @@ describe('초기화', () => {
     expect(vi.mocked(api.reset).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.start).mock.invocationCallOrder[0])
   })
 
+  it('초기화가 끝나면 통계에 case_reset을 남긴다', async () => {
+    const track = vi.fn()
+    window.umami = { track }
+    vi.mocked(api.reset).mockResolvedValue(undefined)
+    vi.mocked(api.start).mockResolvedValue({ ...solved, id: 'g2', status: 'PLAYING', reveal: null })
+    const { user, onRestarted } = await openConfirm()
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '초기화' }))
+    await vi.waitFor(() => expect(onRestarted).toHaveBeenCalled())
+    expect(track).toHaveBeenCalledWith('case_reset', { scenario: 's' })
+    delete window.umami
+  })
+
   it('취소하면 아무 요청도 하지 않는다', async () => {
     const { user } = await openConfirm()
     await user.click(screen.getByRole('button', { name: '취소' }))

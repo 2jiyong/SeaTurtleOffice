@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics.ts'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type GameView } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
@@ -82,6 +83,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
       // 게임이 끝났다. 새로 열린 계시가 있어도 계시창 대신 결과 페이지로 넘어간다.
       setOpenHint(null)
       setEnding(true)
+      trackEvent(next.status === 'SOLVED' ? 'case_solved' : 'case_closed', next.scenario.slug)
     } else if (next.hints.length > game.hints.length) {
       // 계시가 새로 열리는 순간에는 계시창을 자동으로 띄운다.
       returnFocus.current = document.activeElement as HTMLElement | null

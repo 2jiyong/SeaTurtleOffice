@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics.ts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError, type GameStatus, type GameView } from './api.ts'
 import ConfirmDialog from './ConfirmDialog.tsx'
@@ -87,6 +88,7 @@ export default function ResultPage({
         if (!(e instanceof ApiError && e.status === 404)) throw e
       }
       const next = await api.start(game.scenario.slug)
+      trackEvent('case_reset', game.scenario.slug)
       onRestarted(next.id)
     } catch (e) {
       setResetError((e as Error).message)

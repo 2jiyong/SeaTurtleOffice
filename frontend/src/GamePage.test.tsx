@@ -477,6 +477,26 @@ describe('게임이 끝나면 결과 페이지로', () => {
     expect(onEnded).toHaveBeenCalledTimes(1)
   })
 
+  it('정답으로 끝나면 통계에 case_solved, 포기로 끝나면 case_closed', async () => {
+    const track = vi.fn()
+    window.umami = { track }
+    await openPlaying(vi.fn())
+    vi.mocked(api.guess).mockResolvedValue(solvedGame)
+    await sendGuess()
+    expect(track).toHaveBeenCalledWith('case_solved', { scenario: 's' })
+    cleanup()
+    track.mockClear()
+    await openPlaying(vi.fn())
+    vi.mocked(api.giveUp).mockResolvedValue({ ...solvedGame, status: 'GAVE_UP', guesses: [], hints: [] })
+    fireEvent.click(screen.getByRole('button', { name: '포기하고 진상 보기' }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '조사를 중단한다' }))
+    })
+    expect(track).toHaveBeenCalledWith('case_closed', { scenario: 's' })
+    expect(track).toHaveBeenCalledTimes(1)
+    delete window.umami
+  })
+
   it('포기해도 같은 연출 뒤 onEnded', async () => {
     const onEnded = vi.fn()
     await openPlaying(onEnded)

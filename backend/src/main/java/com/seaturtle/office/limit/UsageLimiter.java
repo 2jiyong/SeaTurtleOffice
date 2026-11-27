@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 import javax.sql.DataSource;
 
@@ -34,6 +35,8 @@ public class UsageLimiter {
 	private final JdbcClient jdbc;
 	private final LimitProperties props;
 	private final Set<String> judging = ConcurrentHashMap.newKeySet();
+	/** 서버 전체 동시 판정 자리(maxInFlight가 0 이하면 null = 제한 없음) */
+	private final Semaphore seats;
 	/** 오늘 이미 남긴 경고 단계("2026-11-27:80"). 메모리 기준이라 재시작하면 한 번 더 찍힐 수 있다. */
 	private final Set<String> warned = ConcurrentHashMap.newKeySet();
 	private static final int[] WARN_PERCENTS = { 50, 80, 100 };
@@ -44,6 +47,7 @@ public class UsageLimiter {
 		template.setQueryTimeout(2);
 		this.jdbc = JdbcClient.create(template);
 		this.props = props;
+		this.seats = props.maxInFlight() > 0 ? new Semaphore(props.maxInFlight()) : null;
 	}
 
 	/** 한국 시간(설정 zone) 오늘 0시 */
@@ -125,11 +129,24 @@ public class UsageLimiter {
 		}
 	}
 
-	/** 이 판이 이미 판정 중이면 IllegalStateException(409). 끝나면(성공·실패 모두) close로 비운다. */
-	public Slot enter(String gameId) {
-		if (!judging.add(gameId)) {
+	/**
+	 * 판정 자리를 잡는다. key는 이 판(기기:판 id). 판을 읽기 전에 잡아야, 앞 판정이 저장을 마친 뒤 뒤 요청이 옛 기록으로 판정하지 않는다.
+	 * 이 판이 이미 판정 중이면 IllegalStateException(409), 서버 전체 자리가 차면 JudgeBusyException(503).
+	 * 끝나면(성공·실패 모두) close로 비운다.
+	 */
+	public Slot enter(String key) {
+		if (!judging.add(key)) {
 			throw new IllegalStateException("이전 판정을 기다리는 중입니다.");
 		}
-		return () -> judging.remove(gameId);
+		if (seats != null && !seats.tryAcquire()) {
+			judging.remove(key);
+			throw new JudgeBusyException();
+		}
+		return () -> {
+			judging.remove(key);
+			if (seats != null) {
+				seats.release();
+			}
+		};
 	}
 }

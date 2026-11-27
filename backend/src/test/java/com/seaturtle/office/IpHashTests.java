@@ -45,6 +45,14 @@ class IpHashTests {
 	}
 
 	@Test
+	void ipv6IsGroupedBy64() {
+		// IPv6는 /64 안에서 주소를 사실상 무한히 바꿀 수 있어, 같은 /64는 같은 해시로 센다.
+		assertThat(hasher.hash("2001:db8:1:2::1")).isEqualTo(hasher.hash("2001:db8:1:2:ffff::5"));
+		assertThat(hasher.hash("2001:db8:1:3::1")).isNotEqualTo(hasher.hash("2001:db8:1:2::1"));
+		assertThat(hasher.hash("203.0.113.7")).isNotEqualTo(hasher.hash("203.0.113.8"));
+	}
+
+	@Test
 	void differentSecretDifferentHash() {
 		assertThat(new IpHasher("other").hash("203.0.113.7")).isNotEqualTo(hasher.hash("203.0.113.7"));
 	}

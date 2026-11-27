@@ -37,6 +37,8 @@ limits:
   daily-budget-usd: ${LIMIT_DAILY_BUDGET_USD:2.0}
   device-per-day: ${LIMIT_DEVICE_PER_DAY:200}
   ip-per-day: ${LIMIT_IP_PER_DAY:600}
+  # 서버 전체 동시 판정 상한. 넘으면 503(잠시 뒤 다시).
+  max-in-flight: ${LIMIT_MAX_IN_FLIGHT:20}
   zone: Asia/Seoul
   price:
     input: 0.25

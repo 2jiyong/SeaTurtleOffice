@@ -209,9 +209,15 @@ from events group by 1 order by 1;
 | 기기 하나, 하루 판정 | 200번 | `LIMIT_DEVICE_PER_DAY` | 429 `reason: device` |
 | IP 하나, 하루 판정 | 600번 | `LIMIT_IP_PER_DAY` | 429 `reason: ip` |
 | 한 판의 동시 판정 | 1건 | — | 409 "이전 판정을 기다리는 중입니다." |
+| 서버 전체 동시 판정 | 20건 | `LIMIT_MAX_IN_FLIGHT` | 503 "응시자가 다른 교신으로 바쁩니다. 잠시 뒤 다시 시도해 주세요." |
 
 - 0 이하로 두면 그 검사를 끈다. 힌트·포기·조회·초기화는 막지 않는다. 판정이 실패한 요청(`judge_error`, `timeout`, `conflict`)도 센다. `limited`는 세지 않는다.
 - 비용 = `(입력 − 캐시) × 0.25 + 캐시 × 0.025 + 출력 × 2.0`(100만 토큰당 달러, `gpt-5-mini`). 모델을 바꾸면 `application.yml`의 `limits.price`를 고친다.
+  **하루 도중에 단가를 바꾸면 오늘 쓴 토큰 전체에 새 단가가 적용된다**(이벤트에 단가를 남기지 않는다). 모델은 자정 무렵에 바꾸는 편이 낫다.
+- 한도는 판정이 끝난 뒤 기록되는 이벤트로 센다. 한도 직전에 요청이 몰리면 그 순간 판정 중인 만큼(최대 `LIMIT_MAX_IN_FLIGHT`건) 넘을 수 있다.
+- 시간 초과로 응답을 잃은 판정과 OpenAI 자동 재시도 1회의 토큰은 예산에 들어가지 않는다(드물다). 최종 안전망은 OpenAI 충전 잔액이다.
+- IPv6는 앞 64비트(/64)로 묶어 센다(그 안에서 주소를 사실상 무한히 바꿀 수 있어서).
+- 한도에 걸린 요청도 매번 검사 쿼리와 `limited` 기록이 생긴다. 배포에서는 Caddy의 초당 요청 제한을 앞에 함께 둔다(④).
 - 검사 쿼리가 실패하거나 2초 안에 끝나지 않으면 **판정을 막지 않는다**(경고 로그). 최종 안전망은 OpenAI 충전 잔액이다.
 - 예산의 50%, 80%, 100%를 처음 넘을 때 백엔드 로그에 경고가 한 줄 남는다. `/api/info`는 `budgetExhausted`만 알려 준다(금액은 공개하지 않는다).
 - IP 해시의 비밀 값은 `IP_HASH_SECRET`(배포에서 반드시 바꾼다, 로컬 기본값 `dev-only`).
@@ -225,9 +231,11 @@ from events
 where type in ('question_asked', 'guess_submitted') and outcome <> 'limited'
   and at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
 
--- 오늘 한도에 막힌 요청
+-- 오늘(한국 시간) 한도에 막힌 요청
 select detail->>'reason' reason, count(*) from events
-where outcome = 'limited' and at >= current_date group by 1;
+where outcome = 'limited'
+  and at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul'
+group by 1;
 ```
 
 ## 테스트

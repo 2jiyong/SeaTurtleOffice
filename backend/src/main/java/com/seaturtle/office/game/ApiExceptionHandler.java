@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.seaturtle.office.judge.JudgeException;
+import com.seaturtle.office.limit.JudgeBusyException;
 import com.seaturtle.office.limit.UsageLimitException;
 
 @RestControllerAdvice
@@ -25,6 +26,11 @@ public class ApiExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
 		problem.setProperty("reason", e.reason());
 		return problem;
+	}
+
+	@ExceptionHandler(JudgeBusyException.class)
+	ProblemDetail busy(JudgeBusyException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
 	}
 
 	@ExceptionHandler(GameConflictException.class)

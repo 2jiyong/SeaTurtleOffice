@@ -47,7 +47,8 @@ import jakarta.servlet.http.Cookie;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = { "limits.device-per-day=3", "limits.ip-per-day=5", "limits.daily-budget-usd=0.01" })
+@TestPropertySource(properties = { "limits.device-per-day=3", "limits.ip-per-day=5", "limits.daily-budget-usd=0.01",
+		"limits.max-in-flight=1" })
 @ExtendWith(OutputCaptureExtension.class)
 class UsageLimitTests {
 
@@ -187,6 +188,16 @@ class UsageLimitTests {
 	}
 
 	@Test
+	void todayStartsAtKoreanMidnight() {
+		// 구현이 UTC나 JVM 시간대 자정을 쓰면 여기서 걸린다(아래 테스트는 todayStart를 기준으로 삼아 못 잡는다).
+		var start = limiter.todayStart();
+		assertThat(start.getOffset()).isEqualTo(java.time.ZoneOffset.ofHours(9));
+		assertThat(start.getHour()).isZero();
+		assertThat(start.getMinute()).isZero();
+		assertThat(start.toLocalDate()).isEqualTo(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")));
+	}
+
+	@Test
 	void yesterdayNotCounted() {
 		// 한국 시간 어제 23:30. UTC로는 오늘 날짜일 수 있어 UTC 기준으로 세면 틀린다.
 		OffsetDateTime lastNight = limiter.todayStart().minusMinutes(30);
@@ -283,5 +294,45 @@ class UsageLimitTests {
 		String out = output.getOut();
 		assertThat(out.split("판정 비용 80%", -1)).hasSize(2);
 		assertThat(out).contains("판정 비용 50%");
+	}
+
+	@Test
+	void inFlightCheckedBeforeLimits() {
+		// 앞 판정이 진행 중이면, 그사이 한도가 찼어도 뒤 요청은 409(판정 중)여야 한다. 한도 검사·limited 기록보다 먼저다.
+		String id = start();
+		insertJudged(client, null);
+		insertJudged(client, null);
+		judge.duringSlow = () -> {
+			insertJudged(client, null);
+			assertThatThrownBy(() -> games.ask(client, id, "끼어든 질문"))
+					.isInstanceOf(IllegalStateException.class).hasMessage("이전 판정을 기다리는 중입니다.");
+		};
+		try {
+			games.ask(client, id, "느린 질문");
+		} finally {
+			judge.duringSlow = () -> {
+			};
+		}
+		assertThat(limited(client)).isZero();
+	}
+
+	@Test
+	void serverWideInFlightCap() {
+		// 서버 전체 동시 판정 상한(이 테스트는 1). 다른 판·다른 기기라도 넘으면 503으로 거절하고 판정기를 부르지 않는다.
+		String id = start();
+		String other = UUID.randomUUID().toString();
+		String otherGame = games.start(other, "boys-order").game().id();
+		judge.duringSlow = () -> assertThatThrownBy(() -> games.ask(other, otherGame, "다른 판"))
+				.isInstanceOf(com.seaturtle.office.limit.JudgeBusyException.class);
+		try {
+			games.ask(client, id, "느린 질문");
+		} finally {
+			judge.duringSlow = () -> {
+			};
+		}
+		assertThat(judge.calls).hasValue(1);
+		// 자리가 비면 다시 된다.
+		games.ask(other, otherGame, "이제");
+		assertThat(judge.calls).hasValue(2);
 	}
 }

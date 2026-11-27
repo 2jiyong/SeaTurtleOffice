@@ -74,10 +74,11 @@ public class GameService {
 
 	public Game ask(String clientId, String id, String question) {
 		long started = System.nanoTime();
-		Game game = get(clientId, id);
-		game.requireQuestionAllowed();
-		limit(game, Event.QUESTION_ASKED, question, started);
-		try (var slot = limiter.enter(game.id())) {
+		// 판정 자리를 먼저 잡고 그 안에서 판을 읽는다(옛 기록으로 판정하지 않게, 판정 중 409가 한도 429보다 먼저).
+		try (var slot = limiter.enter(clientId + ":" + id)) {
+			Game game = get(clientId, id);
+			game.requireQuestionAllowed();
+			limit(game, Event.QUESTION_ASKED, question, started);
 			return judgeQuestion(game, question, started);
 		}
 	}
@@ -103,10 +104,10 @@ public class GameService {
 
 	public Game guess(String clientId, String id, String answer) {
 		long started = System.nanoTime();
-		Game game = get(clientId, id);
-		game.requirePlaying();
-		limit(game, Event.GUESS_SUBMITTED, answer, started);
-		try (var slot = limiter.enter(game.id())) {
+		try (var slot = limiter.enter(clientId + ":" + id)) {
+			Game game = get(clientId, id);
+			game.requirePlaying();
+			limit(game, Event.GUESS_SUBMITTED, answer, started);
 			return judgeGuess(game, answer, started);
 		}
 	}

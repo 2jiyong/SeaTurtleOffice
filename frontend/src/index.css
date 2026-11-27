@@ -1612,10 +1612,11 @@ h3 {
 .guess-open {
   flex: none;
   margin-left: auto;
-  padding: 6px 14px;
+  min-width: 150px;
+  padding: 11px 24px;
   font-family: 'Black Han Sans', var(--sans);
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
   line-height: 1.25;
   color: #e6e9e0;
   background: #0d0f10;

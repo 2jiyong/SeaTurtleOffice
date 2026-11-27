@@ -345,7 +345,21 @@ class GameFlowTests {
 	}
 
 	@Test
-	void guessCostsFiveAndCapsAtForty() {
+	void wrongGuessCostsThree() {
+		var game = playing(12);
+		games.guess(client, game.id(), "모르겠어요");
+		assertThat(reload(game).used()).isEqualTo(15);
+	}
+
+	@Test
+	void bonusStillSavesFiveAfterGuessCostChange() {
+		// 추리 비용(3)과 보너스(5)는 따로다. 이미 끝난 판의 등급이 바뀌지 않게 보너스는 5 그대로.
+		assertThat(Game.GUESS_COST).isEqualTo(3);
+		assertThat(Game.BONUS_SAVE).isEqualTo(5);
+	}
+
+	@Test
+	void guessCapsAtForty() {
 		var game = playing(38);
 		games.guess(client, game.id(), "모르겠어요");
 		assertThat(reload(game).used()).isEqualTo(40);
@@ -507,7 +521,7 @@ class GameFlowTests {
 		assertThat(loaded.questions()).extracting(Game.QuestionRecord::text).containsExactly("하나", "둘");
 		assertThat(loaded.hints()).hasSize(1);
 		assertThat(loaded.guesses()).hasSize(1);
-		assertThat(loaded.used()).isEqualTo(15);
+		assertThat(loaded.used()).isEqualTo(Game.HINT_STEP + Game.GUESS_COST);
 	}
 
 	@Test

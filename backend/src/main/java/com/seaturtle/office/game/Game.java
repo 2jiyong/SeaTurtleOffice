@@ -14,9 +14,9 @@ import com.seaturtle.office.content.Scenario;
  */
 public class Game {
 
-	/** 한 판에 쓸 수 있는 사용 횟수. 질문 1, 추리 5. */
+	/** 한 판에 쓸 수 있는 사용 횟수. 질문 1, 틀린 추리 3(2026-11-28에 5에서 3으로). */
 	public static final int LIMIT = 40;
-	public static final int GUESS_COST = 5;
+	public static final int GUESS_COST = 3;
 	/** 사용 10, 20, 30에서 힌트가 하나씩 열린다. */
 	public static final int HINT_STEP = 10;
 	/** 힌트는 한도 전까지만(10, 20, 30). 40에는 힌트가 없다. */
@@ -162,8 +162,11 @@ public class Game {
 		return status == GameStatus.PLAYING && used >= LIMIT;
 	}
 
-	/** 맞힌 보너스 하나가 덜어 주는 사용 횟수(틀린 추리 한 번만큼) */
-	public static final int BONUS_SAVE = GUESS_COST;
+	/**
+	 * 맞힌 보너스 하나가 덜어 주는 사용 횟수. 처음에는 틀린 추리 한 번만큼(5)이었고, 추리 비용을 3으로 내린 뒤에도 5로 둔다.
+	 * 등급은 저장하지 않고 볼 때마다 계산하므로, 이 값을 바꾸면 이미 끝난 판의 등급도 바뀐다.
+	 */
+	public static final int BONUS_SAVE = 5;
 
 	/** 맞힌 보너스가 덜어 준 사용 횟수. 해결한 판에만 있다. */
 	public int bonusSaved() {

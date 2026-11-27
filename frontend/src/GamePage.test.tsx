@@ -612,3 +612,17 @@ describe('기록을 다시 불러와야 할 때', () => {
     await vi.waitFor(() => expect(onEnded).toHaveBeenCalledTimes(1))
   })
 })
+
+describe('사용량 한도', () => {
+  it('429면 문구를 보이고 입력 글을 남기며, 다시 불러오지 않는다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    const message = '오늘 이 단말의 교신 한도를 넘었습니다. 내일 다시 시도해 주세요.'
+    vi.mocked(api.ask).mockRejectedValue(new ApiError(message, 429, 'device'))
+    await user.type(screen.getByRole('textbox', { name: '질문' }), '한도 넘은 질문{Enter}')
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect((screen.getByRole('textbox', { name: '질문' }) as HTMLTextAreaElement).value).toBe('한도 넘은 질문')
+    expect(api.game).toHaveBeenCalledTimes(1)
+  })
+})
+

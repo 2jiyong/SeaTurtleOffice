@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type ServerInfo } from './api.ts'
+import { api, BUDGET_EXHAUSTED, type ServerInfo } from './api.ts'
 import GamePage from './GamePage.tsx'
 import ResultPage from './ResultPage.tsx'
 import { readRoute, replaceRoute } from './route.ts'
@@ -9,8 +9,20 @@ export default function App() {
   const [route, setRoute] = useState(() => readRoute(window.location.hash))
   const [info, setInfo] = useState<ServerInfo | null>(null)
 
+  // 오늘 예산이 바닥났는가: 처음 불러온 정보, 또는 하던 중에 받은 예산 429
+  const [budgetOut, setBudgetOut] = useState(false)
+
   useEffect(() => {
-    api.info().then(setInfo, () => setInfo(null))
+    api.info().then(
+      (i) => {
+        setInfo(i)
+        if (i.budgetExhausted) setBudgetOut(true)
+      },
+      () => setInfo(null),
+    )
+    const onBudget = () => setBudgetOut(true)
+    window.addEventListener(BUDGET_EXHAUSTED, onBudget)
+    return () => window.removeEventListener(BUDGET_EXHAUSTED, onBudget)
   }, [])
 
   useEffect(() => {
@@ -42,6 +54,7 @@ export default function App() {
         </button>
         <p className="brand-sub">응시자는 모든 것을 알고 있습니다. 다만 묻는 말에만, 짧게 답할 뿐입니다.</p>
       </header>
+      {budgetOut && <p className="banner">오늘 응시자와의 교신량이 모두 찼습니다. 내일 다시 시도해 주세요.</p>}
       {info && !info.judgeOnline && (
         <p className="banner">
           <b>AI 판정 서버에 연결할 수 없습니다.</b> 질문과 추리를 판정하려면 <code>ai/</code>에서{' '}

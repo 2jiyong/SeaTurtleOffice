@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, type MyGame } from './api.ts'
 import App from './App.tsx'
@@ -9,7 +9,7 @@ vi.mock('./api.ts', async (importActual) => {
   return {
     ...actual,
     api: {
-      info: vi.fn().mockResolvedValue({ judge: 'x', fakeJudge: false, judgeOnline: true }),
+      info: vi.fn().mockResolvedValue({ judge: 'x', fakeJudge: false, judgeOnline: true, budgetExhausted: false }),
       scenarios: vi.fn().mockResolvedValue([
         { slug: 'boys-order', title: '열 개의 손목', difficulty: 'hard', problem: '문제 본문', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
         { slug: 'one-week', title: '일주일 연수', difficulty: 'normal', problem: '문제 둘', hintCount: 3, cover: null, keywordCount: 3, bonusCount: 1 },
@@ -101,3 +101,24 @@ describe('이 기기의 진행 상태', () => {
     await vi.waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1))
   })
 })
+
+describe('예산 소진 안내', () => {
+  const NOTICE = '오늘 응시자와의 교신량이 모두 찼습니다. 내일 다시 시도해 주세요.'
+
+  it('처음부터 예산이 바닥났으면 상단 안내', async () => {
+    vi.mocked(api.info).mockResolvedValueOnce({ judge: 'x', fakeJudge: false, judgeOnline: true, budgetExhausted: true })
+    render(<App />)
+    expect(await screen.findByText(NOTICE)).toBeTruthy()
+  })
+
+  it('하던 중에 예산 429를 받으면 그 자리에서 상단 안내', async () => {
+    render(<App />)
+    await screen.findByText('열 개의 손목')
+    expect(screen.queryByText(NOTICE)).toBeNull()
+    act(() => {
+      window.dispatchEvent(new Event('budget-exhausted'))
+    })
+    expect(await screen.findByText(NOTICE)).toBeTruthy()
+  })
+})
+

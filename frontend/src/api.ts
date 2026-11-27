@@ -125,12 +125,18 @@ export function progressLabel(g: MyGame): string {
 
 export class ApiError extends Error {
   readonly status: number
+  /** 429일 때 어떤 한도인지: budget(오늘 전체 예산) / device / ip */
+  readonly reason?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, reason?: string) {
     super(message)
     this.status = status
+    this.reason = reason
   }
 }
+
+/** 오늘 전체 예산이 바닥났다는 알림. App이 듣고 상단 안내를 켠다. */
+export const BUDGET_EXHAUSTED = 'budget-exhausted'
 
 /**
  * 요청 하나를 기다리는 최대 시간. 백엔드(28초)보다 조금 길게 잡아서, 보통은 백엔드가 먼저 오류를 돌려준다.
@@ -159,13 +165,16 @@ async function request<T>(path: string, body?: unknown, method?: 'DELETE'): Prom
   }
   if (!res.ok) {
     let message = `요청이 실패했습니다 (${res.status})`
+    let reason: string | undefined
     try {
       const problem = await res.json()
       if (problem?.detail) message = problem.detail
+      if (typeof problem?.reason === 'string') reason = problem.reason
     } catch {
       /* 본문이 JSON이 아니면 기본 메시지를 쓴다 */
     }
-    throw new ApiError(message, res.status)
+    if (res.status === 429 && reason === 'budget') window.dispatchEvent(new Event(BUDGET_EXHAUSTED))
+    throw new ApiError(message, res.status, reason)
   }
   // 초기화(DELETE)는 본문 없이 204로 답한다.
   if (res.status === 204) return undefined as T
@@ -176,6 +185,8 @@ export interface ServerInfo {
   judge: string
   fakeJudge: boolean
   judgeOnline: boolean
+  /** 오늘 판정 예산을 다 썼다 */
+  budgetExhausted: boolean
 }
 
 export const api = {

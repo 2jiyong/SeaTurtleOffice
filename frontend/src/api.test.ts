@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, progressLabel, REQUEST_TIMEOUT_MS } from './api.ts'
+import { api, ApiError, progressLabel, REQUEST_TIMEOUT_MS } from './api.ts'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -47,5 +47,36 @@ describe('진행 상태 문구', () => {
     expect(progressLabel({ ...base, status: 'SOLVED', grade: 'A' })).toBe('해결 · A등급')
     expect(progressLabel({ ...base, status: 'FAILED', grade: 'D' })).toBe('해결 못 함 · D등급')
     expect(progressLabel({ ...base, status: 'GAVE_UP', grade: 'F' })).toBe('해결 못 함 · F등급')
+  })
+})
+
+describe('사용량 한도(429)', () => {
+  const tooMany = (reason: string) =>
+    new Response(JSON.stringify({ detail: '한도 문구', reason }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+  it('예산 429면 reason을 담고 budget-exhausted 이벤트를 알린다', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tooMany('budget')))
+    const heard = vi.fn()
+    window.addEventListener('budget-exhausted', heard)
+    const error = await api.ask('g1', '질문').catch((e: ApiError) => e)
+    window.removeEventListener('budget-exhausted', heard)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(429)
+    expect((error as ApiError).reason).toBe('budget')
+    expect((error as ApiError).message).toBe('한도 문구')
+    expect(heard).toHaveBeenCalledTimes(1)
+  })
+
+  it('기기 한도 429는 이벤트를 알리지 않는다', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tooMany('device')))
+    const heard = vi.fn()
+    window.addEventListener('budget-exhausted', heard)
+    const error = await api.ask('g1', '질문').catch((e: ApiError) => e)
+    window.removeEventListener('budget-exhausted', heard)
+    expect((error as ApiError).reason).toBe('device')
+    expect(heard).not.toHaveBeenCalled()
   })
 })

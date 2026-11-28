@@ -305,3 +305,15 @@ def test_question_reason_is_short():
     # 근거는 화면에 보이지 않고 DB에만 남는다. 길면 응답이 느려지므로 짧게 쓰게 한다.
     assert "40자 안쪽 한 문장" in QUESTION_RULES
     assert "판정 근거를 한두 문장으로" not in QUESTION_RULES
+
+
+def test_hints_are_judging_facts(content):
+    # 힌트는 화면에만 있던 단서다. 플레이어가 힌트에서 본 것을 물으면 진상처럼 판정할 수 있게 판정 자료에 넣는다.
+    s = content.scenario("boys-order")
+    prompt = JudgePrompts(content, 40).question(s, [], "꼬마의 배지는 아빠의 것인가요?")
+    assert "## [힌트]" in prompt.system
+    for hint in s.hints:
+        assert hint in prompt.system
+    assert "[힌트]" in QUESTION_RULES
+    # 추리 채점도 같은 자료를 본다.
+    assert "## [힌트]" in JudgePrompts(content, 40).guess(s, "답안").system

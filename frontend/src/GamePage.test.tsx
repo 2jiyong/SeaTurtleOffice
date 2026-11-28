@@ -497,7 +497,7 @@ describe('추리 창', () => {
 
   it('질문 입력창은 명확하게 물으라고 안내한다', async () => {
     await openGame()
-    expect(document.querySelector('.question-tip')?.textContent).toContain('한 번에 하나만 물어라.')
+    expect(document.querySelector('.question-tip')?.textContent).toContain('하나의 질문에는 하나의 의문만 담아라. 모호함을 버리고, 명확하게 물어라.')
   })
 
   it('추리 제출 버튼은 질문 입력줄 옆이 아니라 아래 줄에 있다', async () => {

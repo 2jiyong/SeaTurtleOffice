@@ -84,7 +84,7 @@ export default function GuessDialog({
         </span>
         <h2 id="guess-title">추리 제출</h2>
         <p className="guess-guide">
-          알아낸 것을 빠짐없이 적어라. 무엇이 일어났고, 누가 왜 그랬으며, 어떻게 그렇게 되었는지. 자세할수록 판정은 정확해진다.
+          알아낸 사실을 빠짐없이 기록하라. 사소한 단서라도 놓치지 마라. 모든 사실이 판정의 근거가 된다.
         </p>
         <form onSubmit={submit}>
           <textarea

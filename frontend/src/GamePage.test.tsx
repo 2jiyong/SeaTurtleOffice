@@ -492,7 +492,7 @@ describe('추리 창', () => {
     await openGame()
     await user.click(screen.getByRole('button', { name: '추리 제출' }))
     const dialog = screen.getByRole('dialog', { name: '추리 제출' })
-    expect(dialog.textContent).toContain('알아낸 것을 빠짐없이 적어라.')
+    expect(dialog.textContent).toContain('알아낸 사실을 빠짐없이 기록하라. 사소한 단서라도 놓치지 마라. 모든 사실이 판정의 근거가 된다.')
   })
 
   it('질문 입력창은 명확하게 물으라고 안내한다', async () => {

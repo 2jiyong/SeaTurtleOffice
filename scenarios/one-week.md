@@ -4,7 +4,7 @@ title: 일주일 연수
 difficulty: normal
 era: [all]
 works: [ruina, limbus]
-uses: [wing.r-corp.hatchery, wing.r-corp, wing.r-corp.fourth-pack, wing.t-corp, concept.taboo.city-taboos.clone]
+uses: [wing.r-corp.hatchery, wing.r-corp, wing.r-corp.fourth-pack, wing.t-corp, concept.taboo.city-taboos.clone, concept.feather]
 updated: 2026-11-28
 ---
 
@@ -46,6 +46,7 @@ R사에 들어온 대원은 예외 없이 "부화장"이라는 훈련을 거친�
 
 ## 판정 메모
 - 남자는 신입인가요? / 새로 입사했나요? → 예. 입사하고 처음 받은 훈련이 부화장이다.
+- 남자는 R사의 깃털인가요? / 날개의 일원인가요? → 예. R사에 입사한 날개의 일원이다.
 - 남자는 연수를 기대했나요? / 기쁜 마음으로 갔나요? → 예. 꿈꾸던 회사의 정식 직원이 되어 기뻐하며 갔다.
 - 남자는 억지로 연수에 끌려갔나요? → 아니오. 스스로 기뻐하며 갔다.
 - 남자는 정말 일주일만 떠나 있었나요? → 예. 바깥 시간으로는 일주일이다.

@@ -252,7 +252,7 @@ export default function GamePage({ gameId, onExit, onEnded }: { gameId: string; 
             <div className="composer-foot">
               <span className="counter">
                 {text.length}/{QUESTION_LIMIT} {'//'} 모든 송신은 기록된다
-                <span className="question-tip">질문은 하나씩 하라. 질문이 분명할수록 답도 분명해진다.</span>
+                <span className="question-tip">한 번에 하나만 물어라. 질문이 분명할수록 답도 분명해진다.</span>
                 <span className="cost-note">
                   {game.finalChance ? '질문을 모두 썼습니다. 추리 제출로 마지막 추리를 보내세요.' : '질문은 사용 1을 씁니다.'}
                 </span>

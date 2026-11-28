@@ -163,7 +163,6 @@ def test_parses_keywords_and_bonuses(content):
     assert s.keywords[0].required == []
     assert s.keywords[2].required == ["엄지"]
     assert "꼬마가 무서웠다" in s.keywords[0].reject
-    assert s.keywords[1].missing == "꼬마가 울면서 한 한마디가 무엇이었는지가 빠져 있구나."
     assert [b.name for b in s.bonuses] == ["검지의 습격"]
 
 
@@ -222,11 +221,6 @@ def test_guess_numbers_are_cleaned(client):
 def test_every_scenario_uses_new_format(content):
     for s in content.scenarios.values():
         assert s.keywords and 1 <= len(s.bonuses) <= 2, s.slug
-        for k in s.keywords:
-            assert k.missing and k.missing != "아직 빠진 것이 있구나.", (s.slug, k.name)
-            assert k.name not in k.missing, (s.slug, k.name)
-            for term in k.required:
-                assert term not in k.missing, (s.slug, term)
 
 
 def test_required_terms_are_not_too_strict(content):

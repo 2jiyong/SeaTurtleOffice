@@ -774,6 +774,13 @@ h3 {
   font-size: 0.9rem;
 }
 
+/* 질문 요령 한 줄 */
+.question-tip {
+  display: block;
+  margin-top: 2px;
+  color: var(--room-muted);
+}
+
 .cost-note {
   display: block;
   margin-top: 2px;
@@ -2775,6 +2782,12 @@ h3 {
 .guess-dialog textarea:focus {
   outline: 2px solid #5fd38a;
   outline-offset: -1px;
+}
+
+.confirm .guess-guide {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #c9cec6;
 }
 
 .confirm .guess-note {

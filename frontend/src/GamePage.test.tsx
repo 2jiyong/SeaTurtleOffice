@@ -221,7 +221,8 @@ describe('사용 횟수와 점수', () => {
     render(<GamePage gameId="g1" onExit={() => {}} onEnded={() => {}} />)
     expect(await screen.findByText('질문을 모두 썼습니다. 마지막 추리 기회가 한 번 남았습니다.')).toBeTruthy()
     expect((screen.getByRole('textbox', { name: '질문' }) as HTMLTextAreaElement).disabled).toBe(true)
-    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
+    // 추리 창은 화면이 그려진 뒤 효과에서 열린다.
+    const dialog = await screen.findByRole('dialog', { name: '추리 제출' })
     expect(dialog.textContent).toContain('이 추리는 횟수를 쓰지 않습니다.')
   })
 
@@ -484,6 +485,19 @@ describe('추리 창', () => {
     await user.type(screen.getByRole('textbox', { name: '질문' }), 'q{Enter}')
     expect(api.ask).not.toHaveBeenCalled()
     expect(api.guess).toHaveBeenCalledTimes(1)
+  })
+
+  it('추리 창은 최대한 상세하게 쓰라고 안내한다', async () => {
+    const user = userEvent.setup()
+    await openGame()
+    await user.click(screen.getByRole('button', { name: '추리 제출' }))
+    const dialog = screen.getByRole('dialog', { name: '추리 제출' })
+    expect(dialog.textContent).toContain('아는 것을 최대한 상세하게 적어라.')
+  })
+
+  it('질문 입력창은 명확하게 물으라고 안내한다', async () => {
+    await openGame()
+    expect(document.querySelector('.question-tip')?.textContent).toContain('한 번에 하나씩, 누가·무엇을 분명히 밝혀 물어라.')
   })
 
   it('추리 제출 버튼은 질문 입력줄 옆이 아니라 아래 줄에 있다', async () => {

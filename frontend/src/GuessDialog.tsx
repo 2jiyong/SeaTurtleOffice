@@ -83,6 +83,9 @@ export default function GuessDialog({
           송신 단말 {'//'} 추리
         </span>
         <h2 id="guess-title">추리 제출</h2>
+        <p className="guess-guide">
+          아는 것을 최대한 상세하게 적어라. 무엇이 일어났는지, 누가 왜 그랬는지, 어떻게 그렇게 되었는지까지 빠짐없이 쓸수록 정확하게 판정된다.
+        </p>
         <form onSubmit={submit}>
           <textarea
             ref={boxRef}
